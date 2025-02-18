@@ -9,9 +9,23 @@ import SwiftUI
 
 @main
 struct Runaway_iOSApp: App {
+    let strava: StravaClient
+    
+    init() {
+        let config = StravaConfig(
+            clientId: 118220,
+            clientSecret: "b742a2a907586824514f1b3950918a6369eb29f4",
+            redirectUri: "runaway://redirect",
+            scopes: [.activityReadAll, .activityWrite]
+        )
+        strava = StravaClient.sharedInstance.initWithConfig(config)
+    }
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView().onOpenURL { url in
+                return strava.handleAuthorizationRedirect(url)
+            }
         }
     }
 }

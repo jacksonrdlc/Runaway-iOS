@@ -6,6 +6,17 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8EEECCCF2D64D02B0053014A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8EEECCCE2D64D02B0053014A /* WidgetKit.framework */; };
+		8EEECCD12D64D02B0053014A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8EEECCD02D64D02B0053014A /* SwiftUI.framework */; };
+		8EEECCE22D64D02D0053014A /* RunawayWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8EEECCCC2D64D02B0053014A /* RunawayWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8EEECCEA2D64D10F0053014A /* SwiftyJSON in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCE92D64D10F0053014A /* SwiftyJSON */; };
+		8EEECCED2D64D1340053014A /* Polyline in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCEC2D64D1340053014A /* Polyline */; };
+		8EEECCF02D64D2500053014A /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCEF2D64D2500053014A /* MapboxMaps */; };
+		8EEECCF32D64D3000053014A /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCF22D64D3000053014A /* Alamofire */; };
+		8EEECE2A2D64D8AC0053014A /* CoreGPX in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE292D64D8AC0053014A /* CoreGPX */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8EEECC532D64CF170053014A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,13 +32,48 @@
 			remoteGlobalIDString = 8EEECC412D64CF150053014A;
 			remoteInfo = "Runaway iOS";
 		};
+		8EEECCE02D64D02D0053014A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8EEECC3A2D64CF150053014A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8EEECCCB2D64D02B0053014A;
+			remoteInfo = RunawayWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		8EEECCE72D64D02D0053014A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8EEECCE22D64D02D0053014A /* RunawayWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		8EEECC422D64CF150053014A /* Runaway iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Runaway iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8EEECC522D64CF170053014A /* Runaway iOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Runaway iOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8EEECC5C2D64CF170053014A /* Runaway iOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Runaway iOSUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8EEECCCC2D64D02B0053014A /* RunawayWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RunawayWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8EEECCCE2D64D02B0053014A /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		8EEECCD02D64D02B0053014A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		8EEECE302D64F0EA0053014A /* RunawayWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunawayWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8EEECCE32D64D02D0053014A /* Exceptions for "RunawayWidget" folder in "RunawayWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8EEECCCB2D64D02B0053014A /* RunawayWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8EEECC442D64CF150053014A /* Runaway iOS */ = {
@@ -45,6 +91,14 @@
 			path = "Runaway iOSUITests";
 			sourceTree = "<group>";
 		};
+		8EEECCD22D64D02B0053014A /* RunawayWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8EEECCE32D64D02D0053014A /* Exceptions for "RunawayWidget" folder in "RunawayWidgetExtension" target */,
+			);
+			path = RunawayWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +106,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8EEECCF02D64D2500053014A /* MapboxMaps in Frameworks */,
+				8EEECCF32D64D3000053014A /* Alamofire in Frameworks */,
+				8EEECE2A2D64D8AC0053014A /* CoreGPX in Frameworks */,
+				8EEECCED2D64D1340053014A /* Polyline in Frameworks */,
+				8EEECCEA2D64D10F0053014A /* SwiftyJSON in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -69,15 +128,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8EEECCC92D64D02B0053014A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8EEECCD12D64D02B0053014A /* SwiftUI.framework in Frameworks */,
+				8EEECCCF2D64D02B0053014A /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		8EEECC392D64CF150053014A = {
 			isa = PBXGroup;
 			children = (
+				8EEECE302D64F0EA0053014A /* RunawayWidgetExtension.entitlements */,
 				8EEECC442D64CF150053014A /* Runaway iOS */,
 				8EEECC552D64CF170053014A /* Runaway iOSTests */,
 				8EEECC5F2D64CF170053014A /* Runaway iOSUITests */,
+				8EEECCD22D64D02B0053014A /* RunawayWidget */,
+				8EEECCCD2D64D02B0053014A /* Frameworks */,
 				8EEECC432D64CF150053014A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +159,18 @@
 				8EEECC422D64CF150053014A /* Runaway iOS.app */,
 				8EEECC522D64CF170053014A /* Runaway iOSTests.xctest */,
 				8EEECC5C2D64CF170053014A /* Runaway iOSUITests.xctest */,
+				8EEECCCC2D64D02B0053014A /* RunawayWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8EEECCCD2D64D02B0053014A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8EEECCCE2D64D02B0053014A /* WidgetKit.framework */,
+				8EEECCD02D64D02B0053014A /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,16 +183,23 @@
 				8EEECC3E2D64CF150053014A /* Sources */,
 				8EEECC3F2D64CF150053014A /* Frameworks */,
 				8EEECC402D64CF150053014A /* Resources */,
+				8EEECCE72D64D02D0053014A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				8EEECCE12D64D02D0053014A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8EEECC442D64CF150053014A /* Runaway iOS */,
 			);
 			name = "Runaway iOS";
 			packageProductDependencies = (
+				8EEECCE92D64D10F0053014A /* SwiftyJSON */,
+				8EEECCEC2D64D1340053014A /* Polyline */,
+				8EEECCEF2D64D2500053014A /* MapboxMaps */,
+				8EEECCF22D64D3000053014A /* Alamofire */,
+				8EEECE292D64D8AC0053014A /* CoreGPX */,
 			);
 			productName = "Runaway iOS";
 			productReference = 8EEECC422D64CF150053014A /* Runaway iOS.app */;
@@ -163,6 +251,28 @@
 			productReference = 8EEECC5C2D64CF170053014A /* Runaway iOSUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		8EEECCCB2D64D02B0053014A /* RunawayWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8EEECCE42D64D02D0053014A /* Build configuration list for PBXNativeTarget "RunawayWidgetExtension" */;
+			buildPhases = (
+				8EEECCC82D64D02B0053014A /* Sources */,
+				8EEECCC92D64D02B0053014A /* Frameworks */,
+				8EEECCCA2D64D02B0053014A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8EEECCD22D64D02B0053014A /* RunawayWidget */,
+			);
+			name = RunawayWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = RunawayWidgetExtension;
+			productReference = 8EEECCCC2D64D02B0053014A /* RunawayWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +294,9 @@
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 8EEECC412D64CF150053014A;
 					};
+					8EEECCCB2D64D02B0053014A = {
+						CreatedOnToolsVersion = 16.2;
+					};
 				};
 			};
 			buildConfigurationList = 8EEECC3D2D64CF150053014A /* Build configuration list for PBXProject "Runaway iOS" */;
@@ -195,6 +308,13 @@
 			);
 			mainGroup = 8EEECC392D64CF150053014A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8EEECCE82D64D10F0053014A /* XCRemoteSwiftPackageReference "SwiftyJSON" */,
+				8EEECCEB2D64D1340053014A /* XCRemoteSwiftPackageReference "Polyline" */,
+				8EEECCEE2D64D2500053014A /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */,
+				8EEECCF12D64D3000053014A /* XCRemoteSwiftPackageReference "Alamofire" */,
+				8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8EEECC432D64CF150053014A /* Products */;
 			projectDirPath = "";
@@ -203,6 +323,7 @@
 				8EEECC412D64CF150053014A /* Runaway iOS */,
 				8EEECC512D64CF170053014A /* Runaway iOSTests */,
 				8EEECC5B2D64CF170053014A /* Runaway iOSUITests */,
+				8EEECCCB2D64D02B0053014A /* RunawayWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +344,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC5A2D64CF170053014A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8EEECCCA2D64D02B0053014A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +381,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8EEECCC82D64D02B0053014A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +400,11 @@
 			isa = PBXTargetDependency;
 			target = 8EEECC412D64CF150053014A /* Runaway iOS */;
 			targetProxy = 8EEECC5D2D64CF170053014A /* PBXContainerItemProxy */;
+		};
+		8EEECCE12D64D02D0053014A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8EEECCCB2D64D02B0053014A /* RunawayWidgetExtension */;
+			targetProxy = 8EEECCE02D64D02D0053014A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -393,12 +533,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Runaway iOS/Runaway iOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Runaway iOS/Preview Content\"";
 				DEVELOPMENT_TEAM = P3YKE7B3N9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = runaway;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -422,12 +565,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Runaway iOS/Runaway iOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Runaway iOS/Preview Content\"";
 				DEVELOPMENT_TEAM = P3YKE7B3N9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = runaway;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -518,6 +664,62 @@
 			};
 			name = Release;
 		};
+		8EEECCE52D64D02D0053014A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = RunawayWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P3YKE7B3N9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RunawayWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOS.RunawayWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8EEECCE62D64D02D0053014A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = RunawayWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P3YKE7B3N9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RunawayWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOS.RunawayWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -557,7 +759,87 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		8EEECCE42D64D02D0053014A /* Build configuration list for PBXNativeTarget "RunawayWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8EEECCE52D64D02D0053014A /* Debug */,
+				8EEECCE62D64D02D0053014A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8EEECCE82D64D10F0053014A /* XCRemoteSwiftPackageReference "SwiftyJSON" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SwiftyJSON/SwiftyJSON.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.2;
+			};
+		};
+		8EEECCEB2D64D1340053014A /* XCRemoteSwiftPackageReference "Polyline" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/raphaelmor/Polyline";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+		8EEECCEE2D64D2500053014A /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mapbox/mapbox-maps-ios.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		8EEECCF12D64D3000053014A /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire";
+			requirement = {
+				kind = exactVersion;
+				version = 4.9.0;
+			};
+		};
+		8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vincentneo/CoreGPX";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8EEECCE92D64D10F0053014A /* SwiftyJSON */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECCE82D64D10F0053014A /* XCRemoteSwiftPackageReference "SwiftyJSON" */;
+			productName = SwiftyJSON;
+		};
+		8EEECCEC2D64D1340053014A /* Polyline */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECCEB2D64D1340053014A /* XCRemoteSwiftPackageReference "Polyline" */;
+			productName = Polyline;
+		};
+		8EEECCEF2D64D2500053014A /* MapboxMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECCEE2D64D2500053014A /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */;
+			productName = MapboxMaps;
+		};
+		8EEECCF22D64D3000053014A /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECCF12D64D3000053014A /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
+		8EEECE292D64D8AC0053014A /* CoreGPX */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */;
+			productName = CoreGPX;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8EEECC3A2D64CF150053014A /* Project object */;
 }
