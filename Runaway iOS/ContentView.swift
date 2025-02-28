@@ -7,61 +7,21 @@
 
 import SwiftUI
 
-struct ContentView: View {
-    @State private var token: OAuthToken?
-    @State private var isAuthenticated: Bool = false
-    var body: some View {
-        
-        if isAuthenticated {
-            MainView()
-        } else {
-            VStack {
-                Button{
-                    login()
-                } label: {
-                    Image("Strava")
-                }
-            }
-        }
-    }
-}
+import SwiftUI
 
-extension ContentView {
+struct ContentView: View {
+    @StateObject private var authService = AuthService.shared
+    @State var isStravaAuthenticated: Bool = false
     
-    func login() {
-        StravaClient.sharedInstance.authorize() { (result: Result<OAuthToken, Error>) in
-            switch result {
-            case .success:
-                self.didAuthenticate(result: result)
-            case .failure(let error):
-                print("Failed with: \(error)")
+    var body: some View {
+        if authService.isAuthenticated {
+            if isStravaAuthenticated {
+                StravaMainView()
+            } else {
+                MainView()
             }
-        }
-    }
-    
-    //  func logout() {
-    //    Auth0
-    //      .webAuth()
-    //      .clearSession { result in
-    //        switch result {
-    //          case .success:
-    //            self.isAuthenticated = false
-    //            self.userProfile = Profile.empty
-    //
-    //          case .failure(let error):
-    //            print("Failed with: \(error)")
-    //        }
-    //      }
-    //  }
-    
-    private func didAuthenticate(result: Result<OAuthToken, Error>) {
-        switch result {
-        case .success(let token):
-            self.token = token
-            print(token)
-            self.isAuthenticated = true
-        case .failure(let error):
-            debugPrint(error)
+        } else {
+            LoginView()
         }
     }
 

@@ -19,7 +19,7 @@ struct RAActivity: Codable {
 
 struct ActivitiesView: View {
     let activities: [Activity]
-    @State private var isActivitiesDataReady = false
+//    @State private var isActivitiesDataReady = false
 
     var body: some View {
         
@@ -27,21 +27,21 @@ struct ActivitiesView: View {
             List {
                 ForEach(activities, id: \.id) { activity in
                     
-                    CardView(stravaMap: activity.map, name: activity.name, description: activity.detail, startDate: activity.startDate, type: activity.type)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(
-                            RoundedRectangle(cornerRadius: 5)
-                                .background(.clear)
-                                .foregroundColor(.black)
-                                .padding(
-                                    EdgeInsets(
-                                        top: 24,
-                                        leading: 24,
-                                        bottom: 8,
-                                        trailing: 24
-                                    )
-                                )
-                        )
+//                    CardView(stravaMap: activity.map, name: activity.name, description: activity.detail, startDate: activity.startDate, type: activity.type)
+//                        .listRowSeparator(.hidden)
+//                        .listRowBackground(
+//                            RoundedRectangle(cornerRadius: 5)
+//                                .background(.clear)
+//                                .foregroundColor(.black)
+//                                .padding(
+//                                    EdgeInsets(
+//                                        top: 24,
+//                                        leading: 24,
+//                                        bottom: 8,
+//                                        trailing: 24
+//                                    )
+//                                )
+//                        )
                 }
             }
             .refreshable {
