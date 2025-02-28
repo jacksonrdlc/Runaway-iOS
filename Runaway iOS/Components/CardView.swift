@@ -12,23 +12,20 @@ import Polyline
 
 struct CardView: View {
     
-    var stravaMap: StravaMap?
-    var name: String!
-    var description: String!
-    var startDate: Date!
+    var activity: SbActivity
     var date: String! {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "EEEE, MMM d, yyyy, hh:mm a"
-        return dateFormatter.string(from: startDate)
+        return dateFormatter.string(from: activity.start_date!)
     }
-    var type: ActivityType!
+    var type: String!
     @State var image: UIImage?
 
     var body: some View {
         VStack{
             HStack{
                 VStack (alignment: .leading){
-                    Text(name)
+                    Text(activity.name!)
                         .foregroundColor(Color.white)
                         .font(.title2)
                         .fontWeight(.bold)
@@ -43,40 +40,41 @@ struct CardView: View {
                 }
                 Spacer()
             }
-            if type != ActivityType.weightTraining && type != ActivityType.yoga && stravaMap?.summaryPolyline != "" {
-                if stravaMap != nil {
-                    let coordinates: [CLLocationCoordinate2D] = Polyline(encodedPolyline: (stravaMap?.summaryPolyline)!).coordinates!
-                    let mapOverview: Viewport = .overview(geometry: Polygon(center: coordinates[coordinates.count/2] , radius: 2500, vertices: 64))
-                    VStack(spacing: 10) {
-                        MapReader { proxy in
-                            Map(initialViewport: mapOverview){
-                                let routeFeature = UUID().uuidString
-                                let routeLayer = UUID().uuidString
-                                PolylineAnnotationGroup {
-                                                PolylineAnnotation(id: routeFeature, lineCoordinates: coordinates)
-                                                    .lineColor("#57A9FB")
-                                                    .lineBorderColor("#327AC2")
-                                                    .lineWidth(4)
-                                                    .lineBorderWidth(2)
-                                            }
-                                            .layerId(routeLayer) // Specify id for underlying line layer.
-                                            .lineCap(.round)
-                                            .slot("middle")
-                            }
-                                .gestureOptions(GestureOptions.init(panEnabled: false, pinchEnabled: false))
-                                .mapStyle(.outdoors)
-                                .onMapIdle { _ in image = proxy.captureSnapshot() }
-                                .frame(height: 200)
-                        }
-                    }
-                    
-                }
-            }
+//            if type != "weightTraining" && type != "yoga" && stravaMap?.summaryPolyline != "" {
+//                if stravaMap != nil {
+//                    let coordinates: [CLLocationCoordinate2D] = Polyline(encodedPolyline: (stravaMap?.summaryPolyline)!).coordinates!
+//                    let mapOverview: Viewport = .overview(geometry: Polygon(center: coordinates[coordinates.count/2] , radius: 2500, vertices: 64))
+//                    VStack(spacing: 10) {
+//                        MapReader { proxy in
+//                            Map(initialViewport: mapOverview){
+//                                let routeFeature = UUID().uuidString
+//                                let routeLayer = UUID().uuidString
+//                                PolylineAnnotationGroup {
+//                                                PolylineAnnotation(id: routeFeature, lineCoordinates: coordinates)
+//                                                    .lineColor("#57A9FB")
+//                                                    .lineBorderColor("#327AC2")
+//                                                    .lineWidth(4)
+//                                                    .lineBorderWidth(2)
+//                                            }
+//                                            .layerId(routeLayer) // Specify id for underlying line layer.
+//                                            .lineCap(.round)
+//                                            .slot("middle")
+//                            }
+//                                .gestureOptions(GestureOptions.init(panEnabled: false, pinchEnabled: false))
+//                                .mapStyle(.outdoors)
+//                                .onMapIdle { _ in image = proxy.captureSnapshot() }
+//                                .frame(height: 200)
+//                        }
+//                    }
+//                    
+//                }
+//            }
             HStack{
                 VStack (alignment: .leading){
-                    Text(type.rawValue.capitalized + "  |  " + date )
+                    Text(activity.type! + "  |  " + date + "  |  " + activity.distance.toString())
                         .foregroundColor(Color.white)
                         .font(.subheadline)
+//                        .fontWeight(bold)
                         .padding(
                             EdgeInsets(
                                 top: 8,

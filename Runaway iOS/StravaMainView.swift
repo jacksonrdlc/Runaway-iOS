@@ -6,69 +6,107 @@
 //
 import SwiftUI
 import WidgetKit
-import Supabase
 
-struct MainView: View {
-    private let supabase = SupabaseHelper.shared.client
+struct StravaMainView: View {
     @State var selectedTab = 0
-    @State var isSupabaseDataReady: Bool = false
+    @State var isDataReady: Bool = false
     @State var activityDays: [ActivityDay] = []
-    @State var activities: [SbActivity] = []
+    @State var activities: [Activity] = []
     @State var athlete: Athlete?
     @State var stats: AthleteStats?
     
     var body: some View {
-        if isSupabaseDataReady{
+        if isDataReady{
             TabView(selection: $selectedTab) {
-                SbActivitiesView(activities: activities)
+                ActivitiesView(activities: activities)
                     .tabItem {
-                        Label("Activities", systemImage: "square.and.arrow.up")
+                        Label("Activities", systemImage: "figure.run")
                     }
                     .tag(0)
-                StravaIntegrateView()
+                UploadView()
                     .tabItem {
-                        Label("Strava", systemImage: "chart.bar.doc.horizontal")
+                        Label("Upload", systemImage: "square.and.arrow.up")
+                    }
+                    .tag(2)
+                AthleteView(athlete: athlete!, stats: stats!, activityDays: activityDays)
+                    .tabItem {
+                        Label("Athlete", systemImage: "chart.bar.doc.horizontal")
                     }
                     .tag(1)
             }
         } else {
             LoaderView()
                 .onAppear{
-                    fetchSupabaseData()
+                    fetchStravaData()
                 }
         }
     }
 }
 
 
-extension MainView {
+extension StravaMainView {
     
     func addOrSubtractDay(day:Int)->Date{
         return Calendar.current.date(byAdding: .day, value: day, to: Date())!
     }
     
-    private func fetchSupabaseData() {
-        Task {
-            do {
-                let activities: [SbActivity] = try await supabase
-                    .from("activities")
-                    .select()
-                    .execute()
-                    .value
+    private func fetchStravaData() {
+        StravaClient.sharedInstance.request(Router.athlete, result: {(athlete: Athlete?) in
+            self.athlete = athlete!
+            StravaClient.sharedInstance.request(Router.athletesStats(id: (athlete?.userId)!, params: nil), result: {(stats: AthleteStats?) in
+                self.stats = stats!
                 
-                print("Response: \(activities)")
-                print(activities[0].name)
-                print(activities[0].start_date)
-                print(activities[0].distance)
-//                let decoder = JSONDecoder()
-//                self.activities = try decoder.decode([SbActivity].self, from: response.data)
-                self.activities = activities
-                isSupabaseDataReady = true
-            } catch {
-                print("Error fetching activities: \(error)")
-                isSupabaseDataReady = true
-            }
-        }
+            }, failure: { (error: NSError) in
+                print(error)
+                debugPrint(error)
+            })
+            let now = Int(Date().timeIntervalSince1970)
+            let firstDayOfMonthMinusSevenDays = Int(Date().startOfMonth.timeIntervalSince1970) - 86400*7
+            
+            StravaClient.sharedInstance.request(Router.athleteActivities(params: ["before": now, "after": firstDayOfMonthMinusSevenDays]), result: { (activities: [Activity]?) in
+                setUpUserDefaults()
+                self.activities = activities!
+                createDailyActivityRecord(activities: activities!)
+                let activities = activities!
+                print("00000000000000")
+                for act in activities {
+                    print(act.name)
+                    print(act.type)
+                    print(act.map?.summaryPolyline)
+                }
+                print("00000000000000")
+                if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+                    let monthlyActivities = activities.filter { act in
+                        if act.startDate! >=  Date().startOfMonth {
+                            return true
+
+                        } else {
+                            return false
+
+                        }
+                    }
+                    let monthlyMiles = monthlyActivities.reduce(0) { $0 + $1.distance! }
+                    userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
+                }
+                var actDays: [ActivityDay] = []
+                for day in dates() {
+                    let sameDate = activities.first{DateFormatter.localizedString(from: $0.startDate!, dateStyle: .short, timeStyle: .none) == day}
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateFormat = "M/d/yy"
+                    let date = dateFormatter.date(from:day)!
+                    let aDay = ActivityDay(date: date, minutes: sameDate != nil ? (sameDate?.elapsedTime!)! : 0)
+                    actDays.append(aDay)
+                }
+                self.activityDays = actDays
+                self.isDataReady = true
+            }, failure: { (error: NSError) in
+                debugPrint(error)
+            })
+            
+        }, failure: { (error: NSError) in
+            print(error)
+            debugPrint(error)
+        })
     }
     
     func dates() -> [String] {
@@ -217,4 +255,3 @@ extension MainView {
         WidgetCenter.shared.reloadAllTimelines()
     }
 }
-

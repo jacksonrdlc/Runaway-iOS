@@ -15,6 +15,12 @@
 		8EEECCF02D64D2500053014A /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCEF2D64D2500053014A /* MapboxMaps */; };
 		8EEECCF32D64D3000053014A /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCF22D64D3000053014A /* Alamofire */; };
 		8EEECE2A2D64D8AC0053014A /* CoreGPX in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE292D64D8AC0053014A /* CoreGPX */; };
+		8EEECE332D68C4590053014A /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE322D68C4590053014A /* Auth */; };
+		8EEECE352D68C4590053014A /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE342D68C4590053014A /* Functions */; };
+		8EEECE372D68C4590053014A /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE362D68C4590053014A /* PostgREST */; };
+		8EEECE392D68C4590053014A /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE382D68C4590053014A /* Realtime */; };
+		8EEECE3B2D68C4590053014A /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE3A2D68C4590053014A /* Storage */; };
+		8EEECE532D68CD080053014A /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE522D68CD080053014A /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -106,10 +112,16 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8EEECE532D68CD080053014A /* Supabase in Frameworks */,
+				8EEECE392D68C4590053014A /* Realtime in Frameworks */,
 				8EEECCF02D64D2500053014A /* MapboxMaps in Frameworks */,
 				8EEECCF32D64D3000053014A /* Alamofire in Frameworks */,
+				8EEECE332D68C4590053014A /* Auth in Frameworks */,
 				8EEECE2A2D64D8AC0053014A /* CoreGPX in Frameworks */,
+				8EEECE372D68C4590053014A /* PostgREST in Frameworks */,
+				8EEECE352D68C4590053014A /* Functions in Frameworks */,
 				8EEECCED2D64D1340053014A /* Polyline in Frameworks */,
+				8EEECE3B2D68C4590053014A /* Storage in Frameworks */,
 				8EEECCEA2D64D10F0053014A /* SwiftyJSON in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -200,6 +212,12 @@
 				8EEECCEF2D64D2500053014A /* MapboxMaps */,
 				8EEECCF22D64D3000053014A /* Alamofire */,
 				8EEECE292D64D8AC0053014A /* CoreGPX */,
+				8EEECE322D68C4590053014A /* Auth */,
+				8EEECE342D68C4590053014A /* Functions */,
+				8EEECE362D68C4590053014A /* PostgREST */,
+				8EEECE382D68C4590053014A /* Realtime */,
+				8EEECE3A2D68C4590053014A /* Storage */,
+				8EEECE522D68CD080053014A /* Supabase */,
 			);
 			productName = "Runaway iOS";
 			productReference = 8EEECC422D64CF150053014A /* Runaway iOS.app */;
@@ -314,6 +332,7 @@
 				8EEECCEE2D64D2500053014A /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */,
 				8EEECCF12D64D3000053014A /* XCRemoteSwiftPackageReference "Alamofire" */,
 				8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */,
+				8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8EEECC432D64CF150053014A /* Products */;
@@ -541,7 +560,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = runaway;
+				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -573,7 +592,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = runaway;
+				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -811,6 +830,14 @@
 				minimumVersion = 0.9.3;
 			};
 		};
+		8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -838,6 +865,36 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */;
 			productName = CoreGPX;
+		};
+		8EEECE322D68C4590053014A /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		8EEECE342D68C4590053014A /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		8EEECE362D68C4590053014A /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		8EEECE382D68C4590053014A /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		8EEECE3A2D68C4590053014A /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		8EEECE522D68CD080053014A /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
