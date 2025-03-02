@@ -72,7 +72,7 @@ struct AthleteView: View {
 
 extension AthleteView {
     func setStats() {
-        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayui") {
             if let runsInt = stats.allRunTotals?.count {
                 self.runs = String(runsInt)
                 userDefaults.set(runsInt, forKey: "runs")
