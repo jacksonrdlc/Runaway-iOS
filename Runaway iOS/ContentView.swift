@@ -15,11 +15,7 @@ struct ContentView: View {
     
     var body: some View {
         if authService.isAuthenticated {
-            if isStravaAuthenticated {
-                StravaMainView()
-            } else {
-                MainView()
-            }
+            MainView()
         } else {
             LoginView()
         }
