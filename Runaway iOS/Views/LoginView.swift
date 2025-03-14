@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LoginView: View {
-    @StateObject private var authService = AuthService.shared
+    @EnvironmentObject var authManager: AuthManager
     @State private var email = ""
     @State private var password = ""
     @State private var isSignUp = false
@@ -16,7 +16,7 @@ struct LoginView: View {
             
             TextField("Email", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-                .autocapitalization(.none)
+                .textInputAutocapitalization(.never)
                 .padding()
             
             SecureField("Password", text: $password)
@@ -27,9 +27,9 @@ struct LoginView: View {
                 Task {
                     do {
                         if isSignUp {
-                            try await authService.signUp(email: email, password: password)
+                            try await authManager.signUp(email: email, password: password)
                         } else {
-                            try await authService.signIn(email: email, password: password)
+                            try await authManager.signIn(email: email, password: password)
                         }
                     } catch {
                         showError = true
