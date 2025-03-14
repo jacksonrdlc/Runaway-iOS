@@ -7,24 +7,21 @@
 
 import SwiftUI
 
-import SwiftUI
-
 struct ContentView: View {
-    @StateObject private var authService = AuthService.shared
-    @State var isStravaAuthenticated: Bool = false
+    @EnvironmentObject var authManager: AuthManager
     
     var body: some View {
-        if authService.isAuthenticated {
+        if authManager.isAuthenticated {
             MainView()
         } else {
             LoginView()
         }
     }
-
 }
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+            .environmentObject(AuthManager.shared)
     }
 }

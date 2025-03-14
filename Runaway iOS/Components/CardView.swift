@@ -16,7 +16,7 @@ struct CardView: View {
     var date: String! {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "EEEE, MMM d, yyyy, hh:mm a"
-        return dateFormatter.string(from: activity.start_date!)
+        return dateFormatter.string(from: Date(timeIntervalSinceReferenceDate: activity.start_date!))
     }
     var type: String!
     @State var image: UIImage?
