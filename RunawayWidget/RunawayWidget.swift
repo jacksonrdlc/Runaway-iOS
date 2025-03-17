@@ -104,6 +104,10 @@ struct Provider: AppIntentTimelineProvider {
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
                 
+                print("miles: \(miles)")
+                print("runs: \(runs)")
+                print("monthlyMiles: \(monthlyMiles)")
+                
                 let sunArray: Array<String> = userDefaults.stringArray(forKey: "sunArray") ?? []
                 let monArray: Array<String> = userDefaults.stringArray(forKey: "monArray") ?? []
                 let tuesArray: Array<String> = userDefaults.stringArray(forKey: "tueArray") ?? []

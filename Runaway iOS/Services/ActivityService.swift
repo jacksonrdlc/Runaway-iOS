@@ -5,14 +5,6 @@
 //  Created by Jack Rudelic on 3/14/25.
 //
 
-
-//
-//  ActivityService.swift
-//  PathPrize
-//
-//  Created by nagesh sairam on 4/25/24.
-//
-
 import Foundation
 import Supabase
 
@@ -27,6 +19,20 @@ class ActivityService {
             .execute().value
     }
     
+    // Function to get all activities for a user in a time range
+    static func getAllActivitiesByUser(userId: UUID) async throws -> [Activity] {
+        let startOfMonth = Date().startOfMonth
+        let endOfMonth = Date().endOfMonth
+        return try await supabase
+            .from("activities")
+            .select("*")
+            .eq("user_id", value: userId)
+            .gte("start_date", value: startOfMonth)
+            .lte("start_date", value: endOfMonth)
+            .order("start_date", ascending: false)
+            .execute().value
+    }
+    
     // Function to get a single activity by ID
     static func getActivityById(id: Int) async throws -> Activity {
         return try await supabase
@@ -36,18 +42,18 @@ class ActivityService {
             .single()
             .execute().value
     }
-
+    
     // Function to create an activity
-     static func createActivity(activity: Activity) async throws -> Activity {
-         let activity: Activity = try await supabase.from("activities")
-             .insert(activity)
-             .select()
-             .single()
-             .execute()
-             .value
-         return activity
+    static func createActivity(activity: Activity) async throws -> Activity {
+        let activity: Activity = try await supabase.from("activities")
+            .insert(activity)
+            .select()
+            .single()
+            .execute()
+            .value
+        return activity
     }
-
+    
     static func updateActivity(id: Int, endTime: Date, endLocationLongitude: Double, endLocationLatitude: Double, status: String) async throws {
         do {
             print("Updating activity with ID: \(id)")
@@ -66,7 +72,7 @@ class ActivityService {
             throw error  // Optionally rethrow to handle elsewhere
         }
     }
-
+    
     // Function to delete an activity
     static func deleteActivity(id: Int) async throws {
         _ = try await supabase
