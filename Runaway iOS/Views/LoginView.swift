@@ -18,10 +18,16 @@ struct LoginView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .textInputAutocapitalization(.never)
                 .padding()
+                .onAppear {
+                    email = "jackrudelic@gmail.com"
+                }
             
             SecureField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding()
+                .onAppear {
+                            password = "password"
+                        }
             
             Button(action: {
                 Task {

@@ -45,7 +45,7 @@ struct BarChart: View {
             
         }
         .chartForegroundStyleScale([
-            "Run": .green, "Walk": .purple, "WeightTraining": .pink, "Yoga": .orange
+            "Run": .green, "Walk": .purple, "Weight Training": .pink, "Yoga": .orange
         ])
     }
 }
@@ -104,9 +104,6 @@ struct Provider: AppIntentTimelineProvider {
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
                 
-                print("miles: \(miles)")
-                print("runs: \(runs)")
-                print("monthlyMiles: \(monthlyMiles)")
                 
                 let sunArray: Array<String> = userDefaults.stringArray(forKey: "sunArray") ?? []
                 let monArray: Array<String> = userDefaults.stringArray(forKey: "monArray") ?? []
@@ -115,6 +112,22 @@ struct Provider: AppIntentTimelineProvider {
                 let thursArray: Array<String> = userDefaults.stringArray(forKey: "thuArray") ?? []
                 let friArray: Array<String> = userDefaults.stringArray(forKey: "friArray") ?? []
                 let satArray: Array<String> = userDefaults.stringArray(forKey: "satArray") ?? []
+                
+                print("s")
+                print(sunArray)
+                print("m")
+                print(monArray)
+                print("t")
+                print(tuesArray)
+                print("w")
+                print(wednesArray)
+                print("th")
+                print(thursArray)
+                print("f")
+                print(friArray)
+                print("sa")
+                print(satArray)
+                
                 
                 var sundayActivities: Array<Activity> = []
                 for act in sunArray {
@@ -190,6 +203,7 @@ struct Provider: AppIntentTimelineProvider {
                         
                         do {
                             let activity = try decoder.decode(Activity.self, from: jsonData)
+                            print(activity)
                             thursdayActivities.append(activity)
                         } catch {
                             print(error.localizedDescription)

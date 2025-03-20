@@ -24,7 +24,7 @@ struct MainView: View {
             TabView(selection: $selectedTab) {
                 ActivitiesView(activities: activities)
                     .tabItem {
-                        Label("Activities", systemImage: "square.and.arrow.up")
+                        Label("Activities", systemImage: "sportscourt")
                     }
                     .tag(0)
                 //                UploadView()
@@ -34,9 +34,19 @@ struct MainView: View {
                 //                    .tag(2)
                 AthleteView(athlete: athlete!, stats: stats!)
                     .tabItem {
-                        Label("Athlete", systemImage: "chart.bar.doc.horizontal")
+                        Label("Athlete", systemImage: "person.crop.circle")
                     }
                     .tag(1)
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if selectedTab == 0 {
+                        Button("Refresh") {
+                            fetchSupabaseData()
+                        }
+                        
+                    }
+                }
             }
         } else {
             LoaderView()
@@ -74,7 +84,7 @@ extension MainView {
             do {
                 // Fetch athlete stats if needed
                 let stats = try await AthleteService.getAthleteStats()
-                 self.stats = stats
+                self.stats = stats
                 print("Successfully fetched athlete stats: \(stats)")
                 
             } catch {
@@ -103,10 +113,17 @@ extension MainView {
         var satArray: Array<String> = [];
         if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
             print("Creating activity record")
+            
+            let monthlyMiles = activities.reduce(0) { $0 + $1.distance! }
+            userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
+            
             let weeklyActivities = activities.filter { act in
-                print("Start date: \(act.start_date!)")
-                print("Start of week: \(Date().startOfWeek())")
+//                print("Start date: \(act.start_date!)")
+//                print("Start of week: \(Date().startOfWeek())")
+                print("Act Date: \( Date(timeIntervalSince1970: act.start_date!))")
+                print("Start of Week Date: \( Date(timeIntervalSince1970: Date().startOfWeek()))")
                 if act.start_date! > Date().startOfWeek() {
+                    print("Activity is within the week")
                     print(act.start_date!)
                     return true
                 } else {
