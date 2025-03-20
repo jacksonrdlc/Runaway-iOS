@@ -12,11 +12,11 @@ import Polyline
 
 struct CardView: View {
     
-    var activity: SbActivity
+    var activity: Activity
     var date: String! {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "EEEE, MMM d, yyyy, hh:mm a"
-        return dateFormatter.string(from: activity.start_date!)
+        return dateFormatter.string(from: Date(timeIntervalSinceReferenceDate: activity.start_date!))
     }
     var type: String!
     @State var image: UIImage?
@@ -71,7 +71,7 @@ struct CardView: View {
 //            }
             HStack{
                 VStack (alignment: .leading){
-                    Text(activity.type! + "  |  " + date + "  |  " + activity.distance.toString())
+                    Text(activity.type! + "  |  " + date + "  |  ")
                         .foregroundColor(Color.white)
                         .font(.subheadline)
 //                        .fontWeight(bold)
