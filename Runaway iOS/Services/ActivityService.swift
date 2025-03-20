@@ -23,6 +23,8 @@ class ActivityService {
     static func getAllActivitiesByUser(userId: UUID) async throws -> [Activity] {
         let startOfMonth = Date().startOfMonth
         let endOfMonth = Date().endOfMonth
+        print("Start of month: \(startOfMonth)")
+        print("End of month: \(endOfMonth)")
         return try await supabase
             .from("activities")
             .select("*")
