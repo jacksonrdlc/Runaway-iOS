@@ -58,24 +58,7 @@ struct ActivitiesView: View {
     }
     
     var body: some View {
-        VStack{
-//            Button(action: {
-//                Task {
-//                    do {
-//                        try await authManager.signOut()
-//                    } catch {
-//                        print(error.localizedDescription)
-//                    }
-//                }
-//            }){
-//                Text("Sign Out")
-//                    .foregroundColor(.white)
-//                    .frame(maxWidth: .infinity)
-//                    .padding()
-//                    .background(Color.blue)
-//                    .cornerRadius(10)
-//            }
-//            .padding()
+        VStack{ 
             NavigationView {
                 List {
                     ForEach(activities, id: \.id) { activity in
