@@ -17,6 +17,7 @@ struct MainView: View {
     @State var activities: [Activity] = []
     @State var athlete: Athlete?
     @State var stats: AthleteStats?
+    @State private var subscription: RealtimeSubscription?
     
     
     var body: some View {
@@ -61,12 +62,47 @@ struct MainView: View {
                     }
                 }
             }
+            .onAppear {
+                setupRealtimeSubscription()
+            }
+            .onDisappear {
+                cleanupSubscription()
+            }
         } else {
             LoaderView()
                 .onAppear {
-                    print("Auth manager user ID: \(String(describing: authManager.currentUser?.id))")
+                    print("Auth manager user ID: \(authManager.currentUser?.id)")
                     fetchSupabaseData()
                 }
+        }
+    }
+    
+    private func setupRealtimeSubscription() {
+        Task {
+            // Create channel
+            let channel = supabase.channel("public:activities")
+            
+            // Create the observations before subscribing
+            let insertions = channel.postgresChange(
+              AnyAction.self,
+              table: "activities"
+            )
+            
+            print("Subscribing to channel")
+            await channel.subscribe()
+            
+            for await insert in insertions {
+                fetchSupabaseData()
+                print("Inserted:")
+            }
+        }
+    }
+    
+    private func cleanupSubscription() {
+        Task {
+            let channel = supabase.channel("public:activities")
+            
+            await supabase.removeChannel(channel)
         }
     }
 }
