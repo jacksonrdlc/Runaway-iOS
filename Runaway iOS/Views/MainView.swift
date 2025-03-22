@@ -21,6 +21,19 @@ struct MainView: View {
     
     var body: some View {
         if isSupabaseDataReady {
+            Button(action: {
+                Task {
+                    fetchSupabaseData()
+                }
+            }){
+                Text("Refresh")
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(10)
+            }
+            .padding()
             TabView(selection: $selectedTab) {
                 ActivitiesView(activities: activities)
                     .tabItem {
@@ -118,8 +131,8 @@ extension MainView {
             userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
             
             let weeklyActivities = activities.filter { act in
-//                print("Start date: \(act.start_date!)")
-//                print("Start of week: \(Date().startOfWeek())")
+                //                print("Start date: \(act.start_date!)")
+                //                print("Start of week: \(Date().startOfWeek())")
                 print("Act Date: \( Date(timeIntervalSince1970: act.start_date!))")
                 print("Start of Week Date: \( Date(timeIntervalSince1970: Date().startOfWeek()))")
                 if act.start_date! > Date().startOfWeek() {
