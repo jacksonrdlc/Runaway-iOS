@@ -41,29 +41,15 @@ struct MainView: View {
                         Label("Activities", systemImage: "sportscourt")
                     }
                     .tag(0)
-                //                UploadView()
-                //                    .tabItem {
-                //                        Label("Upload", systemImage: "square.and.arrow.up")
-                //                    }
-                //                    .tag(2)
                 AthleteView(athlete: athlete!, stats: stats!)
                     .tabItem {
                         Label("Athlete", systemImage: "person.crop.circle")
                     }
                     .tag(1)
             }
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if selectedTab == 0 {
-                        Button("Refresh") {
-                            fetchSupabaseData()
-                        }
-                        
-                    }
-                }
-            }
             .onAppear {
                 setupRealtimeSubscription()
+                fetchSupabaseData()
             }
             .onDisappear {
                 cleanupSubscription()
@@ -113,6 +99,7 @@ extension MainView {
     }
     
     private func fetchSupabaseData() {
+        clearUserDefaults()
         Task {
             print("Fetching data with user ID: \(String(describing: authManager.currentUser?.id))")
             guard let userId = authManager.currentUser?.id else {
@@ -167,13 +154,7 @@ extension MainView {
             userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
             
             let weeklyActivities = activities.filter { act in
-                //                print("Start date: \(act.start_date!)")
-                //                print("Start of week: \(Date().startOfWeek())")
-                print("Act Date: \( Date(timeIntervalSince1970: act.start_date!))")
-                print("Start of Week Date: \( Date(timeIntervalSince1970: Date().startOfWeek()))")
                 if act.start_date! > Date().startOfWeek() {
-                    print("Activity is within the week")
-                    print(act.start_date!)
                     return true
                 } else {
                     return false
@@ -247,7 +228,6 @@ extension MainView {
                     
                     let jsonData = try! JSONEncoder().encode(fridayAct)
                     let jsonString = String(data: jsonData, encoding: .utf8)!
-                    print("Friday makes me holla!")
                     friArray.append(jsonString);
                     userDefaults.set(friArray, forKey: "friArray");
                 }
@@ -266,5 +246,19 @@ extension MainView {
             }
         }
         WidgetCenter.shared.reloadAllTimelines()
+    }
+    
+    func clearUserDefaults() {
+        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+            userDefaults.removeObject(forKey: "sunArray");
+            userDefaults.removeObject(forKey: "monArray");
+            userDefaults.removeObject(forKey: "tueArray");
+            userDefaults.removeObject(forKey: "wedArray");
+            userDefaults.removeObject(forKey: "thuArray");
+            userDefaults.removeObject(forKey: "friArray");
+            userDefaults.removeObject(forKey: "satArray");
+            userDefaults.removeObject(forKey: "weeklyMiles");
+            userDefaults.removeObject(forKey: "monthlyMiles");
+        }
     }
 }
