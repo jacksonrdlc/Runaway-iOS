@@ -11,8 +11,8 @@ import Foundation
   Athletes are Strava users, Strava users are athletes. The object is returned in detailed, summary or meta representations.
  **/
 public final class Athlete: Identifiable, Decodable {
-    public var id: Int
-    public var userId: Int?
+//    public var id: Int
+    public var userId: UUID?
 //    public let resourceState: ResourceState?
     public var firstname: String?
     public var lastname: String?
@@ -39,8 +39,8 @@ public final class Athlete: Identifiable, Decodable {
 //    public let bikes: [Bike]?
 //    public let shoes: [Shoe]?
 
-    required public init(id: Int, userId: Int?, firstname: String?, lastname: String?, profileMedium: URL?, profile: URL?, city: String?, state: String?, country: String?, premium: Bool?, createdAt: Date?, updatedAt: Date?, friendCount: Int?, followerCount: Int?, mutualFriendCount: Int?, datePreference: String?, email: String?, FTP: Int?, weight: Double?) {
-        self.id = id
+    required public init(userId: UUID?, firstname: String?, lastname: String?, profileMedium: URL?, profile: URL?, city: String?, state: String?, country: String?, premium: Bool?, createdAt: Date?, updatedAt: Date?, friendCount: Int?, followerCount: Int?, mutualFriendCount: Int?, datePreference: String?, email: String?, FTP: Int?, weight: Double?) {
+//        self.id = id
         self.userId = userId
         self.firstname = firstname
         self.lastname = lastname
@@ -63,7 +63,7 @@ public final class Athlete: Identifiable, Decodable {
 }
 
 public final class AthleteStats: Decodable {
-    public var userId: String?
+    public var userId: UUID?
     public var count: Int?
     public var distance: Double?
     public var movingTime: TimeInterval?

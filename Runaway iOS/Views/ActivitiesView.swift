@@ -1,46 +1,7 @@
 import SwiftUI
 import Foundation
 
-// Create simplified card view
-struct LocalCardView: View {
-    let activity: LocalActivity
-    
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text(activity.name ?? "Unknown Activity")
-                .font(.headline)
-            
-            HStack {
-                Text(activity.type ?? "Unknown Type")
-                    .font(.subheadline)
-                
-                Spacer()
-                
-                if let distance = activity.distance {
-                    Text(String(format: "%.2f km", distance * 0.001))
-                        .font(.subheadline)
-                }
-                
-                if let time = activity.elapsed_time {
-                    Text(formatTime(seconds: time))
-                        .font(.subheadline)
-                }
-            }
-        }
-        .padding()
-    }
-    
-    private func formatTime(seconds: TimeInterval) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-        
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
-        }
-    }
-}
+
 
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -62,7 +23,7 @@ struct ActivitiesView: View {
             NavigationView {
                 List {
                     ForEach(activities, id: \.id) { activity in
-                        LocalCardView(activity: convertToLocalActivity(activity))
+                        CardView(activity: convertToLocalActivity(activity))
                             .listRowBackground(
                                 RoundedRectangle(cornerRadius: 5)
                                     .background(.clear)
