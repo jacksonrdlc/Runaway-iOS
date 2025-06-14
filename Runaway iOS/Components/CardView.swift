@@ -6,161 +6,198 @@
 //
 
 import SwiftUI
-//import MapKit
-import Polyline
-@_spi(Experimental) import MapboxMaps
-
-// struct CardView: View {
-
-//     var activity: Activity
-//     var date: String! {
-//         let dateFormatter = DateFormatter()
-//         dateFormatter.dateFormat = "EEEE, MMM d, yyyy, hh:mm a"
-//         return dateFormatter.string(from: Date(timeIntervalSinceReferenceDate: activity.start_date!))
-//     }
-//     var type: String!
-//     @State var image: UIImage?
-
-//     var body: some View {
-//         VStack{
-//             HStack{
-//                 VStack (alignment: .leading){
-//                     Text(activity.name!)
-//                         .foregroundColor(Color.white)
-//                         .font(.title2)
-//                         .fontWeight(.bold)
-//                         .padding(
-//                             EdgeInsets(
-//                                 top: 16,
-//                                 leading: 16,
-//                                 bottom: 8,
-//                                 trailing: 8
-//                             )
-//                         )
-//                 }
-//                 Spacer()
-//             }
-// //            if type != "weightTraining" && type != "yoga" && stravaMap?.summaryPolyline != "" {
-// //                if stravaMap != nil {
-// //                    let coordinates: [CLLocationCoordinate2D] = Polyline(encodedPolyline: (stravaMap?.summaryPolyline)!).coordinates!
-// //                    let mapOverview: Viewport = .overview(geometry: Polygon(center: coordinates[coordinates.count/2] , radius: 2500, vertices: 64))
-// //                    VStack(spacing: 10) {
-// //                        MapReader { proxy in
-// //                            Map(initialViewport: mapOverview){
-// //                                let routeFeature = UUID().uuidString
-// //                                let routeLayer = UUID().uuidString
-// //                                PolylineAnnotationGroup {
-// //                                                PolylineAnnotation(id: routeFeature, lineCoordinates: coordinates)
-// //                                                    .lineColor("#57A9FB")
-// //                                                    .lineBorderColor("#327AC2")
-// //                                                    .lineWidth(4)
-// //                                                    .lineBorderWidth(2)
-// //                                            }
-// //                                            .layerId(routeLayer) // Specify id for underlying line layer.
-// //                                            .lineCap(.round)
-// //                                            .slot("middle")
-// //                            }
-// //                                .gestureOptions(GestureOptions.init(panEnabled: false, pinchEnabled: false))
-// //                                .mapStyle(.outdoors)
-// //                                .onMapIdle { _ in image = proxy.captureSnapshot() }
-// //                                .frame(height: 200)
-// //                        }
-// //                    }
-// //
-// //                }
-// //            }
-//             HStack{
-//                 VStack (alignment: .leading){
-//                     Text(activity.type! + "  |  " + date + "  |  ")
-//                         .foregroundColor(Color.white)
-//                         .font(.subheadline)
-// //                        .fontWeight(bold)
-//                         .padding(
-//                             EdgeInsets(
-//                                 top: 8,
-//                                 leading: 16,
-//                                 bottom: 16,
-//                                 trailing: 8
-//                             )
-//                         )
-//                 }
-//                 Spacer()
-//             }
-//         }
-//         .background(Color.gray.opacity(0.2))
-//         .cornerRadiusWithBorder(radius: 4, borderLineWidth: 0)
-//     }
-// }
+import MapKit
+import CoreLocation
+import UIKit
 
 // Create simplified card view
 struct CardView: View {
     let activity: LocalActivity
-//    var type: String!
+    //    var type: String!
     @State var image: UIImage?
-    
+
     var body: some View {
         VStack(alignment: .leading) {
-//            if type != "weightTraining" && type != "yoga" && stravaMap?.summaryPolyline != "" {
-//                if stravaMap != nil {
-//                    let coordinates: [CLLocationCoordinate2D] = Polyline(encodedPolyline: (stravaMap?.summaryPolyline)!).coordinates!
-//                    let mapOverview: Viewport = .overview(geometry: Polygon(center: coordinates[coordinates.count/2] , radius: 2500, vertices: 64))
-//                    VStack(spacing: 10) {
-//                        MapReader { proxy in
-//                            Map(initialViewport: mapOverview){
-//                                let routeFeature = UUID().uuidString
-//                                let routeLayer = UUID().uuidString
-//                                PolylineAnnotationGroup {
-//                                    PolylineAnnotation(id: routeFeature, lineCoordinates: coordinates)
-//                                        .lineColor("#57A9FB")
-//                                        .lineBorderColor("#327AC2")
-//                                        .lineWidth(4)
-//                                        .lineBorderWidth(2)
-//                                }
-//                                .layerId(routeLayer) // Specify id for underlying line layer.
-//                                .lineCap(.round)
-//                                .slot("middle")
-//                            }
-//                            .gestureOptions(GestureOptions.init(panEnabled: false, pinchEnabled: false))
-//                            .mapStyle(.outdoors)
-//                            .onMapIdle { _ in image = proxy.captureSnapshot() }
-//                            .frame(height: 200)
-//                        }
-//                    }
-//                    
-//                }
-//            }
+            // Activity Details Text
             Text(activity.name ?? "Unknown Activity")
                 .font(.headline)
+                .padding(.top, 5) // Add some space above text
             
+            // Add the map view
+            if let polyline = activity.summary_polyline, polyline != "" {
+                ActivityMapView(summaryPolyline: polyline)
+                    .frame(height: 200)
+                    .cornerRadius(10)
+                    .padding(.vertical, 8)
+            }
+
             HStack {
                 Text(activity.type ?? "Unknown Type")
                     .font(.subheadline)
-                
+
                 Spacer()
-                
+
                 if let distance = activity.distance {
                     Text(String(format: "%.2f km", distance * 0.001))
                         .font(.subheadline)
                 }
-                
+
                 if let time = activity.elapsed_time {
                     Text(formatTime(seconds: time))
+                        .font(.subheadline)
+                }
+                
+                if let time = activity.start_date {
+                    Text(time, style: .date)
                         .font(.subheadline)
                 }
             }
         }
         .padding()
+        // Apply border/styling to the whole VStack if desired
+         .modifier(ModifierCornerRadiusWithBorder(radius: 15, borderColor: .gray.opacity(0.5)))
+    }
+}
+
+struct ActivityMapView: UIViewRepresentable {
+    let summaryPolyline: String?
+    
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.delegate = context.coordinator
+        mapView.isZoomEnabled = false
+        mapView.isScrollEnabled = false
+        mapView.isUserInteractionEnabled = false
+        return mapView
     }
     
-    private func formatTime(seconds: TimeInterval) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        guard let polyline = summaryPolyline else { return }
         
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
+        // Decode the polyline
+        let coordinates = decodePolyline(polyline)
+        
+        print("Decoded coordinates: \(coordinates)")
+        
+        // Create the polyline overlay
+        let routePolyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
+        mapView.addOverlay(routePolyline)
+        
+        // Set the region to show the entire route
+        if let firstCoordinate = coordinates.first {
+            let minLat = coordinates.map { $0.latitude }.min() ?? firstCoordinate.latitude
+            let maxLat = coordinates.map { $0.latitude }.max() ?? firstCoordinate.latitude
+            let minLon = coordinates.map { $0.longitude }.min() ?? firstCoordinate.longitude
+            let maxLon = coordinates.map { $0.longitude }.max() ?? firstCoordinate.longitude
+            
+            let center = CLLocationCoordinate2D(
+                latitude: (minLat + maxLat) / 2,
+                longitude: (minLon + maxLon) / 2
+            )
+            
+            let span = MKCoordinateSpan(
+                latitudeDelta: (maxLat - minLat) * 1.5,
+                longitudeDelta: (maxLon - minLon) * 1.5
+            )
+            
+            let region = MKCoordinateRegion(center: center, span: span)
+            mapView.setRegion(region, animated: true)
         }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
+    class Coordinator: NSObject, MKMapViewDelegate {
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = .orange
+                renderer.lineWidth = 3
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
+        }
+    }
+    
+    private func decodePolyline(_ encodedPolyline: String) -> [CLLocationCoordinate2D] {
+        var coordinates: [CLLocationCoordinate2D] = []
+        var index = encodedPolyline.startIndex
+        var lat = 0.0
+        var lng = 0.0
+        
+        func decodeValue() -> Double? {
+            var result: UInt32 = 0
+            var shift: UInt32 = 0
+            
+            while index < encodedPolyline.endIndex {
+                let byte = UInt32(encodedPolyline[index].asciiValue! - 63)
+                let chunk = (byte & 0x1F) << shift
+                result |= chunk
+                shift += 5
+                index = encodedPolyline.index(after: index)
+                
+                if byte < 0x20 {
+                    let value = Int32(bitPattern: result)
+                    let finalValue = ((value & 1) != 0 ? ~(value >> 1) : (value >> 1))
+                    return Double(finalValue)
+                }
+            }
+            return nil
+        }
+        
+        while index < encodedPolyline.endIndex {
+            if let latDelta = decodeValue(),
+               let lngDelta = decodeValue() {
+                lat += latDelta
+                lng += lngDelta
+                coordinates.append(CLLocationCoordinate2D(latitude: lat * 1e-5, longitude: lng * 1e-5))
+            } else {
+                break
+            }
+        }
+        
+        return coordinates
+    }
+}
+
+struct RoutePoint: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+}
+
+struct MapPolyline: Shape {
+    let coordinates: [CLLocationCoordinate2D]
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        let points = coordinates.map { coordinate -> CGPoint in
+            let lat = coordinate.latitude
+            let lon = coordinate.longitude
+            let x = rect.width * (lon + 180) / 360
+            let y = rect.height * (1 - (lat + 90) / 180)
+            return CGPoint(x: x, y: y)
+        }
+        
+        path.move(to: points[0])
+        for point in points.dropFirst() {
+            path.addLine(to: point)
+        }
+        
+        return path
+    }
+}
+
+private func formatTime(seconds: TimeInterval) -> String {
+    let hours = Int(seconds) / 3600
+    let minutes = (Int(seconds) % 3600) / 60
+    
+    if hours > 0 {
+        return "\(hours)h \(minutes)m"
+    } else {
+        return "\(minutes)m"
     }
 }
 
@@ -171,7 +208,9 @@ struct SnapshotView: View {
         if let snapshot {
             Image(uiImage: snapshot)
         } else {
-            EmptyView()
+            EmptyView() // Or a placeholder
+                .frame(height: 200) // Match map height
+                .background(Color.gray.opacity(0.2))
         }
     }
 }
