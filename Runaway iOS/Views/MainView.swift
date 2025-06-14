@@ -22,21 +22,8 @@ struct MainView: View {
     
     var body: some View {
         if isSupabaseDataReady {
-            Button(action: {
-                Task {
-                    fetchSupabaseData()
-                }
-            }){
-                Text("Refresh")
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
-            }
-            .padding()
             TabView(selection: $selectedTab) {
-                ActivitiesView(activities: activities)
+                ActivitiesView(activities: $activities)
                     .tabItem {
                         Label("Activities", systemImage: "sportscourt")
                     }
