@@ -1,11 +1,10 @@
 import SwiftUI
 import Foundation
 
-
-
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
-    var activities: [Activity]
+    @Binding var activities: [Activity]
+    @State private var isRefreshing = false
     
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
         return LocalActivity(
@@ -19,8 +18,28 @@ struct ActivitiesView: View {
         )
     }
     
+    private func fetchActivities() async {
+        guard let userId = authManager.currentUser?.id else {
+            print("No user ID available")
+            return
+        }
+        
+        do {
+            let fetchedActivities = try await ActivityService.getAllActivitiesByUser(userId: userId)
+            DispatchQueue.main.async {
+                self.activities = fetchedActivities
+                self.isRefreshing = false
+            }
+        } catch {
+            print("Error fetching activities: \(error)")
+            DispatchQueue.main.async {
+                self.isRefreshing = false
+            }
+        }
+    }
+    
     var body: some View {
-        VStack{ 
+        VStack { 
             NavigationView {
                 List {
                     ForEach(activities, id: \.id) { activity in
@@ -41,7 +60,8 @@ struct ActivitiesView: View {
                     }
                 }
                 .refreshable {
-                    print("Do your refresh work here")
+                    isRefreshing = true
+                    await fetchActivities()
                 }
                 .listStyle(.plain)
                 .navigationTitle("Activities")
@@ -52,7 +72,7 @@ struct ActivitiesView: View {
 
 struct EmptyView_Previews: PreviewProvider {
     static var previews: some View {
-        ActivitiesView(activities: [])
+        ActivitiesView(activities: .constant([]))
             .environmentObject(AuthManager.shared)
     }
 }
