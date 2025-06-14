@@ -38,7 +38,7 @@ struct CardView: View {
                 Spacer()
 
                 if let distance = activity.distance {
-                    Text(String(format: "%.2f km", distance * 0.001))
+                    Text(String(format: "%.2f mi", distance * 0.000621371))
                         .font(.subheadline)
                 }
 
@@ -77,7 +77,12 @@ struct ActivityMapView: UIViewRepresentable {
         // Decode the polyline
         let coordinates = decodePolyline(polyline)
         
-        print("Decoded coordinates: \(coordinates)")
+        print("🗺️ Decoded coordinates: \(coordinates.count) points")
+        
+        // Show first few coordinates for debugging
+        for (index, coord) in coordinates.prefix(5).enumerated() {
+            print("🗺️ Coordinate \(index): lat=\(coord.latitude), lng=\(coord.longitude)")
+        }
         
         // Create the polyline overlay
         let routePolyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
@@ -90,6 +95,10 @@ struct ActivityMapView: UIViewRepresentable {
             let minLon = coordinates.map { $0.longitude }.min() ?? firstCoordinate.longitude
             let maxLon = coordinates.map { $0.longitude }.max() ?? firstCoordinate.longitude
             
+            print("🗺️ Coordinate bounds:")
+            print("🗺️ Lat range: \(minLat) to \(maxLat)")
+            print("🗺️ Lng range: \(minLon) to \(maxLon)")
+            
             let center = CLLocationCoordinate2D(
                 latitude: (minLat + maxLat) / 2,
                 longitude: (minLon + maxLon) / 2
@@ -99,6 +108,9 @@ struct ActivityMapView: UIViewRepresentable {
                 latitudeDelta: (maxLat - minLat) * 1.5,
                 longitudeDelta: (maxLon - minLon) * 1.5
             )
+            
+            print("🗺️ Map center: \(center.latitude), \(center.longitude)")
+            print("🗺️ Map span: \(span.latitudeDelta), \(span.longitudeDelta)")
             
             let region = MKCoordinateRegion(center: center, span: span)
             mapView.setRegion(region, animated: true)
@@ -122,40 +134,67 @@ struct ActivityMapView: UIViewRepresentable {
     }
     
     private func decodePolyline(_ encodedPolyline: String) -> [CLLocationCoordinate2D] {
-        var coordinates: [CLLocationCoordinate2D] = []
-        var index = encodedPolyline.startIndex
-        var lat = 0.0
-        var lng = 0.0
+        // Unescape the polyline string
+        let unescapedPolyline = encodedPolyline
+            .replacingOccurrences(of: "\\\\", with: "\\")
+            .replacingOccurrences(of: "\\\"", with: "\"")
+            .replacingOccurrences(of: "\\n", with: "\n")
+            .replacingOccurrences(of: "\\r", with: "\r")
+            .replacingOccurrences(of: "\\t", with: "\t")
         
-        func decodeValue() -> Double? {
-            var result: UInt32 = 0
-            var shift: UInt32 = 0
+        print("🗺️ Original polyline: \(encodedPolyline.prefix(50))...")
+        print("🗺️ Unescaped polyline: \(unescapedPolyline.prefix(50))...")
+        print("🗺️ Polyline length: \(unescapedPolyline.count)")
+        
+        var coordinates: [CLLocationCoordinate2D] = []
+        let chars = Array(unescapedPolyline)
+        var index = 0
+        var lat = 0
+        var lng = 0
+        
+        while index < chars.count {
+            // Decode latitude
+            var shift = 0
+            var result = 0
+            var byte: Int
             
-            while index < encodedPolyline.endIndex {
-                let byte = UInt32(encodedPolyline[index].asciiValue! - 63)
-                let chunk = (byte & 0x1F) << shift
-                result |= chunk
+            repeat {
+                if index >= chars.count { break }
+                byte = Int(chars[index].asciiValue!) - 63
+                result |= (byte & 0x1F) << shift
                 shift += 5
-                index = encodedPolyline.index(after: index)
-                
-                if byte < 0x20 {
-                    let value = Int32(bitPattern: result)
-                    let finalValue = ((value & 1) != 0 ? ~(value >> 1) : (value >> 1))
-                    return Double(finalValue)
-                }
-            }
-            return nil
+                index += 1
+            } while byte >= 0x20
+            
+            let deltaLat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1)
+            lat += deltaLat
+            
+            // Decode longitude
+            shift = 0
+            result = 0
+            
+            repeat {
+                if index >= chars.count { break }
+                byte = Int(chars[index].asciiValue!) - 63
+                result |= (byte & 0x1F) << shift
+                shift += 5
+                index += 1
+            } while byte >= 0x20
+            
+            let deltaLng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1)
+            lng += deltaLng
+            
+            let coordinate = CLLocationCoordinate2D(
+                latitude: Double(lat) / 1e5,
+                longitude: Double(lng) / 1e5
+            )
+            coordinates.append(coordinate)
         }
         
-        while index < encodedPolyline.endIndex {
-            if let latDelta = decodeValue(),
-               let lngDelta = decodeValue() {
-                lat += latDelta
-                lng += lngDelta
-                coordinates.append(CLLocationCoordinate2D(latitude: lat * 1e-5, longitude: lng * 1e-5))
-            } else {
-                break
-            }
+        print("🗺️ Decoded \(coordinates.count) coordinates")
+        if let first = coordinates.first, let last = coordinates.last {
+            print("🗺️ First coordinate: \(first.latitude), \(first.longitude)")
+            print("🗺️ Last coordinate: \(last.latitude), \(last.longitude)")
         }
         
         return coordinates
