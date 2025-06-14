@@ -10,11 +10,12 @@ struct ActivitiesView: View {
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
         return LocalActivity(
             id: activity.id,
-            name: activity.name,
-            type: activity.type,
-            distance: activity.distance,
-            start_date: activity.start_date.map { Int($0) },
-            elapsed_time: activity.elapsed_time
+            name: activity.name ?? "Unknown Activity",
+            type: activity.type ?? "Unknown Type",
+            summary_polyline: activity.summary_polyline ?? "",
+            distance: activity.distance ?? 0.0,
+            start_date: activity.start_date != nil ? Date(timeIntervalSince1970: activity.start_date!) : nil,
+            elapsed_time: activity.elapsed_time ?? 0.0
         )
     }
     

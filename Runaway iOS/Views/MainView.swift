@@ -57,7 +57,7 @@ struct MainView: View {
         } else {
             LoaderView()
                 .onAppear {
-                    print("Auth manager user ID: \(authManager.currentUser?.id)")
+                    print("Auth manager user ID: \(String(describing: authManager.currentUser?.id))")
                     fetchSupabaseData()
                 }
         }
@@ -77,7 +77,7 @@ struct MainView: View {
             print("Subscribing to channel")
             await channel.subscribe()
             
-            for await insert in insertions {
+            for await _ in insertions {
                 fetchSupabaseData()
                 print("Inserted:")
             }
@@ -94,10 +94,6 @@ struct MainView: View {
 }
 
 extension MainView {
-    func addOrSubtractDay(day:Int)->Date{
-        return Calendar.current.date(byAdding: .day, value: day, to: Date())!
-    }
-    
     private func fetchSupabaseData() {
         clearUserDefaults()
         Task {
