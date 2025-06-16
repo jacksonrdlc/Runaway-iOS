@@ -7,5 +7,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Runaway needs your location to show your current city in the widget.</string>
 </dict>
 </plist>
