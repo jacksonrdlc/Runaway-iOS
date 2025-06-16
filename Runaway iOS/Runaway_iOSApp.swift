@@ -8,9 +8,44 @@
 import SwiftUI
 import Foundation
 import FirebaseCore
+import CoreLocation
+
+class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    private let locationManager = CLLocationManager()
+    @Published var location: CLLocation?
+    
+    override init() {
+        super.init()
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        self.location = location
+        
+        // Reverse geocode to get city name
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
+            if let placemark = placemarks?.first {
+                let city = placemark.locality ?? "Unknown"
+                let state = placemark.administrativeArea ?? ""
+                let locationString = "\(city), \(state)"
+                
+                // Save to shared UserDefaults
+                if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+                    userDefaults.set(locationString, forKey: "currentLocation")
+                }
+            }
+        }
+    }
+}
 
 @main
 struct Runaway_iOSApp: App {
+    @StateObject private var locationManager = LocationManager()
     @StateObject private var authManager = AuthManager.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     

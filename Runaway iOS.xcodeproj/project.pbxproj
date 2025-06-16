@@ -36,7 +36,6 @@
 		8EEECCE22D64D02D0053014A /* RunawayWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8EEECCCC2D64D02B0053014A /* RunawayWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		8EEECCEA2D64D10F0053014A /* SwiftyJSON in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCE92D64D10F0053014A /* SwiftyJSON */; };
 		8EEECCED2D64D1340053014A /* Polyline in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCEC2D64D1340053014A /* Polyline */; };
-		8EEECCF02D64D2500053014A /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCEF2D64D2500053014A /* MapboxMaps */; };
 		8EEECCF32D64D3000053014A /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCF22D64D3000053014A /* Alamofire */; };
 		8EEECE2A2D64D8AC0053014A /* CoreGPX in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE292D64D8AC0053014A /* CoreGPX */; };
 		8EEECE332D68C4590053014A /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE322D68C4590053014A /* Auth */; };
@@ -172,7 +171,6 @@
 				8E6C2E702D943734002619A0 /* FirebaseAnalytics in Frameworks */,
 				8E6C2E722D943734002619A0 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */,
 				8E6C2E9A2D943734002619A0 /* FirebaseStorage in Frameworks */,
-				8EEECCF02D64D2500053014A /* MapboxMaps in Frameworks */,
 				8E6C2E7E2D943734002619A0 /* FirebaseCore in Frameworks */,
 				8E6C2E882D943734002619A0 /* FirebaseFirestoreCombine-Community in Frameworks */,
 				8EEECCF32D64D3000053014A /* Alamofire in Frameworks */,
@@ -283,7 +281,6 @@
 			packageProductDependencies = (
 				8EEECCE92D64D10F0053014A /* SwiftyJSON */,
 				8EEECCEC2D64D1340053014A /* Polyline */,
-				8EEECCEF2D64D2500053014A /* MapboxMaps */,
 				8EEECCF22D64D3000053014A /* Alamofire */,
 				8EEECE292D64D8AC0053014A /* CoreGPX */,
 				8EEECE322D68C4590053014A /* Auth */,
@@ -427,7 +424,6 @@
 			packageReferences = (
 				8EEECCE82D64D10F0053014A /* XCRemoteSwiftPackageReference "SwiftyJSON" */,
 				8EEECCEB2D64D1340053014A /* XCRemoteSwiftPackageReference "Polyline" */,
-				8EEECCEE2D64D2500053014A /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */,
 				8EEECCF12D64D3000053014A /* XCRemoteSwiftPackageReference "Alamofire" */,
 				8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */,
 				8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */,
@@ -660,6 +656,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -692,6 +692,10 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -917,14 +921,6 @@
 				kind = branch;
 			};
 		};
-		8EEECCEE2D64D2500053014A /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/mapbox/mapbox-maps-ios.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
 		8EEECCF12D64D3000053014A /* XCRemoteSwiftPackageReference "Alamofire" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Alamofire/Alamofire";
@@ -1081,11 +1077,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8EEECCEB2D64D1340053014A /* XCRemoteSwiftPackageReference "Polyline" */;
 			productName = Polyline;
-		};
-		8EEECCEF2D64D2500053014A /* MapboxMaps */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8EEECCEE2D64D2500053014A /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */;
-			productName = MapboxMaps;
 		};
 		8EEECCF22D64D3000053014A /* Alamofire */ = {
 			isa = XCSwiftPackageProductDependency;

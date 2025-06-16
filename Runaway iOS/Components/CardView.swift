@@ -65,7 +65,8 @@ struct ActivityMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
-        mapView.isZoomEnabled = false
+//        mapView.isZoomEnabled = false
+        mapView.mapType = .mutedStandard
         mapView.isScrollEnabled = false
         mapView.isUserInteractionEnabled = false
         return mapView
