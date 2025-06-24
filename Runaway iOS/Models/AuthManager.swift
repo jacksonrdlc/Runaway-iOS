@@ -6,7 +6,7 @@ import Supabase
 @MainActor
 public final class AuthManager: ObservableObject {
     @Published public var isAuthenticated = false
-    @Published public var currentUser: User?
+    @Published public var currentUser: Supabase.User?
     
     public static let shared = AuthManager()
     
@@ -54,20 +54,8 @@ public final class AuthManager: ObservableObject {
     }
     
     private func updateAuthState(with user: Supabase.User) async {
-        let appUser = User(
-            id: user.id,
-            aud: user.aud,
-            role: user.role ?? "authenticated",
-            email: user.email ?? "",
-            emailConfirmedAt: user.emailConfirmedAt,
-            phone: user.phone,
-            lastSignInAt: user.lastSignInAt,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt ?? user.createdAt
-        )
-        
         await MainActor.run {
-            self.currentUser = appUser
+            self.currentUser = user
             self.isAuthenticated = true
         }
     }
