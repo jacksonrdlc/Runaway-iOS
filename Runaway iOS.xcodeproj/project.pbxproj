@@ -657,9 +657,9 @@
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -693,9 +693,9 @@
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
-				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "$(PRODUCT_NAME) needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
