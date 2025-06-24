@@ -8,6 +8,7 @@
 import WidgetKit
 import SwiftUI
 import Charts
+import AppIntents
 
 struct Day: Identifiable {
     var name: String
@@ -84,6 +85,8 @@ struct PieChartView: View {
 }
 
 struct Provider: AppIntentTimelineProvider {
+    typealias Entry = SimpleEntry
+    typealias Intent = ConfigurationAppIntent
     func placeholder(in context: Context) -> SimpleEntry {
         SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [])
     }
@@ -99,7 +102,6 @@ struct Provider: AppIntentTimelineProvider {
             let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
             var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [])
             if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
-                
                 let miles = userDefaults.double(forKey: "miles")
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
@@ -112,21 +114,6 @@ struct Provider: AppIntentTimelineProvider {
                 let thursArray: Array<String> = userDefaults.stringArray(forKey: "thuArray") ?? []
                 let friArray: Array<String> = userDefaults.stringArray(forKey: "friArray") ?? []
                 let satArray: Array<String> = userDefaults.stringArray(forKey: "satArray") ?? []
-                
-                print("s")
-                print(sunArray)
-                print("m")
-                print(monArray)
-                print("t")
-                print(tuesArray)
-                print("w")
-                print(wednesArray)
-                print("th")
-                print(thursArray)
-                print("f")
-                print(friArray)
-                print("sa")
-                print(satArray)
                 
                 
                 var sundayActivities: Array<Activity> = []
@@ -281,10 +268,17 @@ struct RunawayWidgetEntryView : View {
         entry.days.reduce(0) { $0 + $1.miles }
     }
     
+    var locationName: String {
+        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+            return userDefaults.string(forKey: "currentLocation") ?? "Loading..."
+        }
+        return "Loading..."
+    }
+    
     var body: some View {
         VStack (alignment: .leading) {
             HStack(alignment: .bottom){
-                Label("Kirkwood, MO", systemImage: "location.fill").font(.system(size: 13))
+                Label(locationName, systemImage: "location.fill").font(.system(size: 13))
                 Spacer()
                 Text("Runaway").font(.system(size: 16, weight: .heavy)).italic()
             }.padding(.bottom, 8)

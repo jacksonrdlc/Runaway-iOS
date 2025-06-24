@@ -63,17 +63,14 @@ extension AthleteView {
     func setStats() {
         if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
             if let runsInt = stats.count {
-                print("runsInt: \(runsInt)")
                 self.runs = String(runsInt)
                 userDefaults.set(runsInt, forKey: "runs")
             }
             if let milesInt = stats.distance {
-                print("milesInt: \(milesInt)")
                 self.miles = String(milesInt * Double(0.00062137))
                 userDefaults.set(milesInt, forKey: "miles")
             }
             if let minutesInt = stats.elapsedTime {
-                print("minutesInt: \(minutesInt)")
                 self.minutes = String(minutesInt)
                 userDefaults.set(minutesInt, forKey: "minutes")
             }

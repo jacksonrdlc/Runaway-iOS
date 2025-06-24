@@ -11,120 +11,101 @@ import Supabase
 
 struct MainView: View {
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var realtimeService: RealtimeService
+    @EnvironmentObject var userManager: UserManager
     @State var selectedTab = 0
     @State var isSupabaseDataReady: Bool = false
     @State var activityDays: [ActivityDay] = []
     @State var activities: [Activity] = []
     @State var athlete: Athlete?
     @State var stats: AthleteStats?
-    @State private var subscription: RealtimeSubscription?
     
     
     var body: some View {
         if isSupabaseDataReady {
-            Button(action: {
-                Task {
-                    fetchSupabaseData()
-                }
-            }){
-                Text("Refresh")
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
-            }
-            .padding()
-            TabView(selection: $selectedTab) {
-                ActivitiesView(activities: activities)
+            NavigationView {
+                TabView(selection: $selectedTab) {
+                ActivitiesView(activities: $activities)
                     .tabItem {
                         Label("Activities", systemImage: "sportscourt")
                     }
                     .tag(0)
-                //                UploadView()
-                //                    .tabItem {
-                //                        Label("Upload", systemImage: "square.and.arrow.up")
-                //                    }
-                //                    .tag(2)
+                
+                
                 AthleteView(athlete: athlete!, stats: stats!)
                     .tabItem {
                         Label("Athlete", systemImage: "person.crop.circle")
                     }
                     .tag(1)
-            }
-            .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if selectedTab == 0 {
-                        Button("Refresh") {
-                            fetchSupabaseData()
+                }
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Sign Out") {
+                            Task {
+                                try? await authManager.signOut()
+                                userManager.clearUser()
+                            }
                         }
-                        
+                        .foregroundColor(.red)
                     }
                 }
+                .onAppear {
+                fetchSupabaseData()
+                realtimeService.startRealtimeSubscription()
             }
-            .onAppear {
-                setupRealtimeSubscription()
-            }
-            .onDisappear {
-                cleanupSubscription()
+                .onReceive(NotificationCenter.default.publisher(for: .activitiesUpdated)) { notification in
+                    if let updatedActivities = notification.object as? [Activity] {
+                        self.activities = updatedActivities
+                    }
+                }
             }
         } else {
             LoaderView()
                 .onAppear {
-                    print("Auth manager user ID: \(authManager.currentUser?.id)")
+                    print("Auth manager user ID: \(String(describing: authManager.currentUser?.id))")
                     fetchSupabaseData()
                 }
         }
     }
     
-    private func setupRealtimeSubscription() {
-        Task {
-            // Create channel
-            let channel = supabase.channel("public:activities")
-            
-            // Create the observations before subscribing
-            let insertions = channel.postgresChange(
-              AnyAction.self,
-              table: "activities"
-            )
-            
-            print("Subscribing to channel")
-            await channel.subscribe()
-            
-            for await insert in insertions {
-                fetchSupabaseData()
-                print("Inserted:")
-            }
-        }
-    }
-    
-    private func cleanupSubscription() {
-        Task {
-            let channel = supabase.channel("public:activities")
-            
-            await supabase.removeChannel(channel)
-        }
-    }
 }
 
 extension MainView {
-    func addOrSubtractDay(day:Int)->Date{
-        return Calendar.current.date(byAdding: .day, value: day, to: Date())!
-    }
-    
     private func fetchSupabaseData() {
+        clearUserDefaults()
         Task {
+            //            try await authManager.signOut()
             print("Fetching data with user ID: \(String(describing: authManager.currentUser?.id))")
-            guard let userId = authManager.currentUser?.id else {
+            guard let authId = authManager.currentUser?.id else {
                 print("No user ID available")
                 isSupabaseDataReady = true
                 return
             }
             
+            let user: User
+            do {
+                // Fetch userId data using userService
+                user = try await UserService.getUserByAuthId(authId: authId)
+                print("Successfully fetched user: \(user)")
+            } catch {
+                print("Error fetching User data: \(error)")
+                isSupabaseDataReady = true
+                return
+            }
+            
+            print("Fetched user: \(user)")
+            print("User ID: \(user.userId)")
+            
+            // Store user in UserManager for global access
+            await MainActor.run {
+                userManager.setUser(user)
+            }
+            
             do {
                 // Fetch athlete data using AthleteService
-                let athlete = try await AthleteService.getAthleteByUserId(userId: userId)
-                print("Successfully fetched athlete: \(athlete)")
+                print("Fetching athlete data for user ID: \(user.userId)")
+                let athlete = try await AthleteService.getAthleteByUserId(userId: user.userId)
+                print("Successfully fetched athlete: \(athlete.firstname) \(athlete.lastname)")
                 self.athlete = athlete
             } catch {
                 print("Error fetching Athlete data: \(error)")
@@ -141,7 +122,7 @@ extension MainView {
             }
             
             do {
-                self.activities = try await ActivityService.getAllActivitiesByUser(userId: userId)
+                self.activities = try await ActivityService.getAllActivitiesByUser(userId: user.userId)
                 createActivityRecord(activities: self.activities)
                 isSupabaseDataReady = true
             } catch {
@@ -153,6 +134,7 @@ extension MainView {
     }
     
     private func createActivityRecord(activities : [Activity]) {
+        print("Creating activity record with \(activities.count) activities")
         var sunArray: Array<String> = [];
         var monArray: Array<String> = [];
         var tueArray: Array<String> = [];
@@ -160,26 +142,35 @@ extension MainView {
         var thuArray: Array<String> = [];
         var friArray: Array<String> = [];
         var satArray: Array<String> = [];
-        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
-            print("Creating activity record")
+        
+        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+            print("Failed to access shared UserDefaults")
+            return
+        }
+        
+        print("Creating activity record")
+        
+        // Clear existing arrays
+        userDefaults.removeObject(forKey: "sunArray")
+        userDefaults.removeObject(forKey: "monArray")
+        userDefaults.removeObject(forKey: "tueArray")
+        userDefaults.removeObject(forKey: "wedArray")
+        userDefaults.removeObject(forKey: "thuArray")
+        userDefaults.removeObject(forKey: "friArray")
+        userDefaults.removeObject(forKey: "satArray")
+        
+        let monthlyMiles = activities.reduce(0) { $0 + $1.distance! }
+        userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
             
-            let monthlyMiles = activities.reduce(0) { $0 + $1.distance! }
-            userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
-            
-            let weeklyActivities = activities.filter { act in
-                //                print("Start date: \(act.start_date!)")
-                //                print("Start of week: \(Date().startOfWeek())")
-                print("Act Date: \( Date(timeIntervalSince1970: act.start_date!))")
-                print("Start of Week Date: \( Date(timeIntervalSince1970: Date().startOfWeek()))")
-                if act.start_date! > Date().startOfWeek() {
-                    print("Activity is within the week")
-                    print(act.start_date!)
-                    return true
-                } else {
-                    return false
-                }
+        let weeklyActivities = activities.filter { act in
+            if act.start_date! > Date().startOfWeek() {
+                return true
+            } else {
+                return false
             }
-            for activity in weeklyActivities {
+        }
+        
+        for activity in weeklyActivities {
                 if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Sunday") {
                     let sundayAct = RAActivity(
                         day: "S",
@@ -201,6 +192,7 @@ extension MainView {
                     let jsonData = try! JSONEncoder().encode(mondayAct)
                     let jsonString = String(data: jsonData, encoding: .utf8)!
                     monArray.append(jsonString);
+                    print("Monday activity added: \(jsonString)")
                     userDefaults.set(monArray, forKey: "monArray");
                 }
                 if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Tuesday") {
@@ -247,7 +239,6 @@ extension MainView {
                     
                     let jsonData = try! JSONEncoder().encode(fridayAct)
                     let jsonString = String(data: jsonData, encoding: .utf8)!
-                    print("Friday makes me holla!")
                     friArray.append(jsonString);
                     userDefaults.set(friArray, forKey: "friArray");
                 }
@@ -262,9 +253,26 @@ extension MainView {
                     let jsonString = String(data: jsonData, encoding: .utf8)!
                     satArray.append(jsonString);
                     userDefaults.set(satArray, forKey: "satArray");
-                }
             }
         }
+        
+        // Force synchronization and reload widget
+        userDefaults.synchronize()
         WidgetCenter.shared.reloadAllTimelines()
+        print("UserDefaults synchronized and widget timeline reloaded")
+    }
+    
+    func clearUserDefaults() {
+        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+            userDefaults.removeObject(forKey: "sunArray");
+            userDefaults.removeObject(forKey: "monArray");
+            userDefaults.removeObject(forKey: "tueArray");
+            userDefaults.removeObject(forKey: "wedArray");
+            userDefaults.removeObject(forKey: "thuArray");
+            userDefaults.removeObject(forKey: "friArray");
+            userDefaults.removeObject(forKey: "satArray");
+            userDefaults.removeObject(forKey: "weeklyMiles");
+            userDefaults.removeObject(forKey: "monthlyMiles");
+        }
     }
 }

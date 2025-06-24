@@ -1,68 +1,50 @@
 import SwiftUI
 import Foundation
 
-// Create simplified card view
-struct LocalCardView: View {
-    let activity: LocalActivity
-    
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text(activity.name ?? "Unknown Activity")
-                .font(.headline)
-            
-            HStack {
-                Text(activity.type ?? "Unknown Type")
-                    .font(.subheadline)
-                
-                Spacer()
-                
-                if let distance = activity.distance {
-                    Text(String(format: "%.2f km", distance * 0.001))
-                        .font(.subheadline)
-                }
-                
-                if let time = activity.elapsed_time {
-                    Text(formatTime(seconds: time))
-                        .font(.subheadline)
-                }
-            }
-        }
-        .padding()
-    }
-    
-    private func formatTime(seconds: TimeInterval) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
-        
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        } else {
-            return "\(minutes)m"
-        }
-    }
-}
-
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
-    var activities: [Activity]
+    @EnvironmentObject var userManager: UserManager
+    @Binding var activities: [Activity]
+    @State private var isRefreshing = false
     
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
         return LocalActivity(
             id: activity.id,
-            name: activity.name,
-            type: activity.type,
-            distance: activity.distance,
-            start_date: activity.start_date.map { Int($0) },
-            elapsed_time: activity.elapsed_time
+            name: activity.name ?? "Unknown Activity",
+            type: activity.type ?? "Unknown Type",
+            summary_polyline: activity.summary_polyline ?? "",
+            distance: activity.distance ?? 0.0,
+            start_date: activity.start_date != nil ? Date(timeIntervalSince1970: activity.start_date!) : nil,
+            elapsed_time: activity.elapsed_time ?? 0.0
         )
     }
     
+    private func fetchActivities() async {
+        guard let userId = userManager.userId else {
+            print("No user ID available")
+            return
+        }
+        
+        do {
+            let fetchedActivities = try await ActivityService.getAllActivitiesByUser(userId: userId)
+            DispatchQueue.main.async {
+                self.activities = fetchedActivities
+                self.isRefreshing = false
+            }
+        } catch {
+            print("Error fetching activities: \(error)")
+            DispatchQueue.main.async {
+                self.isRefreshing = false
+            }
+        }
+    }
+    
     var body: some View {
-        VStack{ 
+        VStack { 
             NavigationView {
                 List {
                     ForEach(activities, id: \.id) { activity in
-                        LocalCardView(activity: convertToLocalActivity(activity))
+                        CardView(activity: convertToLocalActivity(activity))
                             .listRowBackground(
                                 RoundedRectangle(cornerRadius: 5)
                                     .background(.clear)
@@ -79,7 +61,8 @@ struct ActivitiesView: View {
                     }
                 }
                 .refreshable {
-                    print("Do your refresh work here")
+                    isRefreshing = true
+                    await fetchActivities()
                 }
                 .listStyle(.plain)
                 .navigationTitle("Activities")
@@ -90,7 +73,8 @@ struct ActivitiesView: View {
 
 struct EmptyView_Previews: PreviewProvider {
     static var previews: some View {
-        ActivitiesView(activities: [])
+        ActivitiesView(activities: .constant([]))
             .environmentObject(AuthManager.shared)
+            .environmentObject(UserManager.shared)
     }
 }
