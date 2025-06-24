@@ -102,7 +102,6 @@ struct Provider: AppIntentTimelineProvider {
             let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
             var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [])
             if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
-                
                 let miles = userDefaults.double(forKey: "miles")
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")

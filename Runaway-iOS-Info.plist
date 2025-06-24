@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key></key>
-	<string></string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleSignature</key>
@@ -27,5 +25,14 @@
 	</array>
 	<key>MBXAccessToken</key>
 	<string>pk.eyJ1IjoiamFja3J1ZGVsaWMiLCJhIjoiY2x6YmJleDF0MHBibTJqcHh5dW00MXAzayJ9.gvQwL0C6knMFeB3Fol1gvQ</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>background-app-refresh</string>
+		<string>background-processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.jackrudelic.runawayios.realtime-background</string>
+	</array>
 </dict>
 </plist>

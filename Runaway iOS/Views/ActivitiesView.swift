@@ -3,6 +3,7 @@ import Foundation
 
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var userManager: UserManager
     @Binding var activities: [Activity]
     @State private var isRefreshing = false
     
@@ -19,7 +20,7 @@ struct ActivitiesView: View {
     }
     
     private func fetchActivities() async {
-        guard let userId = authManager.currentUser?.id else {
+        guard let userId = userManager.userId else {
             print("No user ID available")
             return
         }
@@ -74,5 +75,6 @@ struct EmptyView_Previews: PreviewProvider {
     static var previews: some View {
         ActivitiesView(activities: .constant([]))
             .environmentObject(AuthManager.shared)
+            .environmentObject(UserManager.shared)
     }
 }

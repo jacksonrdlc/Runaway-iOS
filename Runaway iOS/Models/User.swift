@@ -2,35 +2,33 @@ import Foundation
 
 public struct User: Codable, Identifiable {
     public let id: UUID
-    public let aud: String
-    public let role: String
-    public let email: String
-    public let emailConfirmedAt: Date?
-    public let phone: String?
-    public let lastSignInAt: Date?
-    public let createdAt: Date
-    public let updatedAt: Date
+    public let authId: UUID
+    public let userId: Int
+    public let createdAt: Date?
+    public let updatedAt: Date?
     
-    public init(id: UUID, aud: String, role: String, email: String, emailConfirmedAt: Date?, phone: String?, lastSignInAt: Date?, createdAt: Date, updatedAt: Date) {
-        self.id = id
-        self.aud = aud
-        self.role = role
-        self.email = email
-        self.emailConfirmedAt = emailConfirmedAt
-        self.phone = phone
-        self.lastSignInAt = lastSignInAt
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.userId = try container.decode(Int.self, forKey: .userId)
+        self.id = UUID(uuidString: String(format: "%08x-0000-0000-0000-000000000000", self.userId)) ?? UUID()
+        
+        self.authId = try container.decode(UUID.self, forKey: .authId)
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        self.updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+    
+    public init(authId: UUID, userId: Int, createdAt: Date?, updatedAt: Date?) {
+        self.id = UUID()
+        self.authId = authId
+        self.userId = userId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
     
     enum CodingKeys: String, CodingKey {
         case id
-        case aud
-        case role
-        case email
-        case emailConfirmedAt = "email_confirmed_at"
-        case phone
-        case lastSignInAt = "last_sign_in_at"
+        case userId = "user_id"
+        case authId = "auth_id"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
