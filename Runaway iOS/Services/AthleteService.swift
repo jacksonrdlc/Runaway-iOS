@@ -3,7 +3,7 @@ import Supabase
 
 class AthleteService {
     // Function to get athlete by user ID
-    static func getAthleteByUserId(userId: UUID) async throws -> Athlete {
+    static func getAthleteByUserId(userId: Int) async throws -> Athlete {
         return try await supabase
             .from("athletes")
             .select()
