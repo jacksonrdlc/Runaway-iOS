@@ -25,18 +25,22 @@ struct MainView: View {
         if isSupabaseDataReady {
             NavigationView {
                 TabView(selection: $selectedTab) {
-                ActivitiesView(activities: $activities)
-                    .tabItem {
-                        Label("Activities", systemImage: "sportscourt")
-                    }
-                    .tag(0)
-                
-                
-                AthleteView(athlete: athlete!, stats: stats!)
-                    .tabItem {
-                        Label("Athlete", systemImage: "person.crop.circle")
-                    }
-                    .tag(1)
+                    ActivitiesView(activities: $activities)
+                        .tabItem {
+                            Label("Activities", systemImage: "sportscourt")
+                        }
+                        .tag(0)
+                    
+                    AnalysisView(activities: activities)
+                        .tabItem {
+                            Label("Analysis", systemImage: "chart.line.uptrend.xyaxis")
+                        }
+                        .tag(1)
+                    AthleteView(athlete: athlete!, stats: stats!)
+                        .tabItem {
+                            Label("Athlete", systemImage: "person.crop.circle")
+                        }
+                        .tag(2)
                 }
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -50,9 +54,9 @@ struct MainView: View {
                     }
                 }
                 .onAppear {
-                fetchSupabaseData()
-                realtimeService.startRealtimeSubscription()
-            }
+                    fetchSupabaseData()
+                    realtimeService.startRealtimeSubscription()
+                }
                 .onReceive(NotificationCenter.default.publisher(for: .activitiesUpdated)) { notification in
                     if let updatedActivities = notification.object as? [Activity] {
                         self.activities = updatedActivities
@@ -161,7 +165,7 @@ extension MainView {
         
         let monthlyMiles = activities.reduce(0) { $0 + $1.distance! }
         userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
-            
+        
         let weeklyActivities = activities.filter { act in
             if act.start_date! > Date().startOfWeek() {
                 return true
@@ -171,88 +175,88 @@ extension MainView {
         }
         
         for activity in weeklyActivities {
-                if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Sunday") {
-                    let sundayAct = RAActivity(
-                        day: "S",
-                        type: activity.type,
-                        distance: activity.distance! * 0.00062137,
-                        time: activity.elapsed_time! / 60);
-                    let jsonData = try! JSONEncoder().encode(sundayAct)
-                    let jsonString = String(data: jsonData, encoding: .utf8)!
-                    sunArray.append(jsonString);
-                    userDefaults.set(sunArray, forKey: "sunArray");
-                }
-                if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Monday") {
-                    let mondayAct = RAActivity(
-                        day: "M",
-                        type: activity.type,
-                        distance: activity.distance! * 0.00062137,
-                        time: activity.elapsed_time! / 60);
-                    
-                    let jsonData = try! JSONEncoder().encode(mondayAct)
-                    let jsonString = String(data: jsonData, encoding: .utf8)!
-                    monArray.append(jsonString);
-                    print("Monday activity added: \(jsonString)")
-                    userDefaults.set(monArray, forKey: "monArray");
-                }
-                if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Tuesday") {
-                    let tuesdayAct = RAActivity(
-                        day: "T",
-                        type: activity.type,
-                        distance: activity.distance! * 0.00062137,
-                        time: activity.elapsed_time! / 60);
-                    
-                    let jsonData = try! JSONEncoder().encode(tuesdayAct)
-                    let jsonString = String(data: jsonData, encoding: .utf8)!
-                    tueArray.append(jsonString);
-                    userDefaults.set(tueArray, forKey: "tueArray");
-                }
-                if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Wednesday") {
-                    let wednesdayAct = RAActivity(
-                        day: "W",
-                        type: activity.type,
-                        distance: activity.distance! * 0.00062137,
-                        time: activity.elapsed_time! / 60);
-                    
-                    let jsonData = try! JSONEncoder().encode(wednesdayAct)
-                    let jsonString = String(data: jsonData, encoding: .utf8)!
-                    wedArray.append(jsonString);
-                    userDefaults.set(wedArray, forKey: "wedArray");
-                }
-                if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Thursday") {
-                    let thursdayAct = RAActivity(
-                        day: "Th",
-                        type: activity.type,
-                        distance: activity.distance! * 0.00062137,
-                        time: activity.elapsed_time! / 60);
-                    let jsonData = try! JSONEncoder().encode(thursdayAct)
-                    let jsonString = String(data: jsonData, encoding: .utf8)!
-                    thuArray.append(jsonString);
-                    userDefaults.set(thuArray, forKey: "thuArray");
-                }
-                if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Friday") {
-                    let fridayAct = RAActivity(
-                        day: "F",
-                        type: activity.type,
-                        distance: activity.distance! * 0.00062137,
-                        time: activity.elapsed_time! / 60);
-                    
-                    let jsonData = try! JSONEncoder().encode(fridayAct)
-                    let jsonString = String(data: jsonData, encoding: .utf8)!
-                    friArray.append(jsonString);
-                    userDefaults.set(friArray, forKey: "friArray");
-                }
-                if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Saturday") {
-                    let saturdayAct = RAActivity(
-                        day: "Sat",
-                        type: activity.type,
-                        distance: activity.distance! * 0.00062137,
-                        time: activity.elapsed_time! / 60);
-                    
-                    let jsonData = try! JSONEncoder().encode(saturdayAct)
-                    let jsonString = String(data: jsonData, encoding: .utf8)!
-                    satArray.append(jsonString);
-                    userDefaults.set(satArray, forKey: "satArray");
+            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Sunday") {
+                let sundayAct = RAActivity(
+                    day: "S",
+                    type: activity.type,
+                    distance: activity.distance! * 0.00062137,
+                    time: activity.elapsed_time! / 60);
+                let jsonData = try! JSONEncoder().encode(sundayAct)
+                let jsonString = String(data: jsonData, encoding: .utf8)!
+                sunArray.append(jsonString);
+                userDefaults.set(sunArray, forKey: "sunArray");
+            }
+            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Monday") {
+                let mondayAct = RAActivity(
+                    day: "M",
+                    type: activity.type,
+                    distance: activity.distance! * 0.00062137,
+                    time: activity.elapsed_time! / 60);
+                
+                let jsonData = try! JSONEncoder().encode(mondayAct)
+                let jsonString = String(data: jsonData, encoding: .utf8)!
+                monArray.append(jsonString);
+                print("Monday activity added: \(jsonString)")
+                userDefaults.set(monArray, forKey: "monArray");
+            }
+            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Tuesday") {
+                let tuesdayAct = RAActivity(
+                    day: "T",
+                    type: activity.type,
+                    distance: activity.distance! * 0.00062137,
+                    time: activity.elapsed_time! / 60);
+                
+                let jsonData = try! JSONEncoder().encode(tuesdayAct)
+                let jsonString = String(data: jsonData, encoding: .utf8)!
+                tueArray.append(jsonString);
+                userDefaults.set(tueArray, forKey: "tueArray");
+            }
+            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Wednesday") {
+                let wednesdayAct = RAActivity(
+                    day: "W",
+                    type: activity.type,
+                    distance: activity.distance! * 0.00062137,
+                    time: activity.elapsed_time! / 60);
+                
+                let jsonData = try! JSONEncoder().encode(wednesdayAct)
+                let jsonString = String(data: jsonData, encoding: .utf8)!
+                wedArray.append(jsonString);
+                userDefaults.set(wedArray, forKey: "wedArray");
+            }
+            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Thursday") {
+                let thursdayAct = RAActivity(
+                    day: "Th",
+                    type: activity.type,
+                    distance: activity.distance! * 0.00062137,
+                    time: activity.elapsed_time! / 60);
+                let jsonData = try! JSONEncoder().encode(thursdayAct)
+                let jsonString = String(data: jsonData, encoding: .utf8)!
+                thuArray.append(jsonString);
+                userDefaults.set(thuArray, forKey: "thuArray");
+            }
+            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Friday") {
+                let fridayAct = RAActivity(
+                    day: "F",
+                    type: activity.type,
+                    distance: activity.distance! * 0.00062137,
+                    time: activity.elapsed_time! / 60);
+                
+                let jsonData = try! JSONEncoder().encode(fridayAct)
+                let jsonString = String(data: jsonData, encoding: .utf8)!
+                friArray.append(jsonString);
+                userDefaults.set(friArray, forKey: "friArray");
+            }
+            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Saturday") {
+                let saturdayAct = RAActivity(
+                    day: "Sat",
+                    type: activity.type,
+                    distance: activity.distance! * 0.00062137,
+                    time: activity.elapsed_time! / 60);
+                
+                let jsonData = try! JSONEncoder().encode(saturdayAct)
+                let jsonString = String(data: jsonData, encoding: .utf8)!
+                satArray.append(jsonString);
+                userDefaults.set(satArray, forKey: "satArray");
             }
         }
         
