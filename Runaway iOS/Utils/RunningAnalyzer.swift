@@ -235,7 +235,10 @@ class RunningAnalyzer: ObservableObject {
         
         // Check pace variety
         let paces = activities.map { $0.pace }
-        let paceRange = paces.max()! - paces.min()!
+        guard let maxPace = paces.max(), let minPace = paces.min() else {
+            return recommendations // Return current recommendations if we can't calculate pace variety
+        }
+        let paceRange = maxPace - minPace
         if paceRange < 1.0 {
             recommendations.append("Add variety to your pace - try some faster and slower runs")
         }

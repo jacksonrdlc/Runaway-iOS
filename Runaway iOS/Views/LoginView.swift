@@ -9,7 +9,8 @@ struct LoginView: View {
     @State private var errorMessage = ""
     
     var body: some View {
-        VStack {
+        NavigationView {
+            VStack {
             Text(isSignUp ? "Create Account" : "Welcome Back")
                 .font(.largeTitle)
                 .padding(.bottom, 30)
@@ -56,8 +57,12 @@ struct LoginView: View {
                 Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
                     .foregroundColor(.blue)
             }
+            }
+            .padding()
+            .navigationTitle("Welcome")
+            .navigationBarTitleDisplayMode(.large)
+            .background(AppTheme.Colors.background.ignoresSafeArea())
         }
-        .padding()
         .alert("Error", isPresented: $showError) {
             Button("OK", role: .cancel) {}
         } message: {
