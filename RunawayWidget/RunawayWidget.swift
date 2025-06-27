@@ -46,7 +46,7 @@ struct BarChart: View {
             
         }
         .chartForegroundStyleScale([
-            "Run": .green, "Walk": .purple, "Weight Training": .pink, "Yoga": .orange
+            "Run": Color(red: 0.2, green: 0.6, blue: 1.0), "Walk": Color(red: 0.4, green: 0.8, blue: 0.4), "Weight Training": Color(red: 1.0, green: 0.7, blue: 0.0), "Yoga": Color(red: 0.8, green: 0.4, blue: 0.8)
         ])
     }
 }
@@ -105,6 +105,7 @@ struct Provider: AppIntentTimelineProvider {
                 let miles = userDefaults.double(forKey: "miles")
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
+                
                 
                 
                 let sunArray: Array<String> = userDefaults.stringArray(forKey: "sunArray") ?? []
@@ -235,6 +236,7 @@ struct Provider: AppIntentTimelineProvider {
                 
                 let weekActivities: [Activity] = weekActivitiesPt1 + weekActivitiesPt2
                 
+                
                 var daysData: [Day] = [
                     
                     .init(name: "S", type: "Run", minutes: 0.0, miles: 0.0),
@@ -257,6 +259,7 @@ struct Provider: AppIntentTimelineProvider {
         
         return Timeline(entries: entries, policy: .atEnd)
     }
+    
 }
 
 
@@ -278,40 +281,37 @@ struct RunawayWidgetEntryView : View {
     var body: some View {
         VStack (alignment: .leading) {
             HStack(alignment: .bottom){
-                Label(locationName, systemImage: "location.fill").font(.system(size: 13))
+                Label(locationName, systemImage: "location.fill").font(.system(size: 13)).foregroundColor(.white)
                 Spacer()
-                Text("Runaway").font(.system(size: 16, weight: .heavy)).italic()
+                Text("Runaway").font(.system(size: 16, weight: .heavy)).italic().foregroundColor(.white)
             }.padding(.bottom, 8)
             HStack(alignment: .top){
                 BarChart(days: entry.days)
             }
             HStack(alignment: .bottom){
                 VStack(alignment: .leading){
-                    Text("Total Miles:").font(.system(size: 14, weight: .semibold)).padding(.bottom,1)
-                    Text(String((entry.miles * Double(0.00062137)).thousandsOfMiles)).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).tracking(-1)
+                    Text("\(String(Calendar.current.component(.year, from: Date()))) Miles:").font(.system(size: 14, weight: .semibold)).foregroundColor(.white).padding(.bottom,1)
+                    Text(String((entry.miles * Double(0.00062137)).thousandsOfMiles)).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).foregroundColor(.white).tracking(-1)
                 }.frame(minWidth: 140).padding(.bottom,8)
                 Spacer()
                 VStack{
-                    PieChartView(current: weeklyMileage, goalRemaining: 20.0 - weeklyMileage, color: .blue).padding(.bottom,2)
-                    Text("Weekly").font(.system(size: 8, weight: .heavy))
+                    PieChartView(current: weeklyMileage, goalRemaining: max(0, 20.0 - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
+                    Text("Weekly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
                 VStack{
-                    PieChartView(current: entry.monthlyMiles, goalRemaining: 100.0 - entry.monthlyMiles, color: .green).padding(.bottom,2)
-                    Text("Monthly").font(.system(size: 8, weight: .heavy))
+                    PieChartView(current: entry.monthlyMiles, goalRemaining: max(0, 100.0 - entry.monthlyMiles), color: Color(red: 0.4, green: 0.8, blue: 0.4)).padding(.bottom,2)
+                    Text("Monthly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
             }.padding(.top, 16)
             HStack(alignment: .bottom){
                 Spacer()
-                Text("Last Updated:").font(.system(size: 9))
-                Text(entry.date, style: .date).font(.system(size: 9))
-                Text(entry.date, style: .time).font(.system(size: 9))
+                Text("Last Updated:").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
+                Text(entry.date, style: .date).font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
+                Text(entry.date, style: .time).font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
             }
-        }.background(
-            Image ("kwood")
-                .overlay(
-                    Color(red: 0 / 255, green: 6 / 255, blue: 53 / 255)
-                        .opacity(0.8))
-                .frame(width: 800, height: 800))
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
     }
 }
 
@@ -323,16 +323,34 @@ struct RunawayWidget: Widget {
             if #available(iOS 17.0, *) {
                 RunawayWidgetEntryView(entry: entry)
                     .containerBackground(for: .widget) {
-                        Color(red: 33 / 255, green: 33 / 255, blue: 33 / 255)
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.05, green: 0.05, blue: 0.1),
+                                Color(red: 0.1, green: 0.15, blue: 0.25),
+                                Color(red: 0.15, green: 0.25, blue: 0.4)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     }
             } else {
                 RunawayWidgetEntryView(entry: entry)
-                    .padding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.05, green: 0.05, blue: 0.1),
+                                Color(red: 0.1, green: 0.15, blue: 0.25),
+                                Color(red: 0.15, green: 0.25, blue: 0.4)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             }
         }
-        .configurationDisplayName("My Widget")
-        .description("This is an example widget.")
+        .configurationDisplayName("Runaway Widget")
+        .description("Track your running progress with beautiful charts and stats.")
     }
 }
 

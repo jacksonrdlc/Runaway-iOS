@@ -14,10 +14,18 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     @Published var location: CLLocation?
     
+    // Throttling properties to prevent excessive geocoding
+    private var lastGeocodedLocation: CLLocation?
+    private var lastGeocodeTime: Date = Date.distantPast
+    private let minimumGeocodeDistance: CLLocationDistance = 1000 // 1km
+    private let minimumGeocodeInterval: TimeInterval = 300 // 5 minutes
+    private var isCurrentlyGeocoding = false
+    
     override init() {
         super.init()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Less aggressive accuracy
+        locationManager.distanceFilter = 100 // Only update when moved 100m
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
     }
@@ -26,17 +34,55 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         guard let location = locations.last else { return }
         self.location = location
         
-        // Reverse geocode to get city name
+        // Check if we should geocode this location
+        guard shouldGeocodeLocation(location) else { return }
+        
+        performReverseGeocode(for: location)
+    }
+    
+    private func shouldGeocodeLocation(_ location: CLLocation) -> Bool {
+        // Don't geocode if already in progress
+        guard !isCurrentlyGeocoding else { return false }
+        
+        // Check time interval
+        let timeSinceLastGeocode = Date().timeIntervalSince(lastGeocodeTime)
+        guard timeSinceLastGeocode >= minimumGeocodeInterval else { return false }
+        
+        // Check distance if we have a previous location
+        if let lastLocation = lastGeocodedLocation {
+            let distance = location.distance(from: lastLocation)
+            guard distance >= minimumGeocodeDistance else { return false }
+        }
+        
+        return true
+    }
+    
+    private func performReverseGeocode(for location: CLLocation) {
+        isCurrentlyGeocoding = true
+        
         let geocoder = CLGeocoder()
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            if let placemark = placemarks?.first {
-                let city = placemark.locality ?? "Unknown"
-                let state = placemark.administrativeArea ?? ""
-                let locationString = "\(city), \(state)"
+            DispatchQueue.main.async {
+                self?.isCurrentlyGeocoding = false
                 
-                // Save to shared UserDefaults
-                if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
-                    userDefaults.set(locationString, forKey: "currentLocation")
+                if let error = error {
+                    print("Geocoding error: \(error.localizedDescription)")
+                    return
+                }
+                
+                if let placemark = placemarks?.first {
+                    let city = placemark.locality ?? "Unknown"
+                    let state = placemark.administrativeArea ?? ""
+                    let locationString = "\(city), \(state)"
+                    
+                    // Save to shared UserDefaults
+                    if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+                        userDefaults.set(locationString, forKey: "currentLocation")
+                    }
+                    
+                    // Update throttling state
+                    self?.lastGeocodedLocation = location
+                    self?.lastGeocodeTime = Date()
                 }
             }
         }

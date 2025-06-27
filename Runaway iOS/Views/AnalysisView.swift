@@ -15,29 +15,37 @@ struct AnalysisView: View {
     let activities: [Activity]
     
     var body: some View {
-        NavigationView {
+        ZStack {
+            AppTheme.Colors.background.ignoresSafeArea()
+            
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                     if analyzer.isAnalyzing {
-                        AnalysisLoadingView()
+                        EnhancedAnalysisLoadingView()
                     } else if let results = analyzer.analysisResults {
                         AnalysisResultsView(results: results)
                     } else {
-                        EmptyAnalysisView()
+                        EnhancedEmptyAnalysisView()
                     }
                 }
-                .padding()
+                .padding(AppTheme.Spacing.md)
             }
-            .navigationTitle("Performance Analysis")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Analyze") {
-                        Task {
-                            await analyzer.analyzePerformance(activities: activities)
-                        }
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    Task {
+                        await analyzer.analyzePerformance(activities: activities)
                     }
-                    .disabled(analyzer.isAnalyzing)
+                }) {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Image(systemName: AppIcons.analyze)
+                        Text("Analyze")
+                            .font(AppTheme.Typography.caption)
+                    }
+                    .foregroundColor(analyzer.isAnalyzing ? AppTheme.Colors.mutedText : AppTheme.Colors.primary)
                 }
+                .disabled(analyzer.isAnalyzing)
             }
         }
         .onAppear {
@@ -50,38 +58,99 @@ struct AnalysisView: View {
     }
 }
 
-struct AnalysisLoadingView: View {
+struct EnhancedAnalysisLoadingView: View {
+    @State private var animationPhase = 0.0
+    
     var body: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .scaleEffect(1.5)
-            Text("Analyzing your running data...")
-                .font(.headline)
-            Text("Training ML models and generating insights")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+        VStack(spacing: AppTheme.Spacing.lg) {
+            ZStack {
+                Circle()
+                    .stroke(AppTheme.Colors.cardBackground, lineWidth: 8)
+                    .frame(width: 80, height: 80)
+                
+                Circle()
+                    .trim(from: 0, to: 0.7)
+                    .stroke(AppTheme.Colors.primaryGradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(animationPhase))
+                    .animation(.linear(duration: 2).repeatForever(autoreverses: false), value: animationPhase)
+                
+                Image(systemName: AppIcons.analyze)
+                    .font(.title2)
+                    .foregroundColor(AppTheme.Colors.primary)
+            }
+            
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("Analyzing Performance")
+                    .font(AppTheme.Typography.title)
+                    .foregroundColor(AppTheme.Colors.primaryText)
+                
+                Text("Training ML models and generating insights from your running data")
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(40)
+        .padding(AppTheme.Spacing.xxl)
+        .onAppear {
+            animationPhase = 360
+        }
     }
 }
 
-struct EmptyAnalysisView: View {
+struct EnhancedEmptyAnalysisView: View {
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
-            Text("Ready to Analyze")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("Tap 'Analyze' to generate AI insights from your running data")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+        VStack(spacing: AppTheme.Spacing.lg) {
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Colors.primaryGradient)
+                    .frame(width: 120, height: 120)
+                    .shadow(color: AppTheme.Colors.primary.opacity(0.3), radius: 20, x: 0, y: 10)
+                
+                Image(systemName: AppIcons.analysis)
+                    .font(.system(size: 40))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("Ready to Analyze")
+                    .font(AppTheme.Typography.title)
+                    .foregroundColor(AppTheme.Colors.primaryText)
+                
+                Text("Tap 'Analyze' to generate AI insights and discover patterns in your running performance")
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+            
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                FeatureItem(icon: "brain.head.profile", text: "AI-powered performance analysis")
+                FeatureItem(icon: "chart.line.uptrend.xyaxis", text: "Trend identification and predictions")
+                FeatureItem(icon: "lightbulb", text: "Personalized training recommendations")
+            }
+            .padding(.top, AppTheme.Spacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(40)
+        .padding(AppTheme.Spacing.xxl)
+    }
+}
+
+struct FeatureItem: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: icon)
+                .foregroundColor(AppTheme.Colors.accent)
+                .font(.title3)
+                .frame(width: 24)
+            
+            Text(text)
+                .font(AppTheme.Typography.body)
+                .foregroundColor(AppTheme.Colors.secondaryText)
+        }
     }
 }
 
@@ -178,9 +247,9 @@ struct MetricBox: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .padding()
-        .background(Color.black)
-        .cornerRadius(8)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.small)
     }
 }
 
