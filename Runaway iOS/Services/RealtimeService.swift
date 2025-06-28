@@ -216,7 +216,7 @@ public final class RealtimeService: ObservableObject {
         print("Creating activity record from realtime update")
         
         let monthlyMiles = activities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-        userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
+        userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
         
         let weeklyActivities = activities.filter { act in
             guard let startDate = act.start_date else { return false }
@@ -232,7 +232,7 @@ public final class RealtimeService: ObservableObject {
             let raActivity = RAActivity(
                 day: String(dayOfWeek.prefix(1)),
                 type: activity.type,
-                distance: distance * 0.00062137,
+                distance: distance * 0.000621371,
                 time: elapsedTime / 60
             )
             

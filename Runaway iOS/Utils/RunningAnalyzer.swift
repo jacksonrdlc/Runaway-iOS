@@ -54,14 +54,14 @@ class RunningAnalyzer: ObservableObject {
                 return nil
             }
             
-            let pace = elapsedTime / (distance / 1000.0) // minutes per km
-            let speed = (distance / 1000.0) / (elapsedTime / 3600.0) // km/h
+            let pace = elapsedTime / (distance * 0.000621371) // minutes per mile
+            let speed = (distance * 0.000621371) / (elapsedTime / 3600.0) // mph
             let date = Date(timeIntervalSince1970: startDate)
             
             return ProcessedActivity(
                 id: activity.id,
                 date: date,
-                distance: distance / 1000.0, // Convert to km
+                distance: distance * 0.000621371, // Convert to miles
                 elapsedTime: elapsedTime / 60.0, // Convert to minutes
                 pace: pace,
                 speed: speed,
@@ -265,10 +265,10 @@ class RunningAnalyzer: ObservableObject {
 struct ProcessedActivity {
     let id: Int
     let date: Date
-    let distance: Double // km
+    let distance: Double // miles
     let elapsedTime: Double // minutes
-    let pace: Double // min/km
-    let speed: Double // km/h
+    let pace: Double // min/mile
+    let speed: Double // mph
     let dayOfWeek: Int
     let month: Int
     let type: String

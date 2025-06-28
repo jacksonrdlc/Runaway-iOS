@@ -57,7 +57,7 @@ extension AthleteView {
                 userDefaults.set(runsInt, forKey: "runs")
             }
             if let milesInt = stats.distance {
-                self.miles = String(format: "%.1f", milesInt * Double(0.00062137))
+                self.miles = String(format: "%.1f", milesInt * Double(0.000621371))
                 userDefaults.set(milesInt, forKey: "miles")
             }
             if let minutesInt = stats.elapsedTime {
@@ -248,7 +248,7 @@ struct AllTimeStatsCard: View {
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: AppTheme.Spacing.md) {
                 StatPair(label: "Total Runs", value: "\(stats.count ?? 0)", color: AppTheme.Colors.primary)
-                StatPair(label: "Total Distance", value: String(format: "%.1f mi", (stats.distance ?? 0.0) * 0.00062137), color: AppTheme.Colors.accent)
+                StatPair(label: "Total Distance", value: String(format: "%.1f mi", (stats.distance ?? 0.0) * 0.000621371), color: AppTheme.Colors.accent)
                 StatPair(label: "Total Time", value: formatTime(minutes: (stats.elapsedTime ?? 0.0) / 60), color: AppTheme.Colors.warning)
                 StatPair(label: "Best Pace", value: "6:45/mi", color: AppTheme.Colors.success)
             }
