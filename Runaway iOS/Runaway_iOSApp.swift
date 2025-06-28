@@ -17,7 +17,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     // Throttling properties to prevent excessive geocoding
     private var lastGeocodedLocation: CLLocation?
     private var lastGeocodeTime: Date = Date.distantPast
-    private let minimumGeocodeDistance: CLLocationDistance = 1000 // 1km
+    private let minimumGeocodeDistance: CLLocationDistance = 1609.34 // 1 mile
     private let minimumGeocodeInterval: TimeInterval = 300 // 5 minutes
     private var isCurrentlyGeocoding = false
     

@@ -272,7 +272,7 @@ extension MainView {
         userDefaults.removeObject(forKey: "satArray")
         
         let monthlyMiles = activities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-        userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
+        userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
         
         let weeklyActivities = activities.filter { act in
             guard let startDate = act.start_date else { return false }
@@ -288,7 +288,7 @@ extension MainView {
                 let sundayAct = RAActivity(
                     day: "S",
                     type: activity.type,
-                    distance: distance * 0.00062137,
+                    distance: distance * 0.000621371,
                     time: elapsedTime / 60)
                 
                 guard let jsonData = try? JSONEncoder().encode(sundayAct),
@@ -300,7 +300,7 @@ extension MainView {
                 let mondayAct = RAActivity(
                     day: "M",
                     type: activity.type,
-                    distance: distance * 0.00062137,
+                    distance: distance * 0.000621371,
                     time: elapsedTime / 60)
                 
                 guard let jsonData = try? JSONEncoder().encode(mondayAct),
@@ -316,7 +316,7 @@ extension MainView {
                 let tuesdayAct = RAActivity(
                     day: "T",
                     type: activity.type,
-                    distance: distance * 0.00062137,
+                    distance: distance * 0.000621371,
                     time: elapsedTime / 60);
                 
                 guard let jsonData = try? JSONEncoder().encode(tuesdayAct),
@@ -331,7 +331,7 @@ extension MainView {
                 let wednesdayAct = RAActivity(
                     day: "W",
                     type: activity.type,
-                    distance: distance * 0.00062137,
+                    distance: distance * 0.000621371,
                     time: elapsedTime / 60);
                 
                 guard let jsonData = try? JSONEncoder().encode(wednesdayAct),
@@ -346,7 +346,7 @@ extension MainView {
                 let thursdayAct = RAActivity(
                     day: "Th",
                     type: activity.type,
-                    distance: distance * 0.00062137,
+                    distance: distance * 0.000621371,
                     time: elapsedTime / 60);
                 guard let jsonData = try? JSONEncoder().encode(thursdayAct),
                       let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
@@ -360,7 +360,7 @@ extension MainView {
                 let fridayAct = RAActivity(
                     day: "F",
                     type: activity.type,
-                    distance: distance * 0.00062137,
+                    distance: distance * 0.000621371,
                     time: elapsedTime / 60);
                 
                 guard let jsonData = try? JSONEncoder().encode(fridayAct),
@@ -375,7 +375,7 @@ extension MainView {
                 let saturdayAct = RAActivity(
                     day: "Sat",
                     type: activity.type,
-                    distance: distance * 0.00062137,
+                    distance: distance * 0.000621371,
                     time: elapsedTime / 60);
                 
                 guard let jsonData = try? JSONEncoder().encode(saturdayAct),

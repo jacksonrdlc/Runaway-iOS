@@ -197,7 +197,7 @@ struct PerformanceOverviewCard: View {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                 MetricBox(
                     title: "Total Distance",
-                    value: String(format: "%.1f km", insights.totalDistance),
+                    value: String(format: "%.1f mi", insights.totalDistance),
                     icon: "road.lanes"
                 )
                 
@@ -458,7 +458,7 @@ struct RecommendationsCard: View {
 private func formatPace(_ pace: Double) -> String {
     let minutes = Int(pace)
     let seconds = Int((pace - Double(minutes)) * 60)
-    return String(format: "%d:%02d/km", minutes, seconds)
+    return String(format: "%d:%02d/mi", minutes, seconds)
 }
 
 private func formatTime(_ timeInMinutes: Double) -> String {
