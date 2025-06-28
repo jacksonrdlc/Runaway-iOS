@@ -14,6 +14,8 @@ class ResearchService: ObservableObject {
     @Published var lastUpdated: Date?
     @Published var errorMessage: String?
     
+    private let webSearchService = WebSearchService()
+    private let contentScraper = ContentScraper()
     private let cache = NSCache<NSString, NSData>()
     private let cacheTimeout: TimeInterval = 3600 // 1 hour
     
@@ -45,22 +47,17 @@ class ResearchService: ObservableObject {
             )
         }
         
-        // Fetch from multiple sources
-        async let newsApiArticles = fetchFromNewsAPI(params: params)
-        async let webSearchArticles = fetchFromWebSearch(params: params)
-        async let eventArticles = fetchLocalEvents(params: params)
-        
+        // Fetch from web search and RSS feeds (no API keys required)
         do {
-            let (newsResults, webResults, eventResults) = await (newsApiArticles, webSearchArticles, eventArticles)
-            
-            allArticles.append(contentsOf: newsResults.articles)
-            allArticles.append(contentsOf: webResults.articles)
-            allArticles.append(contentsOf: eventResults.articles)
-            
-            errors.append(contentsOf: newsResults.errors)
-            errors.append(contentsOf: webResults.errors)
-            errors.append(contentsOf: eventResults.errors)
-            
+            for category in params.categories {
+                let location = params.userLocation != nil ? extractLocationString(from: params.userLocation!) : nil
+                let searchArticles = await webSearchService.searchArticles(for: category, location: location)
+                allArticles.append(contentsOf: searchArticles)
+                
+                // Also get RSS feed articles for additional content
+                let rssArticles = await fetchFromRSSFeeds(category: category, params: params)
+                allArticles.append(contentsOf: rssArticles)
+            }
         } catch {
             errors.append(.networkError(error.localizedDescription))
         }
@@ -91,122 +88,15 @@ class ResearchService: ObservableObject {
         )
     }
     
-    // MARK: - News API Integration
+    // MARK: - RSS Feed Integration (No API Keys Required)
     
-    private func fetchFromNewsAPI(params: ResearchSearchParams) async -> ResearchServiceResult {
-        var articles: [ResearchArticle] = []
-        var errors: [ResearchServiceError] = []
-        
-        for category in params.categories {
-            for keyword in category.searchKeywords {
-                do {
-                    let categoryArticles = try await fetchNewsForKeyword(keyword, category: category, params: params)
-                    articles.append(contentsOf: categoryArticles)
-                    
-                    // Add delay to respect rate limits
-                    try await Task.sleep(nanoseconds: UInt64(100_000_000)) // 0.1 seconds
-                } catch {
-                    errors.append(.networkError("Failed to fetch \(keyword): \(error.localizedDescription)"))
-                }
-            }
-        }
-        
-        return ResearchServiceResult(
-            articles: articles,
-            totalFound: articles.count,
-            searchDuration: 0,
-            lastUpdated: Date(),
-            errors: errors
-        )
-    }
-    
-    private func fetchNewsForKeyword(_ keyword: String, category: ArticleCategory, params: ResearchSearchParams) async throws -> [ResearchArticle] {
-        // Try multiple news sources for better coverage
-        var allArticles: [ResearchArticle] = []
-        
-        // 1. Try NewsAPI (requires API key)
-        if let newsApiArticles = await fetchFromNewsAPI(keyword: keyword, category: category, params: params) {
-            allArticles.append(contentsOf: newsApiArticles)
-        }
-        
-        // 2. Try RSS feeds (free, no API key required)
-        let rssArticles = await fetchFromRSSFeeds(keyword: keyword, category: category, params: params)
-        allArticles.append(contentsOf: rssArticles)
-        
-        // 3. Only add mock data if we have NO articles at all
-        if allArticles.isEmpty {
-            print("No real articles found, adding 1 mock article for category: \(category)")
-            let mockArticles = generateMockArticles(for: category, keyword: keyword, count: 1)
-            allArticles.append(contentsOf: mockArticles)
-        }
-        
-        return allArticles
-    }
-    
-    private func fetchFromNewsAPI(keyword: String, category: ArticleCategory, params: ResearchSearchParams) async -> [ResearchArticle]? {
-        // Note: You'll need to get a free API key from https://newsapi.org/
-        let apiKey = Bundle.main.infoDictionary?["NEWS_API_KEY"] as? String ?? ""
-        
-        guard !apiKey.isEmpty else {
-            print("No NewsAPI key found - skipping NewsAPI")
-            return nil
-        }
-        
-        let fromDate = Calendar.current.date(byAdding: .day, value: -params.daysBack, to: Date()) ?? Date()
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        
-        let baseUrl = "https://newsapi.org/v2/everything"
-        var components = URLComponents(string: baseUrl)!
-        components.queryItems = [
-            URLQueryItem(name: "q", value: "\(keyword) running"),
-            URLQueryItem(name: "from", value: dateFormatter.string(from: fromDate)),
-            URLQueryItem(name: "sortBy", value: "publishedAt"),
-            URLQueryItem(name: "pageSize", value: "10"),
-            URLQueryItem(name: "language", value: "en"),
-            URLQueryItem(name: "apiKey", value: apiKey)
-        ]
-        
-        guard let url = components.url else {
-            return nil
-        }
-        
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode(NewsAPIResponse.self, from: data)
-            
-            return response.articles.compactMap { newsArticle in
-                guard let urlString = newsArticle.url,
-                      let publishedAt = newsArticle.publishedAt else { return nil }
-                
-                return ResearchArticle(
-                    title: newsArticle.title ?? "Untitled",
-                    summary: newsArticle.description ?? "No summary available",
-                    content: newsArticle.content,
-                    url: urlString,
-                    imageUrl: newsArticle.urlToImage,
-                    author: newsArticle.author,
-                    publishedDate: publishedAt,
-                    source: newsArticle.source?.name ?? "News",
-                    category: category,
-                    tags: [keyword],
-                    location: nil,
-                    relevanceScore: calculateRelevanceScore(title: newsArticle.title, description: newsArticle.description, keyword: keyword)
-                )
-            }
-        } catch {
-            print("NewsAPI error: \(error)")
-            return nil
-        }
-    }
-    
-    private func fetchFromRSSFeeds(keyword: String, category: ArticleCategory, params: ResearchSearchParams) async -> [ResearchArticle] {
+    private func fetchFromRSSFeeds(category: ArticleCategory, params: ResearchSearchParams) async -> [ResearchArticle] {
         let rssFeeds = getRSSFeedsForCategory(category)
         var articles: [ResearchArticle] = []
         
         for feed in rssFeeds {
             do {
-                let feedArticles = try await parseRSSFeed(url: feed.url, source: feed.name, category: category, keyword: keyword)
+                let feedArticles = try await parseRSSFeed(url: feed.url, source: feed.name, category: category)
                 articles.append(contentsOf: feedArticles.prefix(3)) // Limit per feed
             } catch {
                 print("RSS feed error for \(feed.name): \(error)")
@@ -216,7 +106,37 @@ class ResearchService: ObservableObject {
         return articles
     }
     
-    private func parseRSSFeed(url: String, source: String, category: ArticleCategory, keyword: String) async throws -> [ResearchArticle] {
+    private func extractLocationString(from location: CLLocation) -> String {
+        // Simple location string for search queries
+        let lat = location.coordinate.latitude
+        let lon = location.coordinate.longitude
+        return "\(lat),\(lon)"
+    }
+    
+    // Enhanced content scraping for better article details
+    private func enhanceArticleWithScrapedContent(_ article: ResearchArticle) async -> ResearchArticle {
+        guard let scrapedContent = await contentScraper.scrapeArticleContent(from: article.url) else {
+            return article
+        }
+        
+        // Return enhanced article with scraped content
+        return ResearchArticle(
+            title: scrapedContent.title.isEmpty ? article.title : scrapedContent.title,
+            summary: scrapedContent.summary.isEmpty ? article.summary : scrapedContent.summary,
+            content: scrapedContent.content,
+            url: article.url,
+            imageUrl: scrapedContent.imageUrl ?? article.imageUrl,
+            author: scrapedContent.author ?? article.author,
+            publishedDate: scrapedContent.publishDate ?? article.publishedDate,
+            source: article.source,
+            category: article.category,
+            tags: article.tags,
+            location: article.location,
+            relevanceScore: article.relevanceScore
+        )
+    }
+    
+    private func parseRSSFeed(url: String, source: String, category: ArticleCategory) async throws -> [ResearchArticle] {
         guard let feedURL = URL(string: url) else {
             throw ResearchServiceError.networkError("Invalid RSS URL")
         }
@@ -225,34 +145,16 @@ class ResearchService: ObservableObject {
         
         let (data, response) = try await URLSession.shared.data(from: feedURL)
         
-        // Check if we got valid data
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             print("RSS feed error: Invalid response from \(url)")
             throw ResearchServiceError.networkError("Failed to fetch RSS feed")
         }
         
-        print("RSS feed data received: \(data.count) bytes")
-        
-        // Parse RSS XML
         let parser = RSSParser()
         let rssItems = try parser.parse(data)
         
-        print("RSS items parsed: \(rssItems.count)")
-        
-        let filteredArticles = rssItems.compactMap { item -> ResearchArticle? in
-            // For running sources, include ALL articles since they're all running-related
-            let isRunningSource = source.lowercased().contains("runner") || 
-                                source.lowercased().contains("running") || 
-                                source.lowercased().contains("irunfar")
-            
-            // For non-running sources, filter by keyword
-            let titleContainsKeyword = item.title?.lowercased().contains(keyword.lowercased()) ?? false
-            let descriptionContainsKeyword = item.description?.lowercased().contains(keyword.lowercased()) ?? false
-            
-            // Include if it's a running source OR contains keywords
-            guard isRunningSource || titleContainsKeyword || descriptionContainsKeyword else { return nil }
-            
+        let articles = rssItems.compactMap { item -> ResearchArticle? in
             return ResearchArticle(
                 title: item.title ?? "Untitled",
                 summary: cleanHTMLFromDescription(item.description) ?? "No summary available",
@@ -263,16 +165,15 @@ class ResearchService: ObservableObject {
                 publishedDate: item.pubDate ?? Date(),
                 source: source,
                 category: category,
-                tags: [keyword],
+                tags: [],
                 location: nil,
-                relevanceScore: calculateRelevanceScore(title: item.title, description: item.description, keyword: keyword)
+                relevanceScore: 0.8
             )
         }
         
-        print("Filtered articles: \(filteredArticles.count) for keyword '\(keyword)' from \(source)")
-        
-        return filteredArticles
+        return articles
     }
+    
     
     private func cleanHTMLFromDescription(_ description: String?) -> String? {
         guard let desc = description else { return nil }
@@ -291,132 +192,9 @@ class ResearchService: ObservableObject {
         return cleanedText.isEmpty ? nil : cleanedText
     }
     
-    // MARK: - Web Search Integration
     
-    private func fetchFromWebSearch(params: ResearchSearchParams) async -> ResearchServiceResult {
-        var articles: [ResearchArticle] = []
-        var errors: [ResearchServiceError] = []
-        
-        // Simulate web search results with mock data for now
-        // In production, you'd integrate with services like:
-        // - Google Custom Search API
-        // - Bing Search API
-        // - SerpAPI
-        
-        for category in params.categories {
-            let mockArticles = generateMockArticles(for: category, keyword: category.displayName, count: 2)
-            articles.append(contentsOf: mockArticles)
-        }
-        
-        return ResearchServiceResult(
-            articles: articles,
-            totalFound: articles.count,
-            searchDuration: 0,
-            lastUpdated: Date(),
-            errors: errors
-        )
-    }
     
-    // MARK: - Local Events
     
-    private func fetchLocalEvents(params: ResearchSearchParams) async -> ResearchServiceResult {
-        var articles: [ResearchArticle] = []
-        var errors: [ResearchServiceError] = []
-        
-        guard let userLocation = params.userLocation else {
-            return ResearchServiceResult(articles: [], totalFound: 0, searchDuration: 0, lastUpdated: Date(), errors: [.invalidLocation])
-        }
-        
-        // Try multiple event sources
-        async let eventbriteEvents = fetchEventbriteEvents(location: userLocation, radiusMiles: params.radiusMiles)
-        async let runningUSAEvents = fetchRunningUSAEvents(location: userLocation, radiusMiles: params.radiusMiles)
-        
-        let (eventbriteResults, runningUSAResults) = await (eventbriteEvents, runningUSAEvents)
-        
-        articles.append(contentsOf: eventbriteResults)
-        articles.append(contentsOf: runningUSAResults)
-        
-        // If no real events found, add some mock events for demo
-        if articles.isEmpty {
-            let mockEvents = generateMockLocalEvents(userLocation: userLocation, radiusMiles: params.radiusMiles)
-            articles.append(contentsOf: mockEvents)
-        }
-        
-        return ResearchServiceResult(
-            articles: articles,
-            totalFound: articles.count,
-            searchDuration: 0,
-            lastUpdated: Date(),
-            errors: errors
-        )
-    }
-    
-    private func fetchEventbriteEvents(location: CLLocation, radiusMiles: Double) async -> [ResearchArticle] {
-        // Note: You'll need to get an API key from https://www.eventbrite.com/platform/api/
-        let apiKey = Bundle.main.infoDictionary?["EVENTBRITE_API_KEY"] as? String ?? ""
-        
-        guard !apiKey.isEmpty else {
-            print("No Eventbrite API key found - skipping Eventbrite events")
-            return []
-        }
-        
-        let baseUrl = "https://www.eventbriteapi.com/v3/events/search/"
-        var components = URLComponents(string: baseUrl)!
-        
-        // Convert miles to meters for API
-        let radiusMeters = Int(radiusMiles * 1609.34)
-        
-        components.queryItems = [
-            URLQueryItem(name: "q", value: "running race marathon 5K 10K"),
-            URLQueryItem(name: "location.latitude", value: "\(location.coordinate.latitude)"),
-            URLQueryItem(name: "location.longitude", value: "\(location.coordinate.longitude)"),
-            URLQueryItem(name: "location.within", value: "\(radiusMeters)m"),
-            URLQueryItem(name: "start_date.range_start", value: ISO8601DateFormatter().string(from: Date())),
-            URLQueryItem(name: "categories", value: "108"), // Sports & Fitness category
-            URLQueryItem(name: "sort_by", value: "date"),
-            URLQueryItem(name: "token", value: apiKey)
-        ]
-        
-        guard let url = components.url else { return [] }
-        
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let response = try JSONDecoder().decode(EventbriteResponse.self, from: data)
-            
-            return response.events.compactMap { event in
-                ResearchArticle(
-                    title: event.name?.text ?? "Running Event",
-                    summary: event.description?.text ?? "Join this exciting running event in your area!",
-                    content: event.description?.html,
-                    url: event.url ?? "",
-                    imageUrl: event.logo?.url,
-                    author: "Event Organizer",
-                    publishedDate: event.start?.local ?? Date(),
-                    source: "Eventbrite",
-                    category: .events,
-                    tags: ["local", "race", "event"],
-                    location: event.venue != nil ? ArticleLocation(
-                        city: event.venue?.address?.city,
-                        state: event.venue?.address?.region,
-                        country: event.venue?.address?.country,
-                        latitude: event.venue?.latitude != nil ? Double(event.venue!.latitude!) : nil,
-                        longitude: event.venue?.longitude != nil ? Double(event.venue!.longitude!) : nil
-                    ) : nil,
-                    relevanceScore: 1.0
-                )
-            }
-        } catch {
-            print("Eventbrite API error: \(error)")
-            return []
-        }
-    }
-    
-    private func fetchRunningUSAEvents(location: CLLocation, radiusMiles: Double) async -> [ResearchArticle] {
-        // RunningUSA doesn't have a public API, but we can try to scrape their RSS or use mock data
-        // For now, return empty array - this would require web scraping
-        print("RunningUSA integration would require web scraping - skipping for now")
-        return []
-    }
     
     // MARK: - Mock Data Generation (for demo)
     
