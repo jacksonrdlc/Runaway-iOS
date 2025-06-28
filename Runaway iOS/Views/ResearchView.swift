@@ -178,17 +178,6 @@ struct ArticleCard: View {
                         .foregroundColor(.blue)
                 }
                 
-                // Mock data indicator
-                if article.tags.contains("mock-data") {
-                    Text("DEMO")
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.orange)
-                        .clipShape(Capsule())
-                }
                 
                 Spacer()
                 
