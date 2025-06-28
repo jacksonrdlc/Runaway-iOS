@@ -220,69 +220,122 @@ struct GoalOverviewSection: View {
 struct GoalProgressChart: View {
     let analysis: GoalAnalysis
     
+    private var currentProgress: Double {
+        analysis.progressPoints.first?.actualProgress ?? 0
+    }
+    
+    private var targetProgress: Double {
+        analysis.progressPoints.first?.targetProgress ?? 0
+    }
+    
+    private var progressColor: Color {
+        let ratio = currentProgress / max(targetProgress, 0.01)
+        if ratio >= 1.0 { return .green }
+        if ratio >= 0.8 { return .blue }
+        if ratio >= 0.6 { return .orange }
+        return .red
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Progress Trajectory")
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Progress Overview")
                 .font(.headline)
                 .foregroundColor(AppTheme.Colors.primaryText)
             
-            Chart {
-                // Target trajectory line
-                ForEach(analysis.progressPoints) { point in
-                    LineMark(
-                        x: .value("Week", point.weekNumber),
-                        y: .value("Progress", point.targetProgress * 100)
-                    )
-                    .foregroundStyle(.gray)
-                    .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
-                }
+            ZStack {
+                // Background circle
+                Circle()
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 20)
+                    .frame(width: 160, height: 160)
                 
-                // Actual progress line
-                ForEach(analysis.progressPoints) { point in
-                    LineMark(
-                        x: .value("Week", point.weekNumber),
-                        y: .value("Progress", point.actualProgress * 100)
+                // Target progress ring (outer)
+                Circle()
+                    .trim(from: 0, to: targetProgress)
+                    .stroke(
+                        Color.gray.opacity(0.5),
+                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
                     )
-                    .foregroundStyle(.blue)
-                    .lineStyle(StrokeStyle(lineWidth: 3))
-                }
+                    .frame(width: 160, height: 160)
+                    .rotationEffect(.degrees(-90))
                 
-                // Current position marker
-                if let currentPoint = analysis.progressPoints.first {
-                    PointMark(
-                        x: .value("Week", currentPoint.weekNumber),
-                        y: .value("Progress", currentPoint.actualProgress * 100)
+                // Actual progress ring (inner)
+                Circle()
+                    .trim(from: 0, to: currentProgress)
+                    .stroke(
+                        LinearGradient(
+                            colors: [progressColor.opacity(0.7), progressColor],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
                     )
-                    .foregroundStyle(.blue)
-                    .symbolSize(100)
+                    .frame(width: 160, height: 160)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut(duration: 1.0), value: currentProgress)
+                
+                // Center content
+                VStack(spacing: 4) {
+                    Text("\(Int(currentProgress * 100))%")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(progressColor)
+                    
+                    Text("Complete")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-            .frame(height: 150)
-            .chartYScale(domain: 0...100)
-            .chartXAxis {
-                AxisMarks(values: .automatic) { _ in
-                    AxisGridLine()
-                    AxisValueLabel()
-                }
-            }
-            .chartYAxis {
-                AxisMarks(values: .automatic) { _ in
-                    AxisGridLine()
-                    AxisValueLabel()
-                }
-            }
+            .frame(maxWidth: .infinity)
             
-            // Legend
-            HStack(spacing: 20) {
-                Label("Target", systemImage: "line.diagonal")
-                    .foregroundColor(.gray)
-                    .font(.caption)
+            // Progress details
+            VStack(spacing: 8) {
+                HStack {
+                    Circle()
+                        .fill(progressColor)
+                        .frame(width: 12, height: 12)
+                    Text("Current Progress")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Text("\(Int(currentProgress * 100))%")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.primary)
+                }
                 
-                Label("Actual", systemImage: "line.diagonal")
-                    .foregroundColor(.blue)
-                    .font(.caption)
+                HStack {
+                    Circle()
+                        .fill(Color.gray.opacity(0.5))
+                        .frame(width: 12, height: 12)
+                    Text("Target Progress")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(Int(targetProgress * 100))%")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
+                
+                if currentProgress > 0 && targetProgress > 0 {
+                    let ratio = currentProgress / targetProgress
+                    let statusText = ratio >= 1.0 ? "Ahead of Target" : ratio >= 0.8 ? "On Track" : "Behind Target"
+                    let statusColor = ratio >= 1.0 ? Color.green : ratio >= 0.8 ? Color.blue : Color.orange
+                    
+                    HStack {
+                        Image(systemName: ratio >= 1.0 ? "checkmark.circle.fill" : ratio >= 0.8 ? "clock.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundColor(statusColor)
+                            .font(.caption)
+                        Text(statusText)
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(statusColor)
+                        Spacer()
+                    }
+                    .padding(.top, 4)
+                }
             }
+            .padding(.horizontal, 4)
         }
+        .padding()
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(12)
     }
 }
 
