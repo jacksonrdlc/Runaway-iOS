@@ -25,12 +25,15 @@ public final class RealtimeService: ObservableObject {
     // MARK: - Public Methods
     
     public func startRealtimeSubscription() {
-        guard let userId = UserManager.shared.userId else {
-            print("No authenticated user, cannot start realtime subscription")
-            return
-        }
-        
         Task {
+            let userId = await MainActor.run {
+                UserManager.shared.userId
+            }
+            guard let userId = userId else {
+                print("No authenticated user, cannot start realtime subscription")
+                return
+            }
+            
             await setupRealtimeSubscription(userId: userId)
         }
     }
@@ -119,7 +122,10 @@ public final class RealtimeService: ObservableObject {
     }
     
     private func refreshActivityData() async {
-        guard let userId = UserManager.shared.userId else {
+        let userId = await MainActor.run {
+            UserManager.shared.userId
+        }
+        guard let userId = userId else {
             print("No authenticated user for data refresh")
             return
         }
