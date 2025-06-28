@@ -323,7 +323,7 @@ class GoalRecommendationAgent: ObservableObject {
                 return nil
             }
             
-            let pace = elapsedTime / (distance * 0.000621371) // minutes per mile
+            let pace = (elapsedTime / 60.0) / (distance * 0.000621371) // minutes per mile
             let speed = (distance * 0.000621371) / (elapsedTime / 3600.0) // mph
             let date = Date(timeIntervalSince1970: startDate)
             

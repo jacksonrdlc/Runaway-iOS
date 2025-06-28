@@ -56,7 +56,7 @@ extension AthleteView {
                 self.runs = String(runsInt)
                 userDefaults.set(runsInt, forKey: "runs")
             }
-            if let milesInt = stats.distance {
+            if let milesInt = stats.ytdDistance {
                 self.miles = String(format: "%.1f", milesInt * Double(0.000621371))
                 userDefaults.set(milesInt, forKey: "miles")
             }

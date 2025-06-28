@@ -21,11 +21,11 @@ enum GoalType: String, CaseIterable, Codable {
         }
     }
     
-    var unit: String {
+    func unit(isMetric: Bool = false) -> String {
         switch self {
-        case .distance: return "miles"
+        case .distance: return isMetric ? "km" : "miles"
         case .time: return "minutes"
-        case .pace: return "min/mile"
+        case .pace: return isMetric ? "min/km" : "min/mile"
         }
     }
 }
@@ -133,10 +133,15 @@ struct RunningGoal: Codable, Identifiable {
         completedDate = try container.decodeIfPresent(Date.self, forKey: .completedDate)
     }
     
-    var formattedTarget: String {
+    func formattedTarget(isMetric: Bool = false) -> String {
         switch type {
         case .distance:
-            return String(format: "%.1f miles", targetValue)
+            if isMetric {
+                let kmValue = targetValue * 1.60934 // Convert miles to km
+                return String(format: "%.1f km", kmValue)
+            } else {
+                return String(format: "%.1f miles", targetValue)
+            }
         case .time:
             let hours = Int(targetValue / 60)
             let minutes = Int(targetValue.truncatingRemainder(dividingBy: 60))
@@ -144,7 +149,8 @@ struct RunningGoal: Codable, Identifiable {
         case .pace:
             let minutes = Int(targetValue)
             let seconds = Int((targetValue - Double(minutes)) * 60)
-            return String(format: "%d:%02d/mile", minutes, seconds)
+            let unit = isMetric ? "km" : "mile"
+            return String(format: "%d:%02d/%@", minutes, seconds, unit)
         }
     }
     
