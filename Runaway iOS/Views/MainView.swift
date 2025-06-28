@@ -13,7 +13,7 @@ struct MainView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var realtimeService: RealtimeService
     @EnvironmentObject var userManager: UserManager
-    @State var selectedTab = 0
+    @State var selectedTab = 1
     @State var isSupabaseDataReady: Bool = false
     @State var activityDays: [ActivityDay] = []
     @State var activities: [Activity] = []

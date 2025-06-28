@@ -20,6 +20,9 @@ struct AnalysisView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+                    // Running Goal Card - Always shown at the top
+                    RunningGoalCard(activities: activities)
+                    
                     if analyzer.isAnalyzing {
                         EnhancedAnalysisLoadingView()
                     } else if let results = analyzer.analysisResults {
