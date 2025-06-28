@@ -63,11 +63,23 @@ public final class Athlete: Identifiable, Decodable {
 }
 
 public final class AthleteStats: Decodable {
-    public var userId: UUID?
+    public var userId: Int?
     public var count: Int?
     public var distance: Double?
     public var movingTime: TimeInterval?
     public var elapsedTime: TimeInterval?
     public var elevationGain: Double?
     public var achievementCount: Int?
+    public var ytdDistance: Double?
+    
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case count = "count"
+        case distance = "distance"
+        case movingTime = "moving_time"
+        case elapsedTime = "elapsed_time"
+        case elevationGain = "elevation_gain"
+        case achievementCount = "achievement_count"
+        case ytdDistance = "ytd_distance"
+    }
 }

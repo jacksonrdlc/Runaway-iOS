@@ -66,6 +66,24 @@ struct MainView: View {
                 .tag(1)
                 
                 NavigationView {
+                    ResearchView()
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(action: {
+                                    showingSettings = true
+                                }) {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(AppTheme.Colors.primary)
+                                }
+                            }
+                        }
+                }
+                .tabItem {
+                    Label("Research", systemImage: "newspaper")
+                }
+                .tag(2)
+                
+                NavigationView {
                     if let athlete = athlete, let stats = stats {
                         AthleteView(athlete: athlete, stats: stats)
                             .navigationTitle("Profile")
@@ -108,7 +126,7 @@ struct MainView: View {
                 .tabItem {
                     Label("Profile", systemImage: "person.circle.fill")
                 }
-                .tag(2)
+                .tag(3)
             }
             .accentColor(AppTheme.Colors.primary)
             .sheet(isPresented: $showingSettings) {
@@ -225,9 +243,19 @@ extension MainView {
             
             do {
                 // Fetch athlete stats if needed
-                let stats = try await AthleteService.getAthleteStats()
+                let stats = try await AthleteService.getAthleteStats(userId: user.userId)
                 self.stats = stats
-                print("Successfully fetched athlete stats: \(stats)")
+                print("Successfully fetched athlete stats:")
+                print("  - Raw object: \(stats)")
+                
+                // Print detailed stats using Mirror for reflection
+                let mirror = Mirror(reflecting: stats)
+                print("Athlete Stats Properties:")
+                for (label, value) in mirror.children {
+                    if let propertyName = label {
+                        print("  - \(propertyName): \(value)")
+                    }
+                }
                 
             } catch {
                 print("Error fetching Athlete data: \(error)")

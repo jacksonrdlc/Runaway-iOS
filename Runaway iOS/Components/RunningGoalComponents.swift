@@ -172,7 +172,7 @@ struct GoalOverviewSection: View {
                         .font(.headline)
                         .foregroundColor(AppTheme.Colors.primaryText)
                     
-                    Text(goal.formattedTarget)
+                    Text(goal.formattedTarget())
                         .font(.title3)
                         .fontWeight(.bold)
                         .foregroundColor(AppTheme.Colors.accent)
@@ -383,6 +383,7 @@ struct GoalInputSheet: View {
     @State private var goalTitle: String = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var isMetric: Bool = false
     
     var body: some View {
         NavigationView {
@@ -398,11 +399,28 @@ struct GoalInputSheet: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     
+                    // Unit toggle for distance and pace goals
+                    if selectedType == .distance || selectedType == .pace {
+                        HStack {
+                            Text("Units")
+                            Spacer()
+                            Picker("Units", selection: $isMetric) {
+                                Text(selectedType == .distance ? "Miles" : "Miles/Min").tag(false)
+                                Text(selectedType == .distance ? "Kilometers" : "Km/Min").tag(true)
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                            .frame(width: 180)
+                        }
+                        .onChange(of: isMetric) { newValue in
+                            convertTargetValue(toMetric: newValue)
+                        }
+                    }
+                    
                     HStack {
                         TextField("Target", text: $targetValue)
                             .keyboardType(.decimalPad)
                         
-                        Text(selectedType.unit)
+                        Text(selectedType.unit(isMetric: isMetric))
                             .foregroundColor(.secondary)
                     }
                     
@@ -463,7 +481,7 @@ struct GoalInputSheet: View {
     }
     
     private func saveGoal() {
-        guard let value = Double(targetValue) else { return }
+        guard let value = getTargetValueInMiles() else { return }
         
         isSaving = true
         errorMessage = nil
@@ -517,6 +535,46 @@ struct GoalInputSheet: View {
                 print("❌ Error saving goal: \(error)")
             }
         }
+    }
+    
+    private func convertTargetValue(toMetric: Bool) {
+        guard !targetValue.isEmpty, let currentValue = Double(targetValue) else { return }
+        
+        if selectedType == .distance {
+            if toMetric {
+                // Convert miles to km
+                let kmValue = currentValue * 1.60934
+                targetValue = String(format: "%.1f", kmValue)
+            } else {
+                // Convert km to miles
+                let milesValue = currentValue / 1.60934
+                targetValue = String(format: "%.1f", milesValue)
+            }
+        } else if selectedType == .pace {
+            if toMetric {
+                // Convert min/mile to min/km (pace gets faster in km)
+                let kmPace = currentValue / 1.60934
+                targetValue = String(format: "%.2f", kmPace)
+            } else {
+                // Convert min/km to min/mile (pace gets slower in miles)
+                let milePace = currentValue * 1.60934
+                targetValue = String(format: "%.2f", milePace)
+            }
+        }
+    }
+    
+    private func getTargetValueInMiles() -> Double? {
+        guard let value = Double(targetValue) else { return nil }
+        
+        if selectedType == .distance && isMetric {
+            // Convert km to miles for storage
+            return value / 1.60934
+        } else if selectedType == .pace && isMetric {
+            // Convert min/km to min/mile for storage
+            return value * 1.60934
+        }
+        
+        return value // Already in miles or not distance/pace
     }
 }
 
