@@ -13,7 +13,7 @@ struct MainView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var realtimeService: RealtimeService
     @EnvironmentObject var userManager: UserManager
-    @State var selectedTab = 1
+    @State var selectedTab = 0
     @State var isSupabaseDataReady: Bool = false
     @State var activityDays: [ActivityDay] = []
     @State var activities: [Activity] = []
@@ -27,7 +27,7 @@ struct MainView: View {
             TabView(selection: $selectedTab) {
                 NavigationView {
                     ActivitiesView(activities: $activities)
-                        .navigationTitle("Activities")
+                        .navigationTitle("Activity Feed")
                         .navigationBarTitleDisplayMode(.large)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
@@ -41,7 +41,7 @@ struct MainView: View {
                         }
                 }
                 .tabItem {
-                    Label("Activities", systemImage: AppIcons.activities)
+                    Label("Feed", systemImage: "newspaper")
                 }
                 .tag(0)
                 
@@ -79,7 +79,7 @@ struct MainView: View {
                         }
                 }
                 .tabItem {
-                    Label("Research", systemImage: "newspaper")
+                    Label("Research", systemImage: "flask")
                 }
                 .tag(2)
                 
@@ -124,7 +124,7 @@ struct MainView: View {
                     }
                 }
                 .tabItem {
-                    Label("Profile", systemImage: "person.circle.fill")
+                    Label("Profile", systemImage: "person.fill")
                 }
                 .tag(3)
             }

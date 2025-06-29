@@ -9,6 +9,7 @@ struct ActivitiesView: View {
     @State private var isRefreshing = false
     @State private var selectedActivity: LocalActivity?
     @State private var showingDetail = false
+    @State private var showingRecording = false
     
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
         return LocalActivity(
@@ -72,12 +73,44 @@ struct ActivitiesView: View {
                     }
                 }
             }
+            
+            // Floating Action Button
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        showingRecording = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(width: 56, height: 56)
+                            .background(
+                                LinearGradient(
+                                    colors: [AppTheme.Colors.primary, AppTheme.Colors.primaryDark],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            
             .sheet(isPresented: $showingDetail) {
                 if let activity = selectedActivity {
                     NavigationView {
                         ActivityDetailView(activity: activity)
                     }
                 }
+            }
+            .fullScreenCover(isPresented: $showingRecording) {
+                PreRecordingView()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

@@ -128,3 +128,97 @@ public struct RAActivity: Codable {
     }
 }
 
+// MARK: - Recording Models
+
+public struct RecordedActivity {
+    public let name: String
+    public let type: String
+    public let startDate: Date
+    public let endDate: Date
+    public let distance: Double // meters
+    public let elapsedTime: TimeInterval // seconds
+    public let routePoints: [GPSRoutePoint]
+    public let summaryPolyline: String
+    
+    public var distanceMiles: Double {
+        return distance * 0.000621371
+    }
+    
+    public var averageSpeed: Double {
+        guard elapsedTime > 0 else { return 0 }
+        return distance / elapsedTime
+    }
+    
+    public var averagePace: Double {
+        guard averageSpeed > 0 else { return 0 }
+        let milesPerHour = averageSpeed * 2.237
+        return 60.0 / milesPerHour
+    }
+    
+    public init(
+        name: String,
+        type: String,
+        startDate: Date,
+        endDate: Date,
+        distance: Double,
+        elapsedTime: TimeInterval,
+        routePoints: [GPSRoutePoint],
+        summaryPolyline: String
+    ) {
+        self.name = name
+        self.type = type
+        self.startDate = startDate
+        self.endDate = endDate
+        self.distance = distance
+        self.elapsedTime = elapsedTime
+        self.routePoints = routePoints
+        self.summaryPolyline = summaryPolyline
+    }
+}
+
+// MARK: - Activity Creation Data
+public struct ActivityCreationData {
+    public let name: String
+    public let type: String
+    public let distance: Double // meters
+    public let elapsedTime: TimeInterval // seconds
+    public let startDate: Date
+    public let summaryPolyline: String?
+    public let userId: Int
+    
+    public init(
+        name: String,
+        type: String,
+        distance: Double,
+        elapsedTime: TimeInterval,
+        startDate: Date,
+        summaryPolyline: String? = nil,
+        userId: Int
+    ) {
+        self.name = name
+        self.type = type
+        self.distance = distance
+        self.elapsedTime = elapsedTime
+        self.startDate = startDate
+        self.summaryPolyline = summaryPolyline
+        self.userId = userId
+    }
+    
+    public func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "name": name,
+            "type": type,
+            "distance": distance,
+            "elapsed_time": elapsedTime,
+            "start_date": startDate,
+            "user_id": userId
+        ]
+        
+        if let polyline = summaryPolyline {
+            dict["summary_polyline"] = polyline
+        }
+        
+        return dict
+    }
+}
+
