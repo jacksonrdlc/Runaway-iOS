@@ -35,5 +35,7 @@
 		<string>processing</string>
 		<string>fetch</string>
 	</array>
+	<key>YOUTUBE_API_KEY</key>
+	<string>AIzaSyAfEB6jgCsiEalyd3RYjWUXzWlbp4gO7vY</string>
 </dict>
 </plist>

@@ -25,12 +25,15 @@ public final class RealtimeService: ObservableObject {
     // MARK: - Public Methods
     
     public func startRealtimeSubscription() {
-        guard let userId = UserManager.shared.userId else {
-            print("No authenticated user, cannot start realtime subscription")
-            return
-        }
-        
         Task {
+            let userId = await MainActor.run {
+                UserManager.shared.userId
+            }
+            guard let userId = userId else {
+                print("No authenticated user, cannot start realtime subscription")
+                return
+            }
+            
             await setupRealtimeSubscription(userId: userId)
         }
     }
@@ -119,7 +122,10 @@ public final class RealtimeService: ObservableObject {
     }
     
     private func refreshActivityData() async {
-        guard let userId = UserManager.shared.userId else {
+        let userId = await MainActor.run {
+            UserManager.shared.userId
+        }
+        guard let userId = userId else {
             print("No authenticated user for data refresh")
             return
         }
@@ -215,28 +221,29 @@ public final class RealtimeService: ObservableObject {
         
         print("Creating activity record from realtime update")
         
-        let monthlyMiles = activities.reduce(0) { $0 + $1.distance! }
-        userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
+        let monthlyMiles = activities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+        userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
         
         let weeklyActivities = activities.filter { act in
-            if act.start_date! > Date().startOfWeek() {
-                return true
-            } else {
-                return false
-            }
+            guard let startDate = act.start_date else { return false }
+            return startDate > Date().startOfWeek()
         }
         
         for activity in weeklyActivities {
-            let dayOfWeek = Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek
+            guard let startDate = activity.start_date,
+                  let distance = activity.distance,
+                  let elapsedTime = activity.elapsed_time else { continue }
+            
+            let dayOfWeek = Date(timeIntervalSince1970: startDate).dayOfTheWeek
             let raActivity = RAActivity(
                 day: String(dayOfWeek.prefix(1)),
                 type: activity.type,
-                distance: activity.distance! * 0.00062137,
-                time: activity.elapsed_time! / 60
+                distance: distance * 0.000621371,
+                time: elapsedTime / 60
             )
             
-            let jsonData = try! JSONEncoder().encode(raActivity)
-            let jsonString = String(data: jsonData, encoding: .utf8)!
+            guard let jsonData = try? JSONEncoder().encode(raActivity),
+                  let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
             
             switch dayOfWeek {
             case "Sunday":

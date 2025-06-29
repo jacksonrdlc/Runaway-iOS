@@ -54,14 +54,14 @@ class RunningAnalyzer: ObservableObject {
                 return nil
             }
             
-            let pace = elapsedTime / (distance / 1000.0) // minutes per km
-            let speed = (distance / 1000.0) / (elapsedTime / 3600.0) // km/h
+            let pace = (elapsedTime / 60.0) / (distance * 0.000621371) // minutes per mile
+            let speed = (distance * 0.000621371) / (elapsedTime / 3600.0) // mph
             let date = Date(timeIntervalSince1970: startDate)
             
             return ProcessedActivity(
                 id: activity.id,
                 date: date,
-                distance: distance / 1000.0, // Convert to km
+                distance: distance * 0.000621371, // Convert to miles
                 elapsedTime: elapsedTime / 60.0, // Convert to minutes
                 pace: pace,
                 speed: speed,
@@ -92,6 +92,9 @@ class RunningAnalyzer: ObservableObject {
         // Predictions
         let nextRunPrediction = predictNextRunPerformance(activities: runningActivities)
         
+        // Goal readiness analysis
+        let goalReadiness = calculateGoalReadiness(activities: runningActivities)
+        
         return RunningInsights(
             totalDistance: totalDistance,
             totalTime: totalTime,
@@ -101,7 +104,8 @@ class RunningAnalyzer: ObservableObject {
             weeklyVolume: weeklyVolume,
             consistency: consistency,
             nextRunPrediction: nextRunPrediction,
-            recommendations: generateRecommendations(from: runningActivities)
+            recommendations: generateRecommendations(from: runningActivities),
+            goalReadiness: goalReadiness
         )
     }
     
@@ -235,12 +239,118 @@ class RunningAnalyzer: ObservableObject {
         
         // Check pace variety
         let paces = activities.map { $0.pace }
-        let paceRange = paces.max()! - paces.min()!
+        guard let maxPace = paces.max(), let minPace = paces.min() else {
+            return recommendations // Return current recommendations if we can't calculate pace variety
+        }
+        let paceRange = maxPace - minPace
         if paceRange < 1.0 {
             recommendations.append("Add variety to your pace - try some faster and slower runs")
         }
         
         return recommendations
+    }
+    
+    // MARK: - Goal Readiness Analysis
+    private func calculateGoalReadiness(activities: [ProcessedActivity]) -> GoalReadiness? {
+        // For now, we'll assume a marathon goal (26.2 miles) as an example
+        // In a real implementation, this would come from user's actual goal
+        let goalDistance = 26.2 // miles
+        let goalDate = Calendar.current.date(byAdding: .month, value: 4, to: Date()) ?? Date() // 4 months from now
+        
+        guard !activities.isEmpty else { return nil }
+        
+        // Calculate fitness level based on recent performance
+        let recentActivities = activities.suffix(10) // Last 10 runs
+        let avgDistance = recentActivities.reduce(0) { $0 + $1.distance } / Double(recentActivities.count)
+        let avgPace = recentActivities.reduce(0) { $0 + $1.pace } / Double(recentActivities.count)
+        let longestRun = activities.map { $0.distance }.max() ?? 0
+        
+        // Fitness Level Assessment
+        let fitnessLevel: ReadinessLevel
+        let fitnessScore = (longestRun / goalDistance) * 100
+        switch fitnessScore {
+        case 80...: fitnessLevel = .excellent
+        case 60..<80: fitnessLevel = .good
+        case 40..<60: fitnessLevel = .fair
+        default: fitnessLevel = .poor
+        }
+        
+        // Experience Level Assessment (based on activity count and consistency)
+        let experienceLevel: ReadinessLevel
+        let totalRuns = activities.count
+        switch totalRuns {
+        case 50...: experienceLevel = .excellent
+        case 30..<50: experienceLevel = .good
+        case 15..<30: experienceLevel = .fair
+        default: experienceLevel = .poor
+        }
+        
+        // Volume Preparation (weekly mileage vs goal requirement)
+        let weeklyVolume = calculateWeeklyVolume(activities: activities)
+        let recentWeeklyAvg = weeklyVolume.suffix(4).reduce(0) { $0 + $1.totalDistance } / 4.0
+        let recommendedWeeklyVolume = goalDistance * 0.7 // Rough estimate
+        
+        let volumePreparation: ReadinessLevel
+        let volumeRatio = recentWeeklyAvg / recommendedWeeklyVolume
+        switch volumeRatio {
+        case 1.0...: volumePreparation = .excellent
+        case 0.8..<1.0: volumePreparation = .good
+        case 0.6..<0.8: volumePreparation = .fair
+        default: volumePreparation = .poor
+        }
+        
+        // Time to Goal Assessment
+        let timeToGoal: ReadinessLevel
+        let weeksRemaining = Calendar.current.dateComponents([.weekOfYear], from: Date(), to: goalDate).weekOfYear ?? 0
+        switch weeksRemaining {
+        case 16...: timeToGoal = .excellent
+        case 12..<16: timeToGoal = .good
+        case 8..<12: timeToGoal = .fair
+        default: timeToGoal = .poor
+        }
+        
+        // Overall Score Calculation
+        let overallScore = (fitnessLevel.score + experienceLevel.score + volumePreparation.score + timeToGoal.score) / 4.0
+        
+        // Generate recommendations and risk factors
+        var recommendations: [String] = []
+        var riskFactors: [String] = []
+        
+        if fitnessLevel == .poor || fitnessLevel == .fair {
+            recommendations.append("Gradually increase your long run distance")
+            riskFactors.append("Low endurance base for goal distance")
+        }
+        
+        if volumePreparation == .poor {
+            recommendations.append("Build up weekly mileage consistently")
+            riskFactors.append("Insufficient weekly training volume")
+        }
+        
+        if experienceLevel == .poor {
+            recommendations.append("Focus on building a consistent running habit")
+            riskFactors.append("Limited running experience")
+        }
+        
+        if timeToGoal == .poor {
+            riskFactors.append("Limited time remaining for proper preparation")
+            recommendations.append("Consider adjusting goal timeline or distance")
+        }
+        
+        if overallScore >= 80 {
+            recommendations.append("You're well-prepared! Focus on maintaining fitness")
+        } else if overallScore >= 60 {
+            recommendations.append("Good foundation - increase training consistency")
+        }
+        
+        return GoalReadiness(
+            overallScore: overallScore,
+            fitnessLevel: fitnessLevel,
+            experienceLevel: experienceLevel,
+            volumePreparation: volumePreparation,
+            timeToGoal: timeToGoal,
+            recommendations: recommendations,
+            riskFactors: riskFactors
+        )
     }
     
     // MARK: - Prediction Functions
@@ -262,10 +372,10 @@ class RunningAnalyzer: ObservableObject {
 struct ProcessedActivity {
     let id: Int
     let date: Date
-    let distance: Double // km
+    let distance: Double // miles
     let elapsedTime: Double // minutes
-    let pace: Double // min/km
-    let speed: Double // km/h
+    let pace: Double // min/mile
+    let speed: Double // mph
     let dayOfWeek: Int
     let month: Int
     let type: String
@@ -287,6 +397,7 @@ struct RunningInsights {
     let consistency: Double
     let nextRunPrediction: PaceRange?
     let recommendations: [String]
+    let goalReadiness: GoalReadiness?
 }
 
 struct WeeklyVolume {
@@ -320,6 +431,50 @@ enum PerformanceTrend {
         case .improving: return "green"
         case .stable: return "blue"
         case .declining: return "red"
+        }
+    }
+}
+
+struct GoalReadiness {
+    let overallScore: Double // 0-100
+    let fitnessLevel: ReadinessLevel
+    let experienceLevel: ReadinessLevel
+    let volumePreparation: ReadinessLevel
+    let timeToGoal: ReadinessLevel
+    let recommendations: [String]
+    let riskFactors: [String]
+}
+
+enum ReadinessLevel: String, CaseIterable {
+    case excellent = "excellent"
+    case good = "good"
+    case fair = "fair"
+    case poor = "poor"
+    
+    var displayName: String {
+        switch self {
+        case .excellent: return "Excellent"
+        case .good: return "Good"
+        case .fair: return "Fair"
+        case .poor: return "Poor"
+        }
+    }
+    
+    var color: String {
+        switch self {
+        case .excellent: return "green"
+        case .good: return "blue"
+        case .fair: return "orange"
+        case .poor: return "red"
+        }
+    }
+    
+    var score: Double {
+        switch self {
+        case .excellent: return 90
+        case .good: return 75
+        case .fair: return 60
+        case .poor: return 40
         }
     }
 }
