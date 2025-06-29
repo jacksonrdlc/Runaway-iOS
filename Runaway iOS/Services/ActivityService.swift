@@ -8,6 +8,19 @@
 import Foundation
 import Supabase
 
+// MARK: - AnyEncodable Helper
+struct AnyEncodable: Encodable {
+    let value: Encodable
+    
+    init(_ value: Encodable) {
+        self.value = value
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        try value.encode(to: encoder)
+    }
+}
+
 class ActivityService {
     
     // Function to get all activities
@@ -60,6 +73,27 @@ class ActivityService {
         let activity: Activity = try await supabase.from("activities")
             .insert(activity)
             .select()
+            .single()
+            .execute()
+            .value
+        return activity
+    }
+    
+    // Function to create an activity with custom data (for recording)
+    static func createActivity(data: [String: AnyEncodable]) async throws -> Activity {
+        let activity: Activity = try await supabase.from("activities")
+            .insert(data)
+            .select(
+                """
+                id,
+                name,
+                type,
+                summary_polyline,
+                distance,
+                start_date,
+                elapsed_time
+                """
+            )
             .single()
             .execute()
             .value
