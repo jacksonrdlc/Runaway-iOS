@@ -10,9 +10,9 @@ struct AppTheme {
         static let accent = Color(red: 0.0, green: 0.8, blue: 0.4) // Energetic Green
         
         // Background Colors
-        static let background = Color(red: 0.05, green: 0.05, blue: 0.1) // Deep Navy
-        static let cardBackground = Color(red: 0.1, green: 0.1, blue: 0.15)
-        static let surfaceBackground = Color(red: 0.15, green: 0.15, blue: 0.2)
+        static let background = Color(red: 0.02, green: 0.02, blue: 0.08) // Ultra Dark Blue/Black
+        static let cardBackground = Color(red: 0.05, green: 0.05, blue: 0.12)
+        static let surfaceBackground = Color(red: 0.08, green: 0.08, blue: 0.15)
         
         // Text Colors
         static let primaryText = Color.white

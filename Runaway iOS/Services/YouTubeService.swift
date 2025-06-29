@@ -223,6 +223,16 @@ class YouTubeService: ObservableObject {
 
 // MARK: - Data Models
 
+struct YouTubeSearchResult: Identifiable {
+    let id = UUID()
+    let videoId: String
+    let title: String
+    let channelName: String
+    let thumbnailUrl: String
+    let duration: String
+    let viewCount: String
+}
+
 class YouTubeCachedResult {
     let results: [YouTubeSearchResult]
     let timestamp: Date

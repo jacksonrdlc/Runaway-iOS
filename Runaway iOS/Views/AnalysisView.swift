@@ -233,7 +233,7 @@ struct PerformanceOverviewCard: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -304,7 +304,7 @@ struct WeeklyVolumeChart: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -337,7 +337,7 @@ struct PerformanceTrendCard: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
     }
     
@@ -400,7 +400,7 @@ struct NextRunPredictionCard: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -461,7 +461,7 @@ struct RecommendationsCard: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -585,7 +585,7 @@ struct GoalReadinessCard: View {
             }
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
     }
     
@@ -750,7 +750,7 @@ struct ProgressOverviewCard: View {
             .padding(.horizontal, 4)
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
     }
 }
