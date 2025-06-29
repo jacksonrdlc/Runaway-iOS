@@ -4,8 +4,11 @@ import Foundation
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var realtimeService: RealtimeService
     @Binding var activities: [Activity]
     @State private var isRefreshing = false
+    @State private var selectedActivity: LocalActivity?
+    @State private var showingDetail = false
     
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
         return LocalActivity(
@@ -30,6 +33,8 @@ struct ActivitiesView: View {
             DispatchQueue.main.async {
                 self.activities = fetchedActivities
                 self.isRefreshing = false
+                // Refresh widget when activities are manually refreshed
+                self.realtimeService.refreshWidget()
             }
         } catch {
             print("Error fetching activities: \(error)")
@@ -50,8 +55,13 @@ struct ActivitiesView: View {
                     ScrollView {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
                             ForEach(activities, id: \.id) { activity in
-                                CardView(activity: convertToLocalActivity(activity))
-                                    .padding(.horizontal, AppTheme.Spacing.md)
+                                CardView(activity: convertToLocalActivity(activity)) {
+                                    print("🚀 Activity selected: \(activity.name ?? "Unknown")")
+                                    selectedActivity = convertToLocalActivity(activity)
+                                    showingDetail = true
+                                    print("🚀 selectedActivity set to: \(selectedActivity?.name ?? "nil")")
+                                }
+                                .padding(.horizontal, AppTheme.Spacing.md)
                             }
                         }
                         .padding(.top, AppTheme.Spacing.md)
@@ -59,6 +69,13 @@ struct ActivitiesView: View {
                     .refreshable {
                         isRefreshing = true
                         await fetchActivities()
+                    }
+                }
+            }
+            .sheet(isPresented: $showingDetail) {
+                if let activity = selectedActivity {
+                    NavigationView {
+                        ActivityDetailView(activity: activity)
                     }
                 }
             }
@@ -111,5 +128,6 @@ struct ActivitiesView_Previews: PreviewProvider {
         ActivitiesView(activities: .constant([]))
             .environmentObject(AuthManager.shared)
             .environmentObject(UserManager.shared)
+            .environmentObject(RealtimeService.shared)
     }
 }

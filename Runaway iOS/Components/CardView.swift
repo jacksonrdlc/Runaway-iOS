@@ -13,10 +13,21 @@ import UIKit
 // Create simplified card view
 struct CardView: View {
     let activity: LocalActivity
+    let onTap: (() -> Void)?
     @State var image: UIImage?
+    @State private var isPressed = false
+    
+    init(activity: LocalActivity, onTap: (() -> Void)? = nil) {
+        self.activity = activity
+        self.onTap = onTap
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+        Button(action: {
+            print("🔥 CardView button pressed for activity: \(activity.name ?? "Unknown")")
+            onTap?()
+        }) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             // Header with activity info and date
             HStack {
                 HStack(spacing: AppTheme.Spacing.xs) {
@@ -83,8 +94,15 @@ struct CardView: View {
                 
                 Spacer()
             }
+            }
         }
+        .buttonStyle(PlainButtonStyle())
         .surfaceCard()
+        .scaleEffect(isPressed ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.1), value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            isPressed = pressing
+        }, perform: {})
     }
     
     private var activityIcon: String {
@@ -111,10 +129,9 @@ struct ActivityMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
-//        mapView.isZoomEnabled = false
+        mapView.isZoomEnabled = false
         mapView.mapType = .mutedStandard
         mapView.isScrollEnabled = false
-        mapView.isUserInteractionEnabled = false
         return mapView
     }
     
@@ -183,13 +200,31 @@ struct ActivityMapView: UIViewRepresentable {
     }
     
     private func decodePolyline(_ encodedPolyline: String) -> [CLLocationCoordinate2D] {
-        // Unescape the polyline string
-        let unescapedPolyline = encodedPolyline
-            .replacingOccurrences(of: "\\\\", with: "\\")
-            .replacingOccurrences(of: "\\\"", with: "\"")
-            .replacingOccurrences(of: "\\n", with: "\n")
-            .replacingOccurrences(of: "\\r", with: "\r")
-            .replacingOccurrences(of: "\\t", with: "\t")
+        // Enhanced unescape logic for polyline string
+        var unescapedPolyline = encodedPolyline
+        
+        // Handle multiple levels of escaping in order
+        // First pass: handle double backslashes
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\\\\\", with: "\\\\")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\\\", with: "\\")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\", with: "\\")
+        
+        // Second pass: handle escaped quotes and other characters
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\"", with: "\"")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\'", with: "'")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\n", with: "\n")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\r", with: "\r")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\t", with: "\t")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\/", with: "/")
+        
+        // Handle JSON-style escaping if present
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\u0022", with: "\"")
+        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\u0027", with: "'")
+        
+        // Remove any remaining quote wrapping
+        if unescapedPolyline.hasPrefix("\"") && unescapedPolyline.hasSuffix("\"") {
+            unescapedPolyline = String(unescapedPolyline.dropFirst().dropLast())
+        }
         
         print("🗺️ Original polyline: \(encodedPolyline.prefix(50))...")
         print("🗺️ Unescaped polyline: \(unescapedPolyline.prefix(50))...")

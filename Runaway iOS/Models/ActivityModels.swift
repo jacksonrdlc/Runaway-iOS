@@ -61,7 +61,7 @@ public struct Activity: Identifiable, Codable {
     }
 }
 
-public struct LocalActivity: Identifiable {
+public struct LocalActivity: Identifiable, Hashable {
     public let id: Int
     public let name: String?
     public let type: String?
