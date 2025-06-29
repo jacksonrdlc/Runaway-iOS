@@ -14,10 +14,11 @@ class AthleteService {
     }
     
     // Function to get athlete stats by athlete ID
-    static func getAthleteStats() async throws -> AthleteStats {
+    static func getAthleteStats(userId: Int) async throws -> AthleteStats {
         return try await supabase
             .from("athlete_stats")
             .select()
+            .eq("user_id", value: userId)
             .single()
             .execute()
             .value

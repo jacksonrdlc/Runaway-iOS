@@ -14,7 +14,7 @@ struct ActivitiesView: View {
             type: activity.type ?? "Unknown Type",
             summary_polyline: activity.summary_polyline ?? "",
             distance: activity.distance ?? 0.0,
-            start_date: activity.start_date != nil ? Date(timeIntervalSince1970: activity.start_date!) : nil,
+            start_date: activity.start_date != nil ? Date(timeIntervalSince1970: activity.start_date ?? 0) : nil,
             elapsed_time: activity.elapsed_time ?? 0.0
         )
     }
@@ -40,38 +40,73 @@ struct ActivitiesView: View {
     }
     
     var body: some View {
-        VStack { 
-            NavigationView {
-                List {
-                    ForEach(activities, id: \.id) { activity in
-                        CardView(activity: convertToLocalActivity(activity))
-                            .listRowBackground(
-                                RoundedRectangle(cornerRadius: 5)
-                                    .background(.clear)
-                                    .foregroundColor(.black)
-                                    .padding(
-                                        EdgeInsets(
-                                            top: 24,
-                                            leading: 24,
-                                            bottom: 8,
-                                            trailing: 24
-                                        )
-                                    )
-                            )
+        ZStack {
+            AppTheme.Colors.background.ignoresSafeArea()
+            
+            VStack {
+                if activities.isEmpty {
+                    EmptyActivitiesView()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: AppTheme.Spacing.md) {
+                            ForEach(activities, id: \.id) { activity in
+                                CardView(activity: convertToLocalActivity(activity))
+                                    .padding(.horizontal, AppTheme.Spacing.md)
+                            }
+                        }
+                        .padding(.top, AppTheme.Spacing.md)
+                    }
+                    .refreshable {
+                        isRefreshing = true
+                        await fetchActivities()
                     }
                 }
-                .refreshable {
-                    isRefreshing = true
-                    await fetchActivities()
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        Task {
+                            isRefreshing = true
+                            await fetchActivities()
+                        }
+                    }) {
+                        Image(systemName: AppIcons.refresh)
+                            .foregroundColor(AppTheme.Colors.primary)
+                    }
+                    .disabled(isRefreshing)
                 }
-                .listStyle(.plain)
-                .navigationTitle("Activities")
             }
         }
     }
 }
+    
 
-struct EmptyView_Previews: PreviewProvider {
+
+// MARK: - Empty Activities View
+struct EmptyActivitiesView: View {
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Image(systemName: "figure.run.circle")
+                .font(.system(size: 80))
+                .foregroundColor(AppTheme.Colors.primary)
+            
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("No Activities Yet")
+                    .font(AppTheme.Typography.title)
+                    .foregroundColor(AppTheme.Colors.primaryText)
+                
+                Text("Your running activities will appear here once you start tracking your workouts.")
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(AppTheme.Spacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct ActivitiesView_Previews: PreviewProvider {
     static var previews: some View {
         ActivitiesView(activities: .constant([]))
             .environmentObject(AuthManager.shared)

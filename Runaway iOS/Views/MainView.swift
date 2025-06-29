@@ -13,65 +13,191 @@ struct MainView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var realtimeService: RealtimeService
     @EnvironmentObject var userManager: UserManager
-    @State var selectedTab = 0
+    @State var selectedTab = 1
     @State var isSupabaseDataReady: Bool = false
     @State var activityDays: [ActivityDay] = []
     @State var activities: [Activity] = []
     @State var athlete: Athlete?
     @State var stats: AthleteStats?
+    @State private var showingSettings = false
     
     
     var body: some View {
         if isSupabaseDataReady {
-            NavigationView {
-                TabView(selection: $selectedTab) {
+            TabView(selection: $selectedTab) {
+                NavigationView {
                     ActivitiesView(activities: $activities)
-                        .tabItem {
-                            Label("Activities", systemImage: "sportscourt")
-                        }
-                        .tag(0)
-                    
-                    AnalysisView(activities: activities)
-                        .tabItem {
-                            Label("Analysis", systemImage: "chart.line.uptrend.xyaxis")
-                        }
-                        .tag(1)
-                    AthleteView(athlete: athlete!, stats: stats!)
-                        .tabItem {
-                            Label("Athlete", systemImage: "person.crop.circle")
-                        }
-                        .tag(2)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Sign Out") {
-                            Task {
-                                try? await authManager.signOut()
-                                userManager.clearUser()
+                        .navigationTitle("Activities")
+                        .navigationBarTitleDisplayMode(.large)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(action: {
+                                    showingSettings = true
+                                }) {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(AppTheme.Colors.primary)
+                                }
                             }
                         }
-                        .foregroundColor(.red)
+                }
+                .tabItem {
+                    Label("Activities", systemImage: AppIcons.activities)
+                }
+                .tag(0)
+                
+                NavigationView {
+                    AnalysisView(activities: activities)
+                        .navigationTitle("Analysis")
+                        .navigationBarTitleDisplayMode(.large)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(action: {
+                                    showingSettings = true
+                                }) {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(AppTheme.Colors.primary)
+                                }
+                            }
+                        }
+                }
+                .tabItem {
+                    Label("Analysis", systemImage: AppIcons.analysis)
+                }
+                .tag(1)
+                
+                NavigationView {
+                    ResearchView()
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(action: {
+                                    showingSettings = true
+                                }) {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(AppTheme.Colors.primary)
+                                }
+                            }
+                        }
+                }
+                .tabItem {
+                    Label("Research", systemImage: "newspaper")
+                }
+                .tag(2)
+                
+                NavigationView {
+                    if let athlete = athlete, let stats = stats {
+                        AthleteView(athlete: athlete, stats: stats)
+                            .navigationTitle("Profile")
+                            .navigationBarTitleDisplayMode(.large)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button(action: {
+                                        showingSettings = true
+                                    }) {
+                                        Image(systemName: "gearshape.fill")
+                                            .foregroundColor(AppTheme.Colors.primary)
+                                    }
+                                }
+                            }
+                    } else {
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
+                            Text("Loading profile...")
+                                .font(AppTheme.Typography.body)
+                                .foregroundColor(AppTheme.Colors.secondaryText)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(AppTheme.Colors.background)
+                        .navigationTitle("Profile")
+                        .navigationBarTitleDisplayMode(.large)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button(action: {
+                                    showingSettings = true
+                                }) {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(AppTheme.Colors.primary)
+                                }
+                            }
+                        }
                     }
                 }
-                .onAppear {
-                    fetchSupabaseData()
-                    realtimeService.startRealtimeSubscription()
+                .tabItem {
+                    Label("Profile", systemImage: "person.circle.fill")
                 }
-                .onReceive(NotificationCenter.default.publisher(for: .activitiesUpdated)) { notification in
-                    if let updatedActivities = notification.object as? [Activity] {
-                        self.activities = updatedActivities
-                    }
+                .tag(3)
+            }
+            .accentColor(AppTheme.Colors.primary)
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+                    .environmentObject(authManager)
+                    .environmentObject(userManager)
+            }
+            .onAppear {
+                fetchSupabaseData()
+                realtimeService.startRealtimeSubscription()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .activitiesUpdated)) { notification in
+                if let updatedActivities = notification.object as? [Activity] {
+                    self.activities = updatedActivities
                 }
             }
+            .background(AppTheme.Colors.background.ignoresSafeArea())
         } else {
-            LoaderView()
-                .onAppear {
-                    print("Auth manager user ID: \(String(describing: authManager.currentUser?.id))")
-                    fetchSupabaseData()
+            ZStack {
+                // Much darker gradient background
+                LinearGradient(
+                    colors: [
+                        Color.black,
+                        Color(red: 0.02, green: 0.02, blue: 0.05),
+                        Color(red: 0.05, green: 0.05, blue: 0.1)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                
+                VStack(spacing: AppTheme.Spacing.xl) {
+                    // App Logo/Title
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        Image(systemName: "figure.run")
+                            .font(.system(size: 80, weight: .light))
+                            .foregroundColor(.white)
+                            .shadow(color: .white.opacity(0.3), radius: 10, x: 0, y: 5)
+                        
+                        Text("Runaway")
+                            .font(.system(size: 48, weight: .heavy, design: .rounded))
+                            .foregroundColor(.white)
+                            .italic()
+                    }
+                    
+                    // Loading indicator and text
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        
+                        VStack(spacing: AppTheme.Spacing.sm) {
+                            Text("Loading your data...")
+                                .font(AppTheme.Typography.headline)
+                                .foregroundColor(.white)
+                            
+                            Text("Syncing activities and performance metrics")
+                                .font(AppTheme.Typography.body)
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                        }
+                    }
                 }
+                .padding(AppTheme.Spacing.xl)
+            }
+            .onAppear {
+                print("Auth manager user ID: \(String(describing: authManager.currentUser?.id))")
+                fetchSupabaseData()
+            }
         }
     }
-    
 }
 
 extension MainView {
@@ -117,9 +243,19 @@ extension MainView {
             
             do {
                 // Fetch athlete stats if needed
-                let stats = try await AthleteService.getAthleteStats()
+                let stats = try await AthleteService.getAthleteStats(userId: user.userId)
                 self.stats = stats
-                print("Successfully fetched athlete stats: \(stats)")
+                print("Successfully fetched athlete stats:")
+                print("  - Raw object: \(stats)")
+                
+                // Print detailed stats using Mirror for reflection
+                let mirror = Mirror(reflecting: stats)
+                print("Athlete Stats Properties:")
+                for (label, value) in mirror.children {
+                    if let propertyName = label {
+                        print("  - \(propertyName): \(value)")
+                    }
+                }
                 
             } catch {
                 print("Error fetching Athlete data: \(error)")
@@ -139,18 +275,21 @@ extension MainView {
     
     private func createActivityRecord(activities : [Activity]) {
         print("Creating activity record with \(activities.count) activities")
-        var sunArray: Array<String> = [];
-        var monArray: Array<String> = [];
-        var tueArray: Array<String> = [];
-        var wedArray: Array<String> = [];
-        var thuArray: Array<String> = [];
-        var friArray: Array<String> = [];
-        var satArray: Array<String> = [];
         
-        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
-            print("Failed to access shared UserDefaults")
-            return
-        }
+        // Move heavy operations to background thread
+        Task.detached(priority: .utility) {
+            var sunArray: Array<String> = [];
+            var monArray: Array<String> = [];
+            var tueArray: Array<String> = [];
+            var wedArray: Array<String> = [];
+            var thuArray: Array<String> = [];
+            var friArray: Array<String> = [];
+            var satArray: Array<String> = [];
+            
+            guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+                print("Failed to access shared UserDefaults")
+                return
+            }
         
         print("Creating activity record")
         
@@ -163,107 +302,127 @@ extension MainView {
         userDefaults.removeObject(forKey: "friArray")
         userDefaults.removeObject(forKey: "satArray")
         
-        let monthlyMiles = activities.reduce(0) { $0 + $1.distance! }
-        userDefaults.set((monthlyMiles * 0.00062137), forKey: "monthlyMiles")
+        let monthlyMiles = activities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+        userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
         
         let weeklyActivities = activities.filter { act in
-            if act.start_date! > Date().startOfWeek() {
-                return true
-            } else {
-                return false
-            }
+            guard let startDate = act.start_date else { return false }
+            return startDate > Date().startOfWeek()
         }
         
         for activity in weeklyActivities {
-            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Sunday") {
+            guard let startDate = activity.start_date,
+                  let distance = activity.distance,
+                  let elapsedTime = activity.elapsed_time else { continue }
+            
+            if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Sunday") {
                 let sundayAct = RAActivity(
                     day: "S",
                     type: activity.type,
-                    distance: activity.distance! * 0.00062137,
-                    time: activity.elapsed_time! / 60);
-                let jsonData = try! JSONEncoder().encode(sundayAct)
-                let jsonString = String(data: jsonData, encoding: .utf8)!
+                    distance: distance * 0.000621371,
+                    time: elapsedTime / 60)
+                
+                guard let jsonData = try? JSONEncoder().encode(sundayAct),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
                 sunArray.append(jsonString);
                 userDefaults.set(sunArray, forKey: "sunArray");
             }
-            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Monday") {
+            if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Monday") {
                 let mondayAct = RAActivity(
                     day: "M",
                     type: activity.type,
-                    distance: activity.distance! * 0.00062137,
-                    time: activity.elapsed_time! / 60);
+                    distance: distance * 0.000621371,
+                    time: elapsedTime / 60)
                 
-                let jsonData = try! JSONEncoder().encode(mondayAct)
-                let jsonString = String(data: jsonData, encoding: .utf8)!
+                guard let jsonData = try? JSONEncoder().encode(mondayAct),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
                 monArray.append(jsonString);
                 print("Monday activity added: \(jsonString)")
                 userDefaults.set(monArray, forKey: "monArray");
             }
-            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Tuesday") {
+            if let startDate = activity.start_date,
+               let distance = activity.distance,
+               let elapsedTime = activity.elapsed_time,
+               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Tuesday" {
                 let tuesdayAct = RAActivity(
                     day: "T",
                     type: activity.type,
-                    distance: activity.distance! * 0.00062137,
-                    time: activity.elapsed_time! / 60);
+                    distance: distance * 0.000621371,
+                    time: elapsedTime / 60);
                 
-                let jsonData = try! JSONEncoder().encode(tuesdayAct)
-                let jsonString = String(data: jsonData, encoding: .utf8)!
+                guard let jsonData = try? JSONEncoder().encode(tuesdayAct),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
                 tueArray.append(jsonString);
                 userDefaults.set(tueArray, forKey: "tueArray");
             }
-            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Wednesday") {
+            if let startDate = activity.start_date,
+               let distance = activity.distance,
+               let elapsedTime = activity.elapsed_time,
+               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Wednesday" {
                 let wednesdayAct = RAActivity(
                     day: "W",
                     type: activity.type,
-                    distance: activity.distance! * 0.00062137,
-                    time: activity.elapsed_time! / 60);
+                    distance: distance * 0.000621371,
+                    time: elapsedTime / 60);
                 
-                let jsonData = try! JSONEncoder().encode(wednesdayAct)
-                let jsonString = String(data: jsonData, encoding: .utf8)!
+                guard let jsonData = try? JSONEncoder().encode(wednesdayAct),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
                 wedArray.append(jsonString);
                 userDefaults.set(wedArray, forKey: "wedArray");
             }
-            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Thursday") {
+            if let startDate = activity.start_date,
+               let distance = activity.distance,
+               let elapsedTime = activity.elapsed_time,
+               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Thursday" {
                 let thursdayAct = RAActivity(
                     day: "Th",
                     type: activity.type,
-                    distance: activity.distance! * 0.00062137,
-                    time: activity.elapsed_time! / 60);
-                let jsonData = try! JSONEncoder().encode(thursdayAct)
-                let jsonString = String(data: jsonData, encoding: .utf8)!
+                    distance: distance * 0.000621371,
+                    time: elapsedTime / 60);
+                guard let jsonData = try? JSONEncoder().encode(thursdayAct),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
                 thuArray.append(jsonString);
                 userDefaults.set(thuArray, forKey: "thuArray");
             }
-            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Friday") {
+            if let startDate = activity.start_date,
+               let distance = activity.distance,
+               let elapsedTime = activity.elapsed_time,
+               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Friday" {
                 let fridayAct = RAActivity(
                     day: "F",
                     type: activity.type,
-                    distance: activity.distance! * 0.00062137,
-                    time: activity.elapsed_time! / 60);
+                    distance: distance * 0.000621371,
+                    time: elapsedTime / 60);
                 
-                let jsonData = try! JSONEncoder().encode(fridayAct)
-                let jsonString = String(data: jsonData, encoding: .utf8)!
+                guard let jsonData = try? JSONEncoder().encode(fridayAct),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
                 friArray.append(jsonString);
                 userDefaults.set(friArray, forKey: "friArray");
             }
-            if (Date(timeIntervalSince1970: activity.start_date!).dayOfTheWeek == "Saturday") {
+            if let startDate = activity.start_date,
+               let distance = activity.distance,
+               let elapsedTime = activity.elapsed_time,
+               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Saturday" {
                 let saturdayAct = RAActivity(
                     day: "Sat",
                     type: activity.type,
-                    distance: activity.distance! * 0.00062137,
-                    time: activity.elapsed_time! / 60);
+                    distance: distance * 0.000621371,
+                    time: elapsedTime / 60);
                 
-                let jsonData = try! JSONEncoder().encode(saturdayAct)
-                let jsonString = String(data: jsonData, encoding: .utf8)!
+                guard let jsonData = try? JSONEncoder().encode(saturdayAct),
+                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
                 satArray.append(jsonString);
                 userDefaults.set(satArray, forKey: "satArray");
             }
+            }
+            
+            // Force synchronization and reload widget on main thread
+            await MainActor.run {
+                userDefaults.synchronize()
+                WidgetCenter.shared.reloadAllTimelines()
+                print("UserDefaults synchronized and widget timeline reloaded")
+            }
         }
-        
-        // Force synchronization and reload widget
-        userDefaults.synchronize()
-        WidgetCenter.shared.reloadAllTimelines()
-        print("UserDefaults synchronized and widget timeline reloaded")
     }
     
     func clearUserDefaults() {

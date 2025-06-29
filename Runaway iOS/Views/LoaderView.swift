@@ -10,13 +10,20 @@ import SwiftUI
 
 public struct LoaderView: View {
     public var body: some View {
-        VStack {
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .blue))
-                .scaleEffect(2)
-            Text("Loading...")
-                .font(.title)
-                .padding(.top, 20)
+        NavigationView {
+            VStack {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
+                    .scaleEffect(2)
+                Text("Loading...")
+                    .font(AppTheme.Typography.title)
+                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .padding(.top, 20)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(AppTheme.Colors.background.ignoresSafeArea())
+            .navigationTitle("Loading")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

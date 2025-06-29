@@ -13,49 +13,95 @@ import UIKit
 // Create simplified card view
 struct CardView: View {
     let activity: LocalActivity
-    //    var type: String!
     @State var image: UIImage?
 
     var body: some View {
-        VStack(alignment: .leading) {
-            // Activity Details Text
-            Text(activity.name ?? "Unknown Activity")
-                .font(.headline)
-                .padding(.top, 5) // Add some space above text
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            // Header with activity info and date
+            HStack {
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Image(systemName: activityIcon)
+                        .foregroundColor(AppTheme.Colors.primary)
+                        .font(.title2)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(activity.name ?? "Unknown Activity")
+                            .font(AppTheme.Typography.headline)
+                            .foregroundColor(AppTheme.Colors.primaryText)
+                        
+                        Text(activity.type ?? "Unknown Type")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.secondaryText)
+                    }
+                }
+                
+                Spacer()
+                
+                if let startDate = activity.start_date {
+                    Text(startDate, style: .date)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.mutedText)
+                }
+            }
             
-            // Add the map view
-            if let polyline = activity.summary_polyline, polyline != "" {
+            // Map view with modern styling
+            if let polyline = activity.summary_polyline, !polyline.isEmpty {
                 ActivityMapView(summaryPolyline: polyline)
                     .frame(height: 200)
-                    .cornerRadius(10)
-                    .padding(.vertical, 8)
+                    .cornerRadius(AppTheme.CornerRadius.medium)
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             }
 
-            HStack {
-                Text(activity.type ?? "Unknown Type")
-                    .font(.subheadline)
-
-                Spacer()
-
+            // Metrics row with modern styling
+            HStack(spacing: AppTheme.Spacing.lg) {
                 if let distance = activity.distance {
-                    Text(String(format: "%.2f mi", distance * 0.000621371))
-                        .font(.subheadline)
+                    MetricPill(
+                        icon: AppIcons.distance,
+                        value: String(format: "%.2f", distance * 0.000621371),
+                        unit: "mi",
+                        color: AppTheme.Colors.primary
+                    )
                 }
 
                 if let time = activity.elapsed_time {
-                    Text(formatTime(seconds: time))
-                        .font(.subheadline)
+                    MetricPill(
+                        icon: AppIcons.time,
+                        value: formatTime(seconds: time),
+                        unit: "",
+                        color: AppTheme.Colors.accent
+                    )
                 }
                 
-                if let time = activity.start_date {
-                    Text(time, style: .date)
-                        .font(.subheadline)
+                if let distance = activity.distance, let time = activity.elapsed_time {
+                    MetricPill(
+                        icon: AppIcons.pace,
+                        value: calculatePace(distance: distance * 0.000621371, time: time),
+                        unit: "/mi",
+                        color: AppTheme.Colors.warning
+                    )
                 }
+                
+                Spacer()
             }
         }
-        .padding()
-        // Apply border/styling to the whole VStack if desired
-         .modifier(ModifierCornerRadiusWithBorder(radius: 15, borderColor: .gray.opacity(0.5)))
+        .surfaceCard()
+    }
+    
+    private var activityIcon: String {
+        switch (activity.type ?? "").lowercased() {
+        case "run", "running": return "figure.run"
+        case "walk", "walking": return "figure.walk"
+        case "bike", "cycling": return "bicycle"
+        default: return "figure.mixed.cardio"
+        }
+    }
+    
+    private func calculatePace(distance: Double, time: Double) -> String {
+        guard distance > 0, time > 0 else { return "--:--" }
+        let paceInSeconds = time / distance
+        let minutes = Int(paceInSeconds) / 60
+        let seconds = Int(paceInSeconds) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 
@@ -126,8 +172,10 @@ struct ActivityMapView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let polyline = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = .orange
-                renderer.lineWidth = 3
+                renderer.strokeColor = UIColor(AppTheme.Colors.primary)
+                renderer.lineWidth = 4
+                renderer.lineCap = .round
+                renderer.lineJoin = .round
                 return renderer
             }
             return MKOverlayRenderer(overlay: overlay)
