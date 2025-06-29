@@ -9,7 +9,12 @@ import Foundation
 
 class WebSearchService {
     private let session = URLSession.shared
-    private let cache = NSCache<NSString, CachedSearchResult>()
+    private let cache: NSCache<NSString, CachedSearchResult> = {
+        let cache = NSCache<NSString, CachedSearchResult>()
+        cache.countLimit = 50 // Maximum 50 search results
+        cache.totalCostLimit = 25_000_000 // 25MB memory limit
+        return cache
+    }()
     
     // Trusted running websites for content filtering
     private let trustedSources = [
@@ -58,63 +63,30 @@ class WebSearchService {
     private func generateSearchQueries(for category: ArticleCategory, location: String?) -> [String] {
         let currentYear = Calendar.current.component(.year, from: Date())
         
-        switch category {
-        case .health:
-            return [
-                "running health benefits \(currentYear)",
-                "running injury prevention tips",
-                "running nutrition advice",
-                "runner recovery techniques",
-                "running and mental health"
-            ]
-        case .events:
-            if let location = location {
-                return [
-                    "running races near \(location) \(currentYear)",
-                    "marathon events \(location)",
-                    "5K 10K races \(location)",
-                    "trail running events \(location)"
-                ]
-            } else {
-                return [
-                    "upcoming running events \(currentYear)",
-                    "marathon calendar \(currentYear)",
-                    "virtual running races"
-                ]
-            }
-        case .nutrition:
-            return [
-                "running diet nutrition \(currentYear)",
-                "pre race meal ideas",
-                "runner hydration tips",
-                "marathon fueling strategy",
-                "running supplements guide"
-            ]
-        case .gear:
-            return [
-                "best running shoes \(currentYear)",
-                "running gear reviews",
-                "running watch comparison",
-                "running apparel guide",
-                "trail running equipment"
-            ]
-        case .training:
-            return [
-                "running training tips \(currentYear)",
-                "marathon training plan",
-                "running technique guide",
-                "speed training workouts",
-                "running form improvement"
-            ]
-        case .general:
-            return [
-                "running community \(currentYear)",
-                "running motivation tips",
-                "running lifestyle",
-                "running culture",
-                "running inspiration"
+        // Generate diverse queries that will produce articles for all categories
+        let baseQueries = [
+            "running tips \(currentYear)",
+            "runner health and wellness",
+            "marathon training nutrition",
+            "running gear reviews \(currentYear)",
+            "running events and races",
+            "running injury prevention",
+            "best running shoes gear",
+            "running workout training plans",
+            "runner diet and supplements",
+            "running motivation community"
+        ]
+        
+        // Add location-specific queries if available
+        if let location = location {
+            return baseQueries + [
+                "running events near \(location)",
+                "marathon races \(location) \(currentYear)",
+                "running groups \(location)"
             ]
         }
+        
+        return baseQueries
     }
     
     private func performWebSearch(query: String) async -> [SearchResult] {
@@ -202,6 +174,12 @@ class WebSearchService {
             let domain = extractDomain(from: result.url)
             guard trustedSources.contains(where: { domain.contains($0) }) else { continue }
             
+            // Intelligently categorize based on search result content
+            let detectedCategory = detectCategoryFromContent(
+                title: result.title,
+                description: result.snippet
+            )
+            
             // Create article from search result
             let article = ResearchArticle(
                 title: result.title,
@@ -210,7 +188,7 @@ class WebSearchService {
                 imageUrl: nil, // Will be extracted during content scraping if needed
                 publishedDate: Date(), // Assume recent for search results
                 source: domain,
-                category: category
+                category: detectedCategory
             )
             
             articles.append(article)
@@ -222,6 +200,43 @@ class WebSearchService {
     private func extractDomain(from url: String) -> String {
         guard let urlObj = URL(string: url) else { return "" }
         return urlObj.host ?? ""
+    }
+    
+    private func detectCategoryFromContent(title: String, description: String) -> ArticleCategory {
+        let content = (title + " " + description).lowercased()
+        
+        // Health & Wellness keywords
+        let healthKeywords = ["injury", "health", "wellness", "recovery", "pain", "stretching", "therapy", "medical", "doctor", "prevention", "treatment", "healing", "physio"]
+        if healthKeywords.contains(where: { content.contains($0) }) {
+            return .health
+        }
+        
+        // Nutrition keywords
+        let nutritionKeywords = ["nutrition", "diet", "food", "fuel", "hydration", "eating", "meal", "snack", "supplement", "vitamin", "protein", "carb", "electrolyte"]
+        if nutritionKeywords.contains(where: { content.contains($0) }) {
+            return .nutrition
+        }
+        
+        // Gear & Equipment keywords
+        let gearKeywords = ["shoe", "gear", "equipment", "watch", "gps", "apparel", "clothing", "tech", "review", "test", "product", "brand", "model"]
+        if gearKeywords.contains(where: { content.contains($0) }) {
+            return .gear
+        }
+        
+        // Events & Races keywords
+        let eventKeywords = ["race", "marathon", "5k", "10k", "half", "event", "calendar", "registration", "results", "finish", "medal", "virtual"]
+        if eventKeywords.contains(where: { content.contains($0) }) {
+            return .events
+        }
+        
+        // Training keywords
+        let trainingKeywords = ["training", "workout", "plan", "schedule", "speed", "tempo", "interval", "technique", "form", "coaching", "tips"]
+        if trainingKeywords.contains(where: { content.contains($0) }) {
+            return .training
+        }
+        
+        // Default to general
+        return .general
     }
     
     private func removeDuplicateArticles(_ articles: [ResearchArticle]) -> [ResearchArticle] {

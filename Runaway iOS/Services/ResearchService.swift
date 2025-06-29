@@ -16,7 +16,12 @@ class ResearchService: ObservableObject {
     
     private let webSearchService = WebSearchService()
     private let contentScraper = ContentScraper()
-    private let cache = NSCache<NSString, NSData>()
+    private let cache: NSCache<NSString, NSData> = {
+        let cache = NSCache<NSString, NSData>()
+        cache.countLimit = 100 // Maximum 100 cached items
+        cache.totalCostLimit = 50_000_000 // 50MB memory limit
+        return cache
+    }()
     private let cacheTimeout: TimeInterval = 3600 // 1 hour
     
     // MARK: - Public Methods
@@ -155,6 +160,12 @@ class ResearchService: ObservableObject {
         let rssItems = try parser.parse(data)
         
         let articles = rssItems.compactMap { item -> ResearchArticle? in
+            // Intelligently categorize based on content
+            let detectedCategory = detectCategoryFromContent(
+                title: item.title ?? "",
+                description: item.description ?? ""
+            )
+            
             return ResearchArticle(
                 title: item.title ?? "Untitled",
                 summary: cleanHTMLFromDescription(item.description) ?? "No summary available",
@@ -164,7 +175,7 @@ class ResearchService: ObservableObject {
                 author: item.author,
                 publishedDate: item.pubDate ?? Date(),
                 source: source,
-                category: category,
+                category: detectedCategory,
                 tags: [],
                 location: nil,
                 relevanceScore: 0.8
@@ -435,37 +446,58 @@ class ResearchService: ObservableObject {
     // MARK: - RSS Feed Configuration
     
     private func getRSSFeedsForCategory(_ category: ArticleCategory) -> [RSSFeed] {
-        switch category {
-        case .health:
-            return [
-                RSSFeed(name: "Runner's World", url: "https://www.runnersworld.com/rss/all.xml"),
-                RSSFeed(name: "Running Magazine", url: "https://runningmagazine.ca/feed/")
-            ]
-        case .nutrition:
-            return [
-                RSSFeed(name: "Runner's World", url: "https://www.runnersworld.com/rss/all.xml"),
-                RSSFeed(name: "Running Magazine", url: "https://runningmagazine.ca/feed/")
-            ]
-        case .gear:
-            return [
-                RSSFeed(name: "Runner's World", url: "https://www.runnersworld.com/rss/all.xml"),
-                RSSFeed(name: "Running Magazine", url: "https://runningmagazine.ca/feed/")
-            ]
-        case .training:
-            return [
-                RSSFeed(name: "Runner's World", url: "https://www.runnersworld.com/rss/all.xml"),
-                RSSFeed(name: "Running Magazine", url: "https://runningmagazine.ca/feed/")
-            ]
-        case .events, .general:
-            return [
-                RSSFeed(name: "Runner's World", url: "https://www.runnersworld.com/rss/all.xml"),
-                RSSFeed(name: "Running Magazine", url: "https://runningmagazine.ca/feed/"),
-                RSSFeed(name: "iRunFar", url: "https://www.irunfar.com/feed")
-            ]
-        }
+        // Get all available RSS feeds and categorize them intelligently
+        let allFeeds = [
+            RSSFeed(name: "Runner's World", url: "https://www.runnersworld.com/rss/all.xml"),
+            RSSFeed(name: "Running Magazine", url: "https://runningmagazine.ca/feed/"),
+            RSSFeed(name: "iRunFar", url: "https://www.irunfar.com/feed"),
+            RSSFeed(name: "Outside Running", url: "https://www.outsideonline.com/category/running/feed/"),
+            RSSFeed(name: "Women's Running", url: "https://womensrunning.com/feed/")
+        ]
+        
+        // Return all feeds for better content diversity
+        // Articles will be categorized based on content keywords
+        return allFeeds
     }
     
     // MARK: - Helper Functions
+    
+    private func detectCategoryFromContent(title: String, description: String) -> ArticleCategory {
+        let content = (title + " " + description).lowercased()
+        
+        // Health & Wellness keywords
+        let healthKeywords = ["injury", "health", "wellness", "recovery", "pain", "stretching", "therapy", "medical", "doctor", "prevention", "treatment", "healing", "physio"]
+        if healthKeywords.contains(where: { content.contains($0) }) {
+            return .health
+        }
+        
+        // Nutrition keywords
+        let nutritionKeywords = ["nutrition", "diet", "food", "fuel", "hydration", "eating", "meal", "snack", "supplement", "vitamin", "protein", "carb", "electrolyte"]
+        if nutritionKeywords.contains(where: { content.contains($0) }) {
+            return .nutrition
+        }
+        
+        // Gear & Equipment keywords
+        let gearKeywords = ["shoe", "gear", "equipment", "watch", "gps", "apparel", "clothing", "tech", "review", "test", "product", "brand", "model"]
+        if gearKeywords.contains(where: { content.contains($0) }) {
+            return .gear
+        }
+        
+        // Events & Races keywords
+        let eventKeywords = ["race", "marathon", "5k", "10k", "half", "event", "calendar", "registration", "results", "finish", "medal", "virtual"]
+        if eventKeywords.contains(where: { content.contains($0) }) {
+            return .events
+        }
+        
+        // Training keywords
+        let trainingKeywords = ["training", "workout", "plan", "schedule", "speed", "tempo", "interval", "technique", "form", "coaching", "tips"]
+        if trainingKeywords.contains(where: { content.contains($0) }) {
+            return .training
+        }
+        
+        // Default to general
+        return .general
+    }
     
     private func calculateRelevanceScore(title: String?, description: String?, keyword: String) -> Double {
         var score = 0.7 // Base score

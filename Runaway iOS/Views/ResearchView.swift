@@ -16,12 +16,33 @@ struct ResearchView: View {
     @State private var refreshing = false
     @State private var selectedArticle: ResearchArticle?
     @State private var showingArticle = false
+    @State private var filteredArticles: [ResearchArticle] = []
     
-    var filteredArticles: [ResearchArticle] {
+    private func updateFilteredArticles() {
         if let category = selectedCategory {
-            return researchService.articles.filter { $0.category == category }
+            filteredArticles = researchService.articles.filter { $0.category == category }
+        } else {
+            filteredArticles = researchService.articles
         }
-        return researchService.articles
+    }
+    
+    private func getSearchQueryForCategory(_ category: ArticleCategory?) -> String {
+        guard let category = category else { return "running tips" }
+        
+        switch category {
+        case .health:
+            return "running injury prevention"
+        case .nutrition:
+            return "running nutrition diet"
+        case .gear:
+            return "running shoes gear review"
+        case .training:
+            return "running training workout"
+        case .events:
+            return "marathon race preparation"
+        case .general:
+            return "running motivation tips"
+        }
     }
     
     var body: some View {
@@ -32,13 +53,16 @@ struct ResearchView: View {
                     HStack(spacing: 12) {
                         CategoryPill(
                             title: "All",
+                            count: researchService.articles.count,
                             isSelected: selectedCategory == nil,
                             action: { selectedCategory = nil }
                         )
                         
                         ForEach(ArticleCategory.allCases, id: \.self) { category in
+                            let categoryCount = researchService.articles.filter { $0.category == category }.count
                             CategoryPill(
                                 title: category.displayName,
+                                count: categoryCount,
                                 isSelected: selectedCategory == category,
                                 action: { selectedCategory = category }
                             )
@@ -64,15 +88,25 @@ struct ResearchView: View {
                     .padding()
                 }
                 
-                // Articles List
+                // Mixed Articles and Videos
                 if !filteredArticles.isEmpty {
-                    ForEach(filteredArticles) { article in
+                    ForEach(Array(filteredArticles.enumerated()), id: \.offset) { index, article in
                         ArticleCard(article: article) {
                             selectedArticle = article
                             showingArticle = true
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 12)
+                        
+                        // Insert video every 3 articles (only if video loads successfully)
+                        if (index + 1) % 3 == 0 {
+                            YouTubeVideoCard(
+                                searchQuery: getSearchQueryForCategory(selectedCategory),
+                                category: selectedCategory
+                            )
+                            .padding(.horizontal)
+                            .padding(.bottom, 12)
+                        }
                     }
                 } else if !researchService.isLoading {
                     EmptyStateView()
@@ -116,6 +150,15 @@ struct ResearchView: View {
                 await loadArticles()
             }
         }
+        .onReceive(researchService.$articles) { _ in
+            updateFilteredArticles()
+        }
+        .onChange(of: selectedCategory) { _ in
+            updateFilteredArticles()
+        }
+        .onAppear {
+            updateFilteredArticles()
+        }
         .sheet(isPresented: $showingArticle) {
             if let article = selectedArticle {
                 ArticleWebView(article: article)
@@ -139,21 +182,37 @@ struct ResearchView: View {
 // MARK: - Category Pills
 struct CategoryPill: View {
     let title: String
+    let count: Int
     let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(isSelected ? Color.blue : Color(.systemGray6))
-                )
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(isSelected ? .semibold : .regular)
+                
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(isSelected ? Color.blue.opacity(0.8) : Color.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(isSelected ? Color.white.opacity(0.9) : Color.secondary.opacity(0.2))
+                        )
+                }
+            }
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? Color.blue : Color(.systemGray6))
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -322,6 +381,141 @@ struct EmptyStateView: View {
     }
 }
 
+
+// MARK: - YouTube Video Card (Mixed with Articles)
+struct YouTubeVideoCard: View {
+    let searchQuery: String
+    let category: ArticleCategory?
+    
+    @StateObject private var youtubeService = YouTubeService.shared
+    @State private var video: YouTubeSearchResult?
+    @State private var isLoading = true
+    
+    var body: some View {
+        Group {
+            if let video = video {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Video Header
+                    HStack {
+                        Image(systemName: "play.rectangle.fill")
+                            .foregroundColor(.red)
+                            .font(.title3)
+                        
+                        Text("Video")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        Text("YouTube")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Video content
+                    HStack(spacing: 12) {
+                        // Thumbnail
+                        AsyncImage(url: URL(string: video.thumbnailUrl)) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(16/9, contentMode: .fill)
+                        } placeholder: {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .overlay(
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.title)
+                                        .foregroundColor(.white)
+                                )
+                        }
+                        .frame(width: 120, height: 67)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        
+                        // Video details
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(video.title)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                            
+                            Text(video.channelName)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            HStack {
+                                if !video.duration.isEmpty && video.duration != "N/A" {
+                                    Text(video.duration)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if !video.viewCount.isEmpty && video.viewCount != "N/A" {
+                                    Text(video.viewCount)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .onTapGesture {
+                        openYouTubeVideo(video.videoId)
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+            } else if isLoading {
+                // Show minimal loading indicator
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("Loading video...")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+            // If no video loads and not loading, show nothing (EmptyView)
+        }
+        .task {
+            await loadVideo()
+        }
+    }
+    
+    private func loadVideo() async {
+        isLoading = true
+        
+        // Use the real YouTube service to get a random video
+        let result = await youtubeService.getRandomVideo(for: category, searchQuery: searchQuery)
+        
+        await MainActor.run {
+            video = result
+            isLoading = false
+            // If result is nil, the card simply won't show (EmptyView)
+        }
+    }
+    
+    private func openYouTubeVideo(_ videoId: String) {
+        let youtubeURL = URL(string: "https://www.youtube.com/watch?v=\(videoId)")!
+        UIApplication.shared.open(youtubeURL)
+    }
+}
+
+// MARK: - YouTube Search Result Model (matches YouTubeService)
+struct YouTubeSearchResult: Identifiable {
+    let id = UUID()
+    let videoId: String
+    let title: String
+    let channelName: String
+    let thumbnailUrl: String
+    let duration: String
+    let viewCount: String
+}
 
 #Preview {
     ResearchView()

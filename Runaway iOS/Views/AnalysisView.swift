@@ -21,12 +21,12 @@ struct AnalysisView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                     // Running Goal Card - Always shown at the top
-                    RunningGoalCard(activities: activities)
+                    RunningGoalCard(activities: activities, goalReadiness: analyzer.analysisResults?.insights.goalReadiness)
                     
                     if analyzer.isAnalyzing {
                         EnhancedAnalysisLoadingView()
                     } else if let results = analyzer.analysisResults {
-                        AnalysisResultsView(results: results)
+                        AnalysisResultsView(results: results, activities: activities)
                     } else {
                         EnhancedEmptyAnalysisView()
                     }
@@ -159,9 +159,15 @@ struct FeatureItem: View {
 
 struct AnalysisResultsView: View {
     let results: AnalysisResults
+    let activities: [Activity]
     
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 24) {
+            // Goal Readiness Analysis
+            if let goalReadiness = results.insights.goalReadiness {
+                GoalReadinessCard(goalReadiness: goalReadiness)
+            }
+            
             // Performance Overview
             PerformanceOverviewCard(insights: results.insights)
             
@@ -175,6 +181,9 @@ struct AnalysisResultsView: View {
             if let prediction = results.insights.nextRunPrediction {
                 NextRunPredictionCard(prediction: prediction)
             }
+            
+            // Progress Overview - Moved from RunningGoalCard
+            ProgressOverviewCard(activities: activities)
             
             // Recommendations
             RecommendationsCard(recommendations: results.insights.recommendations)
@@ -450,6 +459,295 @@ struct RecommendationsCard: View {
                     }
                 }
             }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Goal Readiness Card
+struct GoalReadinessCard: View {
+    let goalReadiness: GoalReadiness
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Goal Readiness")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text("Marathon Training Assessment")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                // Overall Score Circle
+                ZStack {
+                    Circle()
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 8)
+                        .frame(width: 60, height: 60)
+                    
+                    Circle()
+                        .trim(from: 0, to: goalReadiness.overallScore / 100)
+                        .stroke(
+                            getScoreColor(goalReadiness.overallScore),
+                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        )
+                        .frame(width: 60, height: 60)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeInOut(duration: 1.0), value: goalReadiness.overallScore)
+                    
+                    Text("\(Int(goalReadiness.overallScore))%")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(getScoreColor(goalReadiness.overallScore))
+                }
+            }
+            
+            // Readiness Categories
+            VStack(spacing: 12) {
+                ReadinessRow(
+                    title: "Fitness Level",
+                    level: goalReadiness.fitnessLevel,
+                    icon: "heart.fill"
+                )
+                
+                ReadinessRow(
+                    title: "Experience",
+                    level: goalReadiness.experienceLevel,
+                    icon: "star.fill"
+                )
+                
+                ReadinessRow(
+                    title: "Training Volume",
+                    level: goalReadiness.volumePreparation,
+                    icon: "speedometer"
+                )
+                
+                ReadinessRow(
+                    title: "Time Remaining",
+                    level: goalReadiness.timeToGoal,
+                    icon: "clock.fill"
+                )
+            }
+            
+            // Risk Factors (if any)
+            if !goalReadiness.riskFactors.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Risk Factors")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.orange)
+                    
+                    ForEach(goalReadiness.riskFactors.indices, id: \.self) { index in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                                .font(.caption)
+                                .padding(.top, 2)
+                            
+                            Text(goalReadiness.riskFactors[index])
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+                .padding(.top, 8)
+            }
+            
+            // Quick Recommendations
+            if !goalReadiness.recommendations.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Key Recommendations")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                    
+                    ForEach(goalReadiness.recommendations.prefix(3).indices, id: \.self) { index in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.blue)
+                                .font(.caption)
+                                .padding(.top, 2)
+                            
+                            Text(goalReadiness.recommendations[index])
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+    
+    private func getScoreColor(_ score: Double) -> Color {
+        switch score {
+        case 80...: return .green
+        case 60..<80: return .blue
+        case 40..<60: return .orange
+        default: return .red
+        }
+    }
+}
+
+struct ReadinessRow: View {
+    let title: String
+    let level: ReadinessLevel
+    let icon: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(getLevelColor(level))
+                .font(.caption)
+                .frame(width: 16)
+            
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Text(level.displayName)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(getLevelColor(level))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(getLevelColor(level).opacity(0.2))
+                .cornerRadius(6)
+        }
+    }
+    
+    private func getLevelColor(_ level: ReadinessLevel) -> Color {
+        switch level {
+        case .excellent: return .green
+        case .good: return .blue
+        case .fair: return .orange
+        case .poor: return .red
+        }
+    }
+}
+
+// MARK: - Progress Overview Card
+struct ProgressOverviewCard: View {
+    let activities: [Activity]
+    
+    // Mock goal analysis for now - in real app this would come from goal data
+    private var currentProgress: Double { 0.65 } // 65% complete
+    private var targetProgress: Double { 0.8 } // Should be 80% by now
+    
+    private var progressColor: Color {
+        let ratio = currentProgress / max(targetProgress, 0.01)
+        if ratio >= 1.0 { return .green }
+        if ratio >= 0.8 { return .blue }
+        if ratio >= 0.6 { return .orange }
+        return .red
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Goal Progress")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            ZStack {
+                // Background circle
+                Circle()
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 20)
+                    .frame(width: 160, height: 160)
+                
+                // Target progress ring (outer)
+                Circle()
+                    .trim(from: 0, to: targetProgress)
+                    .stroke(
+                        Color.gray.opacity(0.5),
+                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                    )
+                    .frame(width: 160, height: 160)
+                    .rotationEffect(.degrees(-90))
+                
+                // Actual progress ring (inner)
+                Circle()
+                    .trim(from: 0, to: currentProgress)
+                    .stroke(
+                        LinearGradient(
+                            colors: [progressColor.opacity(0.7), progressColor],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                    )
+                    .frame(width: 160, height: 160)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeInOut(duration: 1.0), value: currentProgress)
+                
+                // Center content
+                VStack(spacing: 4) {
+                    Text("\(Int(currentProgress * 100))%")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(progressColor)
+                    
+                    Text("Complete")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Progress details
+            VStack(spacing: 8) {
+                HStack {
+                    Circle()
+                        .fill(progressColor)
+                        .frame(width: 12, height: 12)
+                    Text("Current Progress")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Text("\(Int(currentProgress * 100))%")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.primary)
+                }
+                
+                HStack {
+                    Circle()
+                        .fill(Color.gray.opacity(0.5))
+                        .frame(width: 12, height: 12)
+                    Text("Target Progress")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(Int(targetProgress * 100))%")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
+                
+                let ratio = currentProgress / targetProgress
+                let statusText = ratio >= 1.0 ? "Ahead of Target" : ratio >= 0.8 ? "On Track" : "Behind Target"
+                let statusColor = ratio >= 1.0 ? Color.green : ratio >= 0.8 ? Color.blue : Color.orange
+                
+                HStack {
+                    Image(systemName: ratio >= 1.0 ? "checkmark.circle.fill" : ratio >= 0.8 ? "clock.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundColor(statusColor)
+                        .font(.caption)
+                    Text(statusText)
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(statusColor)
+                    Spacer()
+                }
+                .padding(.top, 4)
+            }
+            .padding(.horizontal, 4)
         }
         .padding()
         .background(Color(.systemGray6))

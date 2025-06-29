@@ -35,6 +35,14 @@ struct WebView: UIViewRepresentable {
         // Configure web view for better reading experience
         webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         
+        // Load the initial URL
+        let request = URLRequest(url: url)
+        webView.load(request)
+        
+        // Mark that we've loaded the initial URL
+        context.coordinator.hasLoadedInitialURL = true
+        context.coordinator.initialURL = url
+        
         // Call the callback with the web view
         onWebViewCreated(webView)
         
@@ -42,9 +50,12 @@ struct WebView: UIViewRepresentable {
     }
     
     func updateUIView(_ webView: WKWebView, context: Context) {
-        if webView.url != url {
+        // Only reload if the URL has actually changed and we haven't loaded it yet
+        if !context.coordinator.hasLoadedInitialURL || context.coordinator.initialURL != url {
             let request = URLRequest(url: url)
             webView.load(request)
+            context.coordinator.hasLoadedInitialURL = true
+            context.coordinator.initialURL = url
         }
     }
     
@@ -54,6 +65,8 @@ struct WebView: UIViewRepresentable {
     
     class Coordinator: NSObject, WKNavigationDelegate {
         let parent: WebView
+        var hasLoadedInitialURL = false
+        var initialURL: URL?
         
         init(_ parent: WebView) {
             self.parent = parent
@@ -197,6 +210,9 @@ struct ArticleWebView: View {
             }
             .navigationTitle(article.source)
             .navigationBarTitleDisplayMode(.inline)
+            .onDisappear {
+                cancelTimeout()
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Done") {

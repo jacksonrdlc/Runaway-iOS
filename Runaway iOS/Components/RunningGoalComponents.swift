@@ -18,6 +18,7 @@ struct RunningGoalCard: View {
     @State private var errorMessage: String?
     
     let activities: [Activity]
+    let goalReadiness: GoalReadiness?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -62,8 +63,13 @@ struct RunningGoalCard: View {
                 // Goal Overview
                 GoalOverviewSection(goal: goal, analysis: analysis)
                 
-                // Progress Chart
-                GoalProgressChart(analysis: analysis)
+                // Goal Readiness Assessment
+                if let goalReadiness = goalReadiness {
+                    GoalReadinessCompactCard(goalReadiness: goalReadiness)
+                } else {
+                    // Fallback to progress chart if no readiness data
+                    GoalProgressChart(analysis: analysis)
+                }
                 
                 // AI Recommendations
                 if !goalAgent.isAnalyzing {
@@ -640,6 +646,121 @@ extension View {
                     .foregroundColor(.secondary)
             }
             self
+        }
+    }
+}
+
+// MARK: - Goal Readiness Compact Card
+struct GoalReadinessCompactCard: View {
+    let goalReadiness: GoalReadiness
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Goal Readiness")
+                    .font(.headline)
+                    .foregroundColor(AppTheme.Colors.primaryText)
+                
+                Spacer()
+                
+                // Overall Score Badge
+                Text("\(Int(goalReadiness.overallScore))%")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(getScoreColor(goalReadiness.overallScore))
+                    .cornerRadius(8)
+            }
+            
+            // Quick readiness indicators
+            HStack(spacing: 16) {
+                ReadinessIndicator(
+                    title: "Fitness",
+                    level: goalReadiness.fitnessLevel,
+                    icon: "heart.fill"
+                )
+                
+                ReadinessIndicator(
+                    title: "Volume",
+                    level: goalReadiness.volumePreparation,
+                    icon: "speedometer"
+                )
+                
+                ReadinessIndicator(
+                    title: "Time",
+                    level: goalReadiness.timeToGoal,
+                    icon: "clock.fill"
+                )
+                
+                ReadinessIndicator(
+                    title: "Experience",
+                    level: goalReadiness.experienceLevel,
+                    icon: "star.fill"
+                )
+            }
+            
+            // Key recommendation
+            if !goalReadiness.recommendations.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundColor(.blue)
+                        .font(.caption)
+                        .padding(.top, 1)
+                    
+                    Text(goalReadiness.recommendations.first ?? "")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding()
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(12)
+    }
+    
+    private func getScoreColor(_ score: Double) -> Color {
+        switch score {
+        case 80...: return .green
+        case 60..<80: return .blue
+        case 40..<60: return .orange
+        default: return .red
+        }
+    }
+}
+
+struct ReadinessIndicator: View {
+    let title: String
+    let level: ReadinessLevel
+    let icon: String
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .foregroundColor(getLevelColor(level))
+                .font(.caption)
+            
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+            
+            Circle()
+                .fill(getLevelColor(level))
+                .frame(width: 8, height: 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    private func getLevelColor(_ level: ReadinessLevel) -> Color {
+        switch level {
+        case .excellent: return .green
+        case .good: return .blue
+        case .fair: return .orange
+        case .poor: return .red
         }
     }
 }
