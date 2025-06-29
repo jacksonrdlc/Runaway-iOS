@@ -9,7 +9,12 @@ import Foundation
 
 class ContentScraper {
     private let session = URLSession.shared
-    private let cache = NSCache<NSString, ScrapedContent>()
+    private let cache: NSCache<NSString, ScrapedContent> = {
+        let cache = NSCache<NSString, ScrapedContent>()
+        cache.countLimit = 75 // Maximum 75 scraped articles
+        cache.totalCostLimit = 30_000_000 // 30MB memory limit
+        return cache
+    }()
     
     func scrapeArticleContent(from url: String) async -> ScrapedContent? {
         let cacheKey = url as NSString

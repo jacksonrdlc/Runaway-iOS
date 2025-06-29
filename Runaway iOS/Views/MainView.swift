@@ -275,18 +275,21 @@ extension MainView {
     
     private func createActivityRecord(activities : [Activity]) {
         print("Creating activity record with \(activities.count) activities")
-        var sunArray: Array<String> = [];
-        var monArray: Array<String> = [];
-        var tueArray: Array<String> = [];
-        var wedArray: Array<String> = [];
-        var thuArray: Array<String> = [];
-        var friArray: Array<String> = [];
-        var satArray: Array<String> = [];
         
-        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
-            print("Failed to access shared UserDefaults")
-            return
-        }
+        // Move heavy operations to background thread
+        Task.detached(priority: .utility) {
+            var sunArray: Array<String> = [];
+            var monArray: Array<String> = [];
+            var tueArray: Array<String> = [];
+            var wedArray: Array<String> = [];
+            var thuArray: Array<String> = [];
+            var friArray: Array<String> = [];
+            var satArray: Array<String> = [];
+            
+            guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+                print("Failed to access shared UserDefaults")
+                return
+            }
         
         print("Creating activity record")
         
@@ -411,12 +414,15 @@ extension MainView {
                 satArray.append(jsonString);
                 userDefaults.set(satArray, forKey: "satArray");
             }
+            }
+            
+            // Force synchronization and reload widget on main thread
+            await MainActor.run {
+                userDefaults.synchronize()
+                WidgetCenter.shared.reloadAllTimelines()
+                print("UserDefaults synchronized and widget timeline reloaded")
+            }
         }
-        
-        // Force synchronization and reload widget
-        userDefaults.synchronize()
-        WidgetCenter.shared.reloadAllTimelines()
-        print("UserDefaults synchronized and widget timeline reloaded")
     }
     
     func clearUserDefaults() {
