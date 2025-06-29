@@ -325,9 +325,9 @@ struct RunawayWidget: Widget {
                     .containerBackground(for: .widget) {
                         LinearGradient(
                             colors: [
-                                Color(red: 0.05, green: 0.05, blue: 0.1),
-                                Color(red: 0.1, green: 0.15, blue: 0.25),
-                                Color(red: 0.15, green: 0.25, blue: 0.4)
+                                Color(red: 0.02, green: 0.02, blue: 0.08),
+                                Color(red: 0.05, green: 0.05, blue: 0.12),
+                                Color(red: 0.08, green: 0.08, blue: 0.15)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -339,9 +339,9 @@ struct RunawayWidget: Widget {
                     .background(
                         LinearGradient(
                             colors: [
-                                Color(red: 0.05, green: 0.05, blue: 0.1),
-                                Color(red: 0.1, green: 0.15, blue: 0.25),
-                                Color(red: 0.15, green: 0.25, blue: 0.4)
+                                Color(red: 0.02, green: 0.02, blue: 0.08),
+                                Color(red: 0.05, green: 0.05, blue: 0.12),
+                                Color(red: 0.08, green: 0.08, blue: 0.15)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing

@@ -12,8 +12,6 @@ struct ResearchView: View {
     @StateObject private var researchService = ResearchService()
     @ObservedObject private var locationManager = LocationManager.shared
     @State private var selectedCategory: ArticleCategory? = nil
-    @State private var showingCategoryFilter = false
-    @State private var refreshing = false
     @State private var selectedArticle: ResearchArticle?
     @State private var showingArticle = false
     @State private var filteredArticles: [ResearchArticle] = []
@@ -46,7 +44,10 @@ struct ResearchView: View {
     }
     
     var body: some View {
-        ScrollView {
+        ZStack {
+            AppTheme.Colors.background.ignoresSafeArea()
+            
+            ScrollView {
             LazyVStack(spacing: 0) {
                 // Category Filter Pills
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -163,6 +164,7 @@ struct ResearchView: View {
             if let article = selectedArticle {
                 ArticleWebView(article: article)
             }
+        }
         }
     }
     
@@ -313,7 +315,7 @@ struct ArticleCard: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(AppTheme.Colors.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         .onTapGesture {
@@ -467,7 +469,17 @@ struct YouTubeVideoCard: View {
                     }
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.95),
+                            Color.black.opacity(0.85),
+                            Color(red: 0.1, green: 0.1, blue: 0.12).opacity(0.9)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .cornerRadius(12)
             } else if isLoading {
                 // Show minimal loading indicator
@@ -504,17 +516,6 @@ struct YouTubeVideoCard: View {
         let youtubeURL = URL(string: "https://www.youtube.com/watch?v=\(videoId)")!
         UIApplication.shared.open(youtubeURL)
     }
-}
-
-// MARK: - YouTube Search Result Model (matches YouTubeService)
-struct YouTubeSearchResult: Identifiable {
-    let id = UUID()
-    let videoId: String
-    let title: String
-    let channelName: String
-    let thumbnailUrl: String
-    let duration: String
-    let viewCount: String
 }
 
 #Preview {
