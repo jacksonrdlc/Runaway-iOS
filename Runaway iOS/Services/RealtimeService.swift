@@ -44,6 +44,12 @@ public final class RealtimeService: ObservableObject {
         }
     }
     
+    public func refreshWidget() {
+        Task {
+            await refreshActivityData()
+        }
+    }
+    
     // MARK: - Private Methods
     
     private func setupRealtimeSubscription(userId: Int) async {
@@ -206,6 +212,22 @@ public final class RealtimeService: ObservableObject {
     // MARK: - Widget Data Management
     
     private func createActivityRecord(activities: [Activity]) {
+        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+            print("Failed to access shared UserDefaults")
+            return
+        }
+        
+        print("Creating activity record from realtime update with \(activities.count) activities")
+        
+        // Clear existing arrays first
+        userDefaults.removeObject(forKey: "sunArray")
+        userDefaults.removeObject(forKey: "monArray")
+        userDefaults.removeObject(forKey: "tueArray")
+        userDefaults.removeObject(forKey: "wedArray")
+        userDefaults.removeObject(forKey: "thuArray")
+        userDefaults.removeObject(forKey: "friArray")
+        userDefaults.removeObject(forKey: "satArray")
+        
         var sunArray: Array<String> = []
         var monArray: Array<String> = []
         var tueArray: Array<String> = []
@@ -214,15 +236,30 @@ public final class RealtimeService: ObservableObject {
         var friArray: Array<String> = []
         var satArray: Array<String> = []
         
-        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
-            print("Failed to access shared UserDefaults")
-            return
+        // Calculate totals for the year and month
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let currentMonth = Calendar.current.component(.month, from: Date())
+        
+        let yearlyActivities = activities.filter { activity in
+            guard let startDate = activity.start_date else { return false }
+            let activityDate = Date(timeIntervalSince1970: startDate)
+            return Calendar.current.component(.year, from: activityDate) == currentYear
         }
         
-        print("Creating activity record from realtime update")
+        let monthlyActivities = activities.filter { activity in
+            guard let startDate = activity.start_date else { return false }
+            let activityDate = Date(timeIntervalSince1970: startDate)
+            return Calendar.current.component(.year, from: activityDate) == currentYear &&
+                   Calendar.current.component(.month, from: activityDate) == currentMonth
+        }
         
-        let monthlyMiles = activities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+        let yearlyMiles = yearlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+        let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+        let totalRuns = yearlyActivities.count
+        
+        userDefaults.set((yearlyMiles * 0.000621371), forKey: "miles")
         userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
+        userDefaults.set(totalRuns, forKey: "runs")
         
         let weeklyActivities = activities.filter { act in
             guard let startDate = act.start_date else { return false }
@@ -248,29 +285,40 @@ public final class RealtimeService: ObservableObject {
             switch dayOfWeek {
             case "Sunday":
                 sunArray.append(jsonString)
-                userDefaults.set(sunArray, forKey: "sunArray")
             case "Monday":
                 monArray.append(jsonString)
-                userDefaults.set(monArray, forKey: "monArray")
             case "Tuesday":
                 tueArray.append(jsonString)
-                userDefaults.set(tueArray, forKey: "tueArray")
             case "Wednesday":
                 wedArray.append(jsonString)
-                userDefaults.set(wedArray, forKey: "wedArray")
             case "Thursday":
                 thuArray.append(jsonString)
-                userDefaults.set(thuArray, forKey: "thuArray")
             case "Friday":
                 friArray.append(jsonString)
-                userDefaults.set(friArray, forKey: "friArray")
             case "Saturday":
                 satArray.append(jsonString)
-                userDefaults.set(satArray, forKey: "satArray")
             default:
                 break
             }
         }
+        
+        // Save all arrays to UserDefaults
+        userDefaults.set(sunArray, forKey: "sunArray")
+        userDefaults.set(monArray, forKey: "monArray")
+        userDefaults.set(tueArray, forKey: "tueArray")
+        userDefaults.set(wedArray, forKey: "wedArray")
+        userDefaults.set(thuArray, forKey: "thuArray")
+        userDefaults.set(friArray, forKey: "friArray")
+        userDefaults.set(satArray, forKey: "satArray")
+        
+        print("📊 Widget data updated:")
+        print("   - Yearly miles: \(yearlyMiles * 0.000621371)")
+        print("   - Monthly miles: \(monthlyMiles * 0.000621371)")
+        print("   - Total runs: \(totalRuns)")
+        print("   - Weekly activities: \(weeklyActivities.count)")
+        print("   - Sun: \(sunArray.count), Mon: \(monArray.count), Tue: \(tueArray.count)")
+        print("   - Wed: \(wedArray.count), Thu: \(thuArray.count), Fri: \(friArray.count), Sat: \(satArray.count)")
+        print("🔄 Triggering widget timeline reload...")
         
         WidgetCenter.shared.reloadAllTimelines()
     }
