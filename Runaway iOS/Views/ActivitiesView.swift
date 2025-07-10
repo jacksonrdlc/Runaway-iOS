@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import UIKit
 
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -29,13 +30,21 @@ struct ActivitiesView: View {
             return
         }
         
+        // Start background task to prevent cancellation
+        let backgroundTaskId = UIApplication.shared.beginBackgroundTask { 
+            print("Background task expired during activity fetch")
+        }
+        defer {
+            UIApplication.shared.endBackgroundTask(backgroundTaskId)
+        }
+        
         do {
             let fetchedActivities = try await ActivityService.getAllActivitiesByUser(userId: userId)
             DispatchQueue.main.async {
                 self.activities = fetchedActivities
                 self.isRefreshing = false
-                // Refresh widget when activities are manually refreshed
-                self.realtimeService.refreshWidget()
+                // Force refresh widget UserDefaults when activities are manually refreshed
+                self.realtimeService.forceRefreshWidget(with: fetchedActivities)
             }
         } catch {
             print("Error fetching activities: \(error)")

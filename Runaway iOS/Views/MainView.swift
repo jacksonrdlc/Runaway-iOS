@@ -19,6 +19,9 @@ struct MainView: View {
     @State var activities: [Activity] = []
     @State var athlete: Athlete?
     @State var stats: AthleteStats?
+    @State var runs: String? = ""
+    @State var miles: String? = ""
+    @State var minutes: String? = ""
     @State private var showingSettings = false
     
     
@@ -245,6 +248,7 @@ extension MainView {
                 // Fetch athlete stats if needed
                 let stats = try await AthleteService.getAthleteStats(userId: user.userId)
                 self.stats = stats
+                setStats(stats: stats)
                 print("Successfully fetched athlete stats:")
                 print("  - Raw object: \(stats)")
                 
@@ -256,7 +260,6 @@ extension MainView {
                         print("  - \(propertyName): \(value)")
                     }
                 }
-                
             } catch {
                 print("Error fetching Athlete data: \(error)")
             }
@@ -272,6 +275,23 @@ extension MainView {
             }
         }
     }
+    
+    private func setStats(stats: AthleteStats) {
+            if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+                if let runsInt = stats.count {
+                    self.runs = String(runsInt)
+                    userDefaults.set(runsInt, forKey: "runs")
+                }
+                if let milesInt = stats.ytdDistance {
+                    self.miles = String(format: "%.1f", milesInt * Double(0.000621371))
+                    userDefaults.set(milesInt, forKey: "miles")
+                }
+                if let minutesInt = stats.elapsedTime {
+                    self.minutes = String(format: "%.0f", minutesInt / 60)
+                    userDefaults.set(minutesInt, forKey: "minutes")
+                }
+            }
+        }
     
     private func createActivityRecord(activities : [Activity]) {
         print("Creating activity record with \(activities.count) activities")

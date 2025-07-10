@@ -15,6 +15,15 @@ extension Date {
         return calendar.date(from: components) ?? self
     }
     
+    var startOfLastMonth: Date {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: self)
+        var newComponents = DateComponents()
+        newComponents.year = components.year
+        newComponents.month = (components.month ?? 1) - 1
+        return calendar.date(from: newComponents) ?? self
+    }
+    
     var endOfMonth: Date {
         var components = DateComponents()
         components.month = 1

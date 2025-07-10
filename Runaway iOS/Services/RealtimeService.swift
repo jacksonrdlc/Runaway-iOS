@@ -50,6 +50,10 @@ public final class RealtimeService: ObservableObject {
         }
     }
     
+    public func forceRefreshWidget(with activities: [Activity]) {
+        createActivityRecord(activities: activities)
+    }
+    
     // MARK: - Private Methods
     
     private func setupRealtimeSubscription(userId: Int) async {
