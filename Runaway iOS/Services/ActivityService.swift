@@ -34,7 +34,7 @@ class ActivityService {
     
     // Function to get all activities for a user in a time range
     static func getAllActivitiesByUser(userId: Int) async throws -> [Activity] {
-        let startOfMonthMinusSevenDays = Date().startOfMonth.addingTimeInterval(-7*24*60*60)
+        let startOfMonthMinusSevenDays = Date().startOfLastMonth
         let endOfMonth = Date().endOfMonth
         print("Start of month: \(startOfMonthMinusSevenDays)")
         print("End of month: \(endOfMonth)")
@@ -53,7 +53,7 @@ class ActivityService {
             )
             .eq("user_id", value: userId)
             .gte("start_date", value: startOfMonthMinusSevenDays)
-            .lte("start_date", value: endOfMonth)
+//            .lte("start_date", value: endOfMonth)
             .order("start_date", ascending: false)
             .execute().value
     }
