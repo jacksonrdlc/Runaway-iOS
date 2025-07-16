@@ -7,6 +7,7 @@
 
 import Foundation
 import Supabase
+import WidgetKit
 
 // MARK: - AnyEncodable Helper
 struct AnyEncodable: Encodable {
@@ -76,6 +77,10 @@ class ActivityService {
             .single()
             .execute()
             .value
+        
+        // Refresh widgets after creating activity
+        WidgetRefreshService.refreshForActivityUpdate()
+        
         return activity
     }
     
@@ -97,6 +102,10 @@ class ActivityService {
             .single()
             .execute()
             .value
+        
+        // Refresh widgets after creating activity
+        WidgetRefreshService.refreshForActivityUpdate()
+        
         return activity
     }
     
@@ -113,6 +122,9 @@ class ActivityService {
                 .eq("id", value: id)
                 .execute()
             print("Activity successfully updated")
+            
+            // Refresh widgets after updating activity
+            WidgetRefreshService.refreshForActivityUpdate()
         } catch {
             print("Failed to update activity: \(error)")
             throw error  // Optionally rethrow to handle elsewhere
@@ -126,6 +138,9 @@ class ActivityService {
             .delete()
             .eq("id", value: id)
             .execute().value
+        
+        // Refresh widgets after deleting activity
+        WidgetRefreshService.refreshForActivityUpdate()
     }
 }
 
