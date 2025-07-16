@@ -7,6 +7,7 @@
 
 import Foundation
 import Supabase
+import WidgetKit
 
 class GoalService {
     
@@ -54,6 +55,10 @@ class GoalService {
             .value
         
         print("✅ Goal created successfully: \(response.title)")
+        
+        // Refresh widgets after creating goal
+        WidgetRefreshService.refreshForGoalUpdate()
+        
         return response
     }
     
@@ -147,6 +152,10 @@ class GoalService {
             .value
         
         print("✅ Goal updated successfully: \(updatedGoal.title)")
+        
+        // Refresh widgets after updating goal
+        WidgetRefreshService.refreshForGoalUpdate()
+        
         return updatedGoal
     }
     
@@ -228,6 +237,9 @@ class GoalService {
             .execute()
         
         print("🗑️ Goal deleted permanently")
+        
+        // Refresh widgets after deleting goal
+        WidgetRefreshService.refreshForGoalUpdate()
     }
     
     // MARK: - Batch Operations

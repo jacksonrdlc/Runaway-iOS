@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import UIKit
+import WidgetKit
 
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -45,6 +46,8 @@ struct ActivitiesView: View {
                 self.isRefreshing = false
                 // Force refresh widget UserDefaults when activities are manually refreshed
                 self.realtimeService.forceRefreshWidget(with: fetchedActivities)
+                // Refresh widgets after manual data refresh
+                WidgetRefreshService.refreshForActivityUpdate()
             }
         } catch {
             print("Error fetching activities: \(error)")

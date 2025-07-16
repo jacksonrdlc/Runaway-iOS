@@ -9,6 +9,7 @@ import Foundation
 import CoreLocation
 import MapKit
 import Combine
+import WidgetKit
 
 // MARK: - Recording State
 enum RecordingState {
@@ -240,6 +241,9 @@ class ActivityRecordingService: ObservableObject {
         let savedActivity = try await ActivityService.createActivity(data: activityData)
         
         print("✅ Activity saved successfully with ID: \(savedActivity.id)")
+        
+        // Refresh widgets after activity recording save
+        WidgetRefreshService.refreshForActivityUpdate()
         
         // Clear session after successful save
         discardRecording()
