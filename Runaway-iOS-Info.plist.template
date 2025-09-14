@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.jackrudelic.runawayios.realtime-background</string>
+	</array>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.runawayios.ios</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>runaway</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>strava</string>
+	</array>
+	<key>MBXAccessToken</key>
+	<string>YOUR_MAPBOX_TOKEN_HERE</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>processing</string>
+		<string>fetch</string>
+	</array>
+	<key>YOUTUBE_API_KEY</key>
+	<string>YOUR_YOUTUBE_API_KEY_HERE</string>
+	<key>RUNAWAY_API_KEY</key>
+	<string>YOUR_RUNAWAY_API_KEY_HERE</string>
+</dict>
+</plist>
