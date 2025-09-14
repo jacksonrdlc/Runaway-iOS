@@ -213,41 +213,46 @@ class ActivityRecordingService: ObservableObject {
               !session.routePoints.isEmpty else {
             throw RecordingError.invalidSession
         }
-        
+
         print("💾 Saving recorded activity to database")
-        
-        // Generate polyline from route points
-        let polylineService = PolylineEncodingService()
-        let coordinates = session.routePoints.map { $0.coordinate }
-        let encodedPolyline = polylineService.encode(coordinates: coordinates)
-        
+
         // Get user ID
         guard let userId = UserManager.shared.userId else {
             throw RecordingError.noUser
         }
-        
-        // Create activity for database
-        let activityData: [String: AnyEncodable] = [
-            "user_id": AnyEncodable(userId),
-            "name": AnyEncodable(session.name),
-            "type": AnyEncodable(session.activityType),
-            "distance": AnyEncodable(session.totalDistance),
-            "elapsed_time": AnyEncodable(session.elapsedTime),
-            "start_date": AnyEncodable(session.startTime),
-            "summary_polyline": AnyEncodable(encodedPolyline)
-        ]
-        
+
+        // Perform heavy polyline encoding on background thread
+        let activityData = await Task.detached(priority: .userInitiated) { [session] in
+            // Generate polyline from route points
+            let polylineService = PolylineEncodingService()
+            let coordinates = session.routePoints.map { $0.coordinate }
+            let encodedPolyline = polylineService.encode(coordinates: coordinates)
+
+            // Create activity for database
+            return [
+                "user_id": AnyEncodable(userId),
+                "name": AnyEncodable(session.name),
+                "type": AnyEncodable(session.activityType),
+                "distance": AnyEncodable(session.totalDistance),
+                "elapsed_time": AnyEncodable(session.elapsedTime),
+                "start_date": AnyEncodable(session.startTime),
+                "summary_polyline": AnyEncodable(encodedPolyline)
+            ]
+        }.value
+
         // Save to Supabase
         let savedActivity = try await ActivityService.createActivity(data: activityData)
-        
+
         print("✅ Activity saved successfully with ID: \(savedActivity.id)")
-        
+
         // Refresh widgets after activity recording save
         WidgetRefreshService.refreshForActivityUpdate()
-        
+
         // Clear session after successful save
-        discardRecording()
-        
+        await MainActor.run {
+            discardRecording()
+        }
+
         return savedActivity
     }
     

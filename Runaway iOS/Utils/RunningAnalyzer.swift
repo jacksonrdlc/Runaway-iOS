@@ -19,30 +19,33 @@ class RunningAnalyzer: ObservableObject {
     
     // MARK: - Main Analysis Function
     func analyzePerformance(activities: [Activity]) async {
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.isAnalyzing = true
         }
-        
-        do {
-            // Try to use the agentic API first for enhanced insights
-            let insights = await generateEnhancedInsights(from: activities)
-            let model = try await trainPaceModel(from: preprocessActivities(activities))
-            
-            let results = AnalysisResults(
-                insights: insights,
-                model: model,
-                lastUpdated: Date()
-            )
-            
-            DispatchQueue.main.async {
+
+        // Perform all heavy processing on background queue
+        let results = await Task.detached(priority: .userInitiated) { () -> AnalysisResults? in
+            do {
+                // Try to use the agentic API first for enhanced insights
+                let insights = await self.generateEnhancedInsights(from: activities)
+                let model = try await self.trainPaceModel(from: self.preprocessActivities(activities))
+
+                return AnalysisResults(
+                    insights: insights,
+                    model: model,
+                    lastUpdated: Date()
+                )
+            } catch {
+                print("Analysis error: \(error)")
+                return nil
+            }
+        }.value
+
+        await MainActor.run {
+            if let results = results {
                 self.analysisResults = results
-                self.isAnalyzing = false
             }
-        } catch {
-            print("Analysis error: \(error)")
-            DispatchQueue.main.async {
-                self.isAnalyzing = false
-            }
+            self.isAnalyzing = false
         }
     }
     
@@ -251,15 +254,35 @@ class RunningAnalyzer: ObservableObject {
     }
     
     private func calculateWeeklyVolume(activities: [ProcessedActivity]) -> [WeeklyVolume] {
+        // Convert ProcessedActivity back to Activity for cache key generation
+        let activitiesForCache = activities.map { processed in
+            Activity(
+                id: processed.id,
+                name: "Cached Activity",
+                type: processed.type,
+                summary_polyline: nil,
+                distance: processed.distance * 1609.34, // Convert back to meters
+                start_date: processed.date.timeIntervalSince1970,
+                elapsed_time: processed.elapsedTime * 60 // Convert back to seconds
+            )
+        }
+
+        // Try cache first
+        let cache = ActivityMetricsCache()
+        if let cached = cache.getWeeklyVolume(for: activitiesForCache) {
+            return cached
+        }
+
+        // Calculate if not cached
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: activities) { activity in
             calendar.dateInterval(of: .weekOfYear, for: activity.date)?.start ?? activity.date
         }
-        
-        return grouped.map { (weekStart, weekActivities) in
+
+        let result = grouped.map { (weekStart, weekActivities) in
             let totalDistance = weekActivities.reduce(0) { $0 + $1.distance }
             let totalTime = weekActivities.reduce(0) { $0 + $1.elapsedTime }
-            
+
             return WeeklyVolume(
                 weekStart: weekStart,
                 totalDistance: totalDistance,
@@ -267,6 +290,11 @@ class RunningAnalyzer: ObservableObject {
                 activityCount: weekActivities.count
             )
         }.sorted { $0.weekStart < $1.weekStart }
+
+        // Cache the result
+        cache.cacheWeeklyVolume(result, for: activitiesForCache)
+
+        return result
     }
     
     private func calculateConsistency(activities: [ProcessedActivity]) -> Double {

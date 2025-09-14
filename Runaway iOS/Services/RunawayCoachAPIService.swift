@@ -10,7 +10,8 @@ import Foundation
 class RunawayCoachAPIService: ObservableObject {
     private let session = URLSession.shared
     private let decoder = JSONDecoder()
-    
+    private let requestManager = APIRequestManager.shared
+
     init() {
         decoder.dateDecodingStrategy = .iso8601
     }
@@ -41,14 +42,22 @@ class RunawayCoachAPIService: ObservableObject {
     
     /// Quick performance insights without full analysis
     func getQuickInsights(activities: [Activity]) async throws -> QuickInsightsResponse {
-        // Send activities directly as array, not wrapped in object
-        let activitiesArray = activities.map { $0.toAPIActivity() }
-        
-        return try await performRequest(
-            endpoint: APIConfiguration.RunawayCoach.quickInsights,
-            method: "POST",
-            body: activitiesArray,
-            responseType: QuickInsightsResponse.self
+        let requestKey = APIRequestManager.generateKeyForActivities(activities, endpoint: APIConfiguration.RunawayCoach.quickInsights)
+
+        return try await requestManager.performRequest(
+            key: requestKey,
+            timeout: APIConfiguration.RunawayCoach.requestTimeout,
+            request: {
+                // Send activities directly as array, not wrapped in object
+                let activitiesArray = activities.map { $0.toAPIActivity() }
+
+                return try await self.performRequest(
+                    endpoint: APIConfiguration.RunawayCoach.quickInsights,
+                    method: "POST",
+                    body: activitiesArray,
+                    responseType: QuickInsightsResponse.self
+                )
+            }
         )
     }
     
@@ -76,14 +85,22 @@ class RunawayCoachAPIService: ObservableObject {
     
     /// Generate pace recommendations based on recent performance
     func getPaceRecommendations(activities: [Activity]) async throws -> PaceRecommendationResponse {
-        // Send activities directly as array, not wrapped in object
-        let activitiesArray = activities.map { $0.toAPIActivity() }
-        
-        return try await performRequest(
-            endpoint: APIConfiguration.RunawayCoach.paceRecommendation,
-            method: "POST",
-            body: activitiesArray,
-            responseType: PaceRecommendationResponse.self
+        let requestKey = APIRequestManager.generateKeyForActivities(activities, endpoint: APIConfiguration.RunawayCoach.paceRecommendation)
+
+        return try await requestManager.performRequest(
+            key: requestKey,
+            timeout: APIConfiguration.RunawayCoach.requestTimeout,
+            request: {
+                // Send activities directly as array, not wrapped in object
+                let activitiesArray = activities.map { $0.toAPIActivity() }
+
+                return try await self.performRequest(
+                    endpoint: APIConfiguration.RunawayCoach.paceRecommendation,
+                    method: "POST",
+                    body: activitiesArray,
+                    responseType: PaceRecommendationResponse.self
+                )
+            }
         )
     }
     
@@ -133,7 +150,7 @@ class RunawayCoachAPIService: ObservableObject {
         return try await performRequest(
             endpoint: APIConfiguration.RunawayCoach.health,
             method: "GET",
-            body: nil as String?,
+            body: Optional<String>.none,
             responseType: HealthCheckResponse.self
         )
     }
@@ -160,13 +177,6 @@ class RunawayCoachAPIService: ObservableObject {
             request.setValue(value, forHTTPHeaderField: key)
         }
         
-        // Debug: Log authentication headers (without exposing full key)
-        if let authHeader = authHeaders["Authorization"] {
-            let maskedAuth = String(authHeader.prefix(15)) + "..." + String(authHeader.suffix(8))
-            print("🔐 Auth Header: \(maskedAuth)")
-        } else {
-            print("❌ No Authorization header found!")
-        }
         
         if let body = body {
             do {
@@ -174,12 +184,6 @@ class RunawayCoachAPIService: ObservableObject {
                 encoder.dateEncodingStrategy = .iso8601
                 let jsonData = try encoder.encode(body)
                 request.httpBody = jsonData
-                
-                // Log request data for debugging
-                if let jsonString = String(data: jsonData, encoding: .utf8) {
-                    print("📤 API Request to: \(url.absoluteString)")
-                    print("📤 Request Body: \(jsonString)")
-                }
             } catch {
                 throw APIError.encodingError(error)
             }
@@ -193,16 +197,8 @@ class RunawayCoachAPIService: ObservableObject {
             }
             
             guard 200...299 ~= httpResponse.statusCode else {
-                // Log detailed error information
-                print("🚨 API Error - Status Code: \(httpResponse.statusCode)")
-                print("🚨 Request URL: \(request.url?.absoluteString ?? "Unknown")")
-                print("🚨 Request Method: \(request.httpMethod ?? "Unknown")")
-                
                 // Try to parse error response
                 let errorMessage = String(data: data, encoding: .utf8)
-                if let errorData = errorMessage {
-                    print("🚨 Error Response: \(errorData)")
-                }
                 
                 // Throw specific error types based on status code
                 switch httpResponse.statusCode {
