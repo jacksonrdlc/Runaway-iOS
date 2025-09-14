@@ -15,6 +15,8 @@ class RunningAnalyzer: ObservableObject {
     @Published var analysisResults: AnalysisResults?
     @Published var isAnalyzing = false
     
+    private let apiService = RunawayCoachAPIService()
+    
     // MARK: - Main Analysis Function
     func analyzePerformance(activities: [Activity]) async {
         DispatchQueue.main.async {
@@ -22,9 +24,9 @@ class RunningAnalyzer: ObservableObject {
         }
         
         do {
-            let processedData = preprocessActivities(activities)
-            let insights = await generateInsights(from: processedData)
-            let model = try await trainPaceModel(from: processedData)
+            // Try to use the agentic API first for enhanced insights
+            let insights = await generateEnhancedInsights(from: activities)
+            let model = try await trainPaceModel(from: preprocessActivities(activities))
             
             let results = AnalysisResults(
                 insights: insights,
@@ -44,36 +46,76 @@ class RunningAnalyzer: ObservableObject {
         }
     }
     
-    // MARK: - Data Preprocessing
-    private func preprocessActivities(_ activities: [Activity]) -> [ProcessedActivity] {
-        return activities.compactMap { activity in
-            guard let distance = activity.distance,
-                  let elapsedTime = activity.elapsed_time,
-                  let startDate = activity.start_date,
-                  distance > 0, elapsedTime > 0 else {
-                return nil
-            }
-            
-            let pace = (elapsedTime / 60.0) / (distance * 0.000621371) // minutes per mile
-            let speed = (distance * 0.000621371) / (elapsedTime / 3600.0) // mph
-            let date = Date(timeIntervalSince1970: startDate)
-            
-            return ProcessedActivity(
-                id: activity.id,
-                date: date,
-                distance: distance * 0.000621371, // Convert to miles
-                elapsedTime: elapsedTime / 60.0, // Convert to minutes
-                pace: pace,
-                speed: speed,
-                dayOfWeek: Calendar.current.component(.weekday, from: date),
-                month: Calendar.current.component(.month, from: date),
-                type: activity.type ?? "Run"
-            )
-        }.sorted { $0.date < $1.date }
+    // MARK: - Enhanced Insights Generation with API
+    private func generateEnhancedInsights(from activities: [Activity]) async -> RunningInsights {
+        // Try to get AI-powered insights first
+        do {
+            let quickInsights = try await apiService.getQuickInsights(activities: activities)
+            return convertAPIInsightsToRunningInsights(apiInsights: quickInsights.insights, activities: activities)
+        } catch {
+            print("API insights failed, falling back to local analysis: \(error)")
+            let processedData = preprocessActivities(activities)
+            return generateLocalInsights(from: processedData)
+        }
     }
     
-    // MARK: - Insights Generation
-    private func generateInsights(from activities: [ProcessedActivity]) async -> RunningInsights {
+    private func convertAPIInsightsToRunningInsights(
+        apiInsights: QuickInsights,
+        activities: [Activity]
+    ) -> RunningInsights {
+        let processedActivities = preprocessActivities(activities)
+        let runningActivities = processedActivities.filter { $0.type.lowercased().contains("run") }
+        
+        // Basic statistics from local data
+        let totalDistance = runningActivities.reduce(0) { $0 + $1.distance }
+        let totalTime = runningActivities.reduce(0) { $0 + $1.elapsedTime }
+        let averageSpeed = runningActivities.reduce(0) { $0 + $1.speed } / Double(runningActivities.count)
+        
+        // Convert API pace string to double (assumes MM:SS format)
+        let averagePaceDouble = parsePaceString(apiInsights.performanceTrend) ?? 7.0
+        
+        // Map API trend to local enum
+        let performanceTrend: PerformanceTrend
+        switch apiInsights.performanceTrend.lowercased() {
+        case "improving":
+            performanceTrend = .improving
+        case "declining":
+            performanceTrend = .declining
+        default:
+            performanceTrend = .stable
+        }
+        
+        // Use local calculations for some metrics
+        let weeklyVolume = calculateWeeklyVolume(activities: processedActivities)
+        let nextRunPrediction = predictNextRunPerformance(activities: processedActivities)
+        let goalReadiness = calculateGoalReadiness(activities: processedActivities)
+        
+        return RunningInsights(
+            totalDistance: totalDistance,
+            totalTime: totalTime,
+            averagePace: averagePaceDouble,
+            averageSpeed: averageSpeed,
+            performanceTrend: performanceTrend,
+            weeklyVolume: weeklyVolume,
+            consistency: apiInsights.consistency,
+            nextRunPrediction: nextRunPrediction,
+            recommendations: apiInsights.topRecommendations,
+            goalReadiness: goalReadiness
+        )
+    }
+    
+    private func parsePaceString(_ paceString: String) -> Double? {
+        // Parse MM:SS format to minutes per mile
+        let components = paceString.components(separatedBy: ":")
+        guard components.count == 2,
+              let minutes = Double(components[0]),
+              let seconds = Double(components[1]) else {
+            return nil
+        }
+        return minutes + (seconds / 60.0)
+    }
+    
+    private func generateLocalInsights(from activities: [ProcessedActivity]) -> RunningInsights {
         let runningActivities = activities.filter { $0.type.lowercased().contains("run") }
         
         // Basic statistics
@@ -107,6 +149,39 @@ class RunningAnalyzer: ObservableObject {
             recommendations: generateRecommendations(from: runningActivities),
             goalReadiness: goalReadiness
         )
+    }
+    
+    // MARK: - Data Preprocessing
+    private func preprocessActivities(_ activities: [Activity]) -> [ProcessedActivity] {
+        return activities.compactMap { activity in
+            guard let distance = activity.distance,
+                  let elapsedTime = activity.elapsed_time,
+                  let startDate = activity.start_date,
+                  distance > 0, elapsedTime > 0 else {
+                return nil
+            }
+            
+            let pace = (elapsedTime / 60.0) / (distance * 0.000621371) // minutes per mile
+            let speed = (distance * 0.000621371) / (elapsedTime / 3600.0) // mph
+            let date = Date(timeIntervalSince1970: startDate)
+            
+            return ProcessedActivity(
+                id: activity.id,
+                date: date,
+                distance: distance * 0.000621371, // Convert to miles
+                elapsedTime: elapsedTime / 60.0, // Convert to minutes
+                pace: pace,
+                speed: speed,
+                dayOfWeek: Calendar.current.component(.weekday, from: date),
+                month: Calendar.current.component(.month, from: date),
+                type: activity.type ?? "Run"
+            )
+        }.sorted { $0.date < $1.date }
+    }
+    
+    // MARK: - Insights Generation (Kept for backward compatibility)
+    private func generateInsights(from activities: [ProcessedActivity]) async -> RunningInsights {
+        return generateLocalInsights(from: activities)
     }
     
     // MARK: - ML Model Training

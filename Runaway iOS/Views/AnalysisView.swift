@@ -20,8 +20,10 @@ struct AnalysisView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    // Running Goal Card - Always shown at the top
                     RunningGoalCard(activities: activities, goalReadiness: analyzer.analysisResults?.insights.goalReadiness)
+                    
+                    // Always show progress overview regardless of analysis state
+                    ProgressOverviewCard(activities: activities)
                     
                     if analyzer.isAnalyzing {
                         EnhancedAnalysisLoadingView()
@@ -163,6 +165,9 @@ struct AnalysisResultsView: View {
     
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 24) {
+            // Recommendations
+            RecommendationsCard(recommendations: results.insights.recommendations)
+            
             // Goal Readiness Analysis
             if let goalReadiness = results.insights.goalReadiness {
                 GoalReadinessCard(goalReadiness: goalReadiness)
@@ -181,12 +186,6 @@ struct AnalysisResultsView: View {
             if let prediction = results.insights.nextRunPrediction {
                 NextRunPredictionCard(prediction: prediction)
             }
-            
-            // Progress Overview - Moved from RunningGoalCard
-            ProgressOverviewCard(activities: activities)
-            
-            // Recommendations
-            RecommendationsCard(recommendations: results.insights.recommendations)
             
             // Last Updated
             Text("Last updated: \(results.lastUpdated, style: .relative) ago")
@@ -642,9 +641,37 @@ struct ReadinessRow: View {
 struct ProgressOverviewCard: View {
     let activities: [Activity]
     
-    // Mock goal analysis for now - in real app this would come from goal data
-    private var currentProgress: Double { 0.65 } // 65% complete
-    private var targetProgress: Double { 0.8 } // Should be 80% by now
+    // Calculate actual progress from activities
+    private var totalMiles: Double {
+        let activitiesWithDistance = activities.compactMap { activity -> Double? in
+            return activity.distance
+        }
+        
+        let totalMeters = activitiesWithDistance.reduce(0, +)
+        let miles = totalMeters * 0.000621371 // Convert meters to miles
+        
+        // Debug output - remove in production
+        print("🏃 ProgressOverviewCard - Activities: \(activities.count), With distance: \(activitiesWithDistance.count), Total miles: \(String(format: "%.1f", miles))")
+        
+        return miles
+    }
+    
+    private var currentProgress: Double { 
+        // For now, assume a 100-mile monthly goal as example
+        let monthlyGoal = 100.0
+        return min(totalMiles / monthlyGoal, 1.0)
+    }
+    
+    private var targetProgress: Double { 
+        // Calculate expected progress based on days into the month
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfMonth = calendar.dateInterval(of: .month, for: now)?.start ?? now
+        let daysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
+        let dayOfMonth = calendar.component(.day, from: now)
+        
+        return Double(dayOfMonth) / Double(daysInMonth)
+    }
     
     private var progressColor: Color {
         let ratio = currentProgress / max(targetProgress, 0.01)
@@ -656,7 +683,7 @@ struct ProgressOverviewCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Goal Progress")
+            Text("Monthly Distance Progress")
                 .font(.headline)
                 .foregroundColor(.primary)
             
@@ -693,11 +720,14 @@ struct ProgressOverviewCard: View {
                 
                 // Center content
                 VStack(spacing: 4) {
-                    Text("\(Int(currentProgress * 100))%")
+                    Text(String(format: "%.1f", totalMiles))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(progressColor)
+                        .onAppear {
+                            print("🏃 Displaying miles in center: \(totalMiles)")
+                        }
                     
-                    Text("Complete")
+                    Text("Miles")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -710,11 +740,11 @@ struct ProgressOverviewCard: View {
                     Circle()
                         .fill(progressColor)
                         .frame(width: 12, height: 12)
-                    Text("Current Progress")
+                    Text("Current Distance")
                         .font(.caption)
                         .foregroundColor(.primary)
                     Spacer()
-                    Text("\(Int(currentProgress * 100))%")
+                    Text(String(format: "%.1f mi", totalMiles))
                         .font(.caption.weight(.semibold))
                         .foregroundColor(.primary)
                 }
@@ -723,11 +753,11 @@ struct ProgressOverviewCard: View {
                     Circle()
                         .fill(Color.gray.opacity(0.5))
                         .frame(width: 12, height: 12)
-                    Text("Target Progress")
+                    Text("Monthly Goal")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text("\(Int(targetProgress * 100))%")
+                    Text("100.0 mi")
                         .font(.caption.weight(.semibold))
                         .foregroundColor(.secondary)
                 }

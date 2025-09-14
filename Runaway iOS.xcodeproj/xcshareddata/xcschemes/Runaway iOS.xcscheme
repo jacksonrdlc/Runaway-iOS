@@ -74,6 +74,13 @@
             ReferencedContainer = "container:Runaway iOS.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "RUNAWAY_API_KEY"
+            value = "afa390428e8800601dbdbb2ad0018acd2768d66753a0980275309b28f0bd5eed"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
