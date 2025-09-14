@@ -122,27 +122,27 @@ class GPSTrackingService: NSObject, ObservableObject {
             print("❌ Location permission not granted")
             return
         }
-        
+
         guard !isTracking else {
             print("⚠️ Tracking already in progress")
             return
         }
-        
+
         print("🏃 Starting GPS tracking")
-        
-        // Reset tracking data
-        routePoints.removeAll()
+
+        // Reset tracking data with efficient memory management
+        routePoints.removeAll(keepingCapacity: true) // Keep capacity for performance
+        speedHistory.removeAll(keepingCapacity: true)
         totalDistance = 0.0
         currentSpeed = 0.0
         averageSpeed = 0.0
         lastLocation = nil
         startTime = Date()
-        speedHistory.removeAll()
-        
+
         // Start location updates
         isTracking = true
         locationManager.startUpdatingLocation()
-        
+
         // Request background location if authorized
         if authorizationStatus == .authorizedAlways {
             locationManager.allowsBackgroundLocationUpdates = true
@@ -183,13 +183,15 @@ class GPSTrackingService: NSObject, ObservableObject {
     }
     
     func clearRoute() {
-        routePoints.removeAll()
+        // Clear arrays with capacity to avoid repeated allocations
+        routePoints.removeAll(keepingCapacity: false)
+        speedHistory.removeAll(keepingCapacity: false)
+
         totalDistance = 0.0
         currentSpeed = 0.0
         averageSpeed = 0.0
         lastLocation = nil
         startTime = nil
-        speedHistory.removeAll()
         print("🗑️ Route data cleared")
     }
     
@@ -208,63 +210,86 @@ class GPSTrackingService: NSObject, ObservableObject {
             print("⚠️ Location filtered out due to poor accuracy: \(location.horizontalAccuracy)m")
             return
         }
-        
-        // Update current location
-        currentLocation = location
-        
-        // Calculate distance from last point
-        if let lastLoc = lastLocation {
-            let distance = location.distance(from: lastLoc)
-            
-            // Only add point if it's far enough from the last one
-            if distance >= minimumDistance {
-                addRoutePoint(location)
-                updateDistance(distance)
-                updateSpeed(location)
-                lastLocation = location
+
+        // Update current location on main thread immediately for UI
+        Task { @MainActor in
+            self.currentLocation = location
+        }
+
+        // Process heavy calculations on background thread
+        Task.detached { [weak self] in
+            guard let self = self else { return }
+
+            // Calculate distance from last point
+            let lastLoc = await MainActor.run { self.lastLocation }
+            if let lastLoc = lastLoc {
+                let distance = location.distance(from: lastLoc)
+
+                // Only add point if it's far enough from the last one
+                if distance >= self.minimumDistance {
+                    await self.addRoutePoint(location)
+                    await self.updateDistance(distance)
+                    await self.updateSpeed(location)
+                    await MainActor.run {
+                        self.lastLocation = location
+                    }
+                }
+            } else {
+                // First location point
+                await self.addRoutePoint(location)
+                await MainActor.run {
+                    self.lastLocation = location
+                }
             }
-        } else {
-            // First location point
-            addRoutePoint(location)
-            lastLocation = location
         }
     }
     
+    @MainActor
     private func addRoutePoint(_ location: CLLocation) {
         let point = GPSRoutePoint(location: location)
         routePoints.append(point)
         print("📍 Added route point: \(routePoints.count) - \(String(format: "%.6f", location.coordinate.latitude)), \(String(format: "%.6f", location.coordinate.longitude))")
     }
-    
+
+    @MainActor
     private func updateDistance(_ additionalDistance: Double) {
         totalDistance += additionalDistance
         print("📏 Distance updated: +\(String(format: "%.1f", additionalDistance))m, Total: \(String(format: "%.2f", totalDistanceMiles)) miles")
     }
     
+    @MainActor
     private func updateSpeed(_ location: CLLocation) {
+        let calculatedSpeed: Double
+
         // Update current speed (prefer GPS speed if available and reasonable)
         if location.speed >= 0 && location.speed < 20 { // Max ~45 mph seems reasonable for running
-            currentSpeed = location.speed
+            calculatedSpeed = location.speed
         } else if let lastLoc = lastLocation {
             // Calculate speed from distance/time
             let distance = location.distance(from: lastLoc)
             let timeInterval = location.timestamp.timeIntervalSince(lastLoc.timestamp)
             if timeInterval > 0 {
-                currentSpeed = distance / timeInterval
+                calculatedSpeed = distance / timeInterval
+            } else {
+                calculatedSpeed = currentSpeed // Keep previous speed if time interval is 0
             }
+        } else {
+            calculatedSpeed = 0.0
         }
-        
+
+        currentSpeed = calculatedSpeed
+
         // Add to speed history for averaging
         speedHistory.append(currentSpeed)
         if speedHistory.count > speedSmoothingWindow {
             speedHistory.removeFirst()
         }
-        
+
         // Calculate average speed
         if !speedHistory.isEmpty {
             averageSpeed = speedHistory.reduce(0, +) / Double(speedHistory.count)
         }
-        
+
         // Also calculate overall average speed
         if elapsedTime > 0 {
             let overallAverageSpeed = totalDistance / elapsedTime
@@ -279,15 +304,16 @@ extension GPSTrackingService: CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        
-        // Always update current location for map centering
-        currentLocation = location
-        print("📍 Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude) (accuracy: \(location.horizontalAccuracy)m)")
-        
+
         // Only process for tracking if actively tracking
         if isTracking {
             for location in locations {
                 processNewLocation(location)
+            }
+        } else {
+            // Just update current location for display when not tracking
+            Task { @MainActor in
+                self.currentLocation = location
             }
         }
     }

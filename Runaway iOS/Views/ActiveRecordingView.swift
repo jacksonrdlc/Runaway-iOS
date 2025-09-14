@@ -13,7 +13,7 @@ struct ActiveRecordingView: View {
     @ObservedObject var recordingService: ActivityRecordingService
     let activityType: String
     let customName: String
-    
+
     @Environment(\.dismiss) private var dismiss
     @State private var showingStopConfirmation = false
     @State private var showingPostRecording = false
@@ -21,8 +21,9 @@ struct ActiveRecordingView: View {
         center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     )
-    @State private var elapsedTime: TimeInterval = 0
-    @State private var timer: Timer?
+
+    @StateObject private var timerManager = TimerUpdateManager()
+    @StateObject private var mapThrottler = MapRegionThrottler()
     
     var body: some View {
         ZStack {
@@ -40,7 +41,7 @@ struct ActiveRecordingView: View {
                 HStack {
                     // Time
                     VStack(spacing: 2) {
-                        Text(formatTime(elapsedTime))
+                        Text(formatTime(timerManager.elapsedTime))
                             .font(.title2)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
@@ -155,11 +156,17 @@ struct ActiveRecordingView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            startTimer()
+            timerManager.start()
             centerMapOnCurrentLocation()
         }
         .onDisappear {
-            stopTimer()
+            timerManager.stop()
+        }
+        .onChange(of: mapThrottler.shouldUpdateRegion) { shouldUpdate in
+            if shouldUpdate {
+                updateMapRegion()
+                mapThrottler.resetUpdateFlag()
+            }
         }
         .confirmationDialog("Stop Recording", isPresented: $showingStopConfirmation) {
             Button("Stop and Save", role: .destructive) {
@@ -202,38 +209,24 @@ struct ActiveRecordingView: View {
     }
     
     // MARK: - Methods
-    
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            updateElapsedTime()
-            updateMapRegion()
-        }
-    }
-    
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-    
-    private func updateElapsedTime() {
-        elapsedTime = recordingService.gpsService.elapsedTime
-    }
-    
+
     private func updateMapRegion() {
-        // Follow user's current location
+        // Follow user's current location with throttling
         if let location = recordingService.gpsService.currentLocation {
             let newRegion = MKCoordinateRegion(
                 center: location.coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
             )
-            
+
             // Only update if the change is significant to avoid constant updates
             let currentCenter = region.center
             let latDiff = abs(currentCenter.latitude - newRegion.center.latitude)
             let lonDiff = abs(currentCenter.longitude - newRegion.center.longitude)
-            
+
             if latDiff > 0.0001 || lonDiff > 0.0001 {
-                region = newRegion
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    region = newRegion
+                }
             }
         }
     }

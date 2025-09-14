@@ -69,10 +69,8 @@ struct ActivitiesView: View {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
                             ForEach(activities, id: \.id) { activity in
                                 CardView(activity: convertToLocalActivity(activity)) {
-                                    print("🚀 Activity selected: \(activity.name ?? "Unknown")")
                                     selectedActivity = convertToLocalActivity(activity)
                                     showingDetail = true
-                                    print("🚀 selectedActivity set to: \(selectedActivity?.name ?? "nil")")
                                 }
                                 .padding(.horizontal, AppTheme.Spacing.md)
                             }

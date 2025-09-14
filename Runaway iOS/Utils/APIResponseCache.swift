@@ -10,28 +10,50 @@ import Foundation
 // MARK: - API Response Caching
 
 class APIResponseCache {
-    private static let cache = NSCache<NSString, CachedResponse>()
-    
+    private static let cache: NSCache<NSString, CachedResponse> = {
+        let cache = NSCache<NSString, CachedResponse>()
+        cache.countLimit = 50 // Maximum 50 cached responses
+        cache.totalCostLimit = 10 * 1024 * 1024 // 10MB limit
+        return cache
+    }()
+
+    private static let cacheQueue = DispatchQueue(label: "api.response.cache", attributes: .concurrent)
+
     static func getCachedResponse(for key: String) -> CachedResponse? {
-        return cache.object(forKey: key as NSString)
+        return cacheQueue.sync {
+            return cache.object(forKey: key as NSString)
+        }
     }
-    
+
     static func setCachedResponse(_ response: CachedResponse, for key: String) {
-        cache.setObject(response, forKey: key as NSString)
+        cacheQueue.async(flags: .barrier) {
+            cache.setObject(response, forKey: key as NSString)
+        }
     }
-    
+
     static func isResponseValid(_ response: CachedResponse) -> Bool {
         return Date().timeIntervalSince(response.timestamp) < APIConfiguration.RunawayCoach.cacheTimeout
     }
-    
+
     static func clearCache() {
-        cache.removeAllObjects()
+        cacheQueue.async(flags: .barrier) {
+            cache.removeAllObjects()
+        }
     }
-    
+
+    // Enhanced cache management
     static func removeExpiredEntries() {
-        // Note: NSCache doesn't provide a way to iterate over entries
-        // This would require a more sophisticated implementation with a custom cache
-        // For now, we rely on NSCache's automatic eviction
+        // Since NSCache doesn't provide enumeration, we'll periodically clear all entries
+        // and let the natural request flow repopulate with fresh data
+        cacheQueue.async(flags: .barrier) {
+            cache.removeAllObjects()
+        }
+    }
+
+    static func getCacheSize() -> (count: Int, cost: Int) {
+        return cacheQueue.sync {
+            return (count: cache.countLimit, cost: cache.totalCostLimit)
+        }
     }
 }
 

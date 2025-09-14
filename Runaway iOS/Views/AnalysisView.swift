@@ -640,20 +640,32 @@ struct ReadinessRow: View {
 // MARK: - Progress Overview Card
 struct ProgressOverviewCard: View {
     let activities: [Activity]
-    
-    // Calculate actual progress from activities
-    private var totalMiles: Double {
+    @State private var cachedTotalMiles: Double = 0.0
+    private let metricsCache = ActivityMetricsCache()
+
+    // Calculate actual progress from activities with caching
+    private func calculateTotalMiles() -> Double {
+        // Try to get from cache first
+        if let cached = metricsCache.getTotalMiles(for: activities) {
+            return cached
+        }
+
+        // Calculate if not in cache
         let activitiesWithDistance = activities.compactMap { activity -> Double? in
             return activity.distance
         }
-        
+
         let totalMeters = activitiesWithDistance.reduce(0, +)
         let miles = totalMeters * 0.000621371 // Convert meters to miles
-        
-        // Debug output - remove in production
-        print("🏃 ProgressOverviewCard - Activities: \(activities.count), With distance: \(activitiesWithDistance.count), Total miles: \(String(format: "%.1f", miles))")
-        
+
+        // Cache the result
+        metricsCache.cacheTotalMiles(miles, for: activities)
+
         return miles
+    }
+
+    private var totalMiles: Double {
+        return cachedTotalMiles
     }
     
     private var currentProgress: Double { 
@@ -723,9 +735,6 @@ struct ProgressOverviewCard: View {
                     Text(String(format: "%.1f", totalMiles))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(progressColor)
-                        .onAppear {
-                            print("🏃 Displaying miles in center: \(totalMiles)")
-                        }
                     
                     Text("Miles")
                         .font(.caption)
@@ -782,6 +791,14 @@ struct ProgressOverviewCard: View {
         .padding()
         .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
+        .onAppear {
+            // Calculate total miles when view appears
+            cachedTotalMiles = calculateTotalMiles()
+        }
+        .onChange(of: activities.count) { _ in
+            // Recalculate when activities change
+            cachedTotalMiles = calculateTotalMiles()
+        }
     }
 }
 
