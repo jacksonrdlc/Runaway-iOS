@@ -193,14 +193,17 @@ class DataManager: ObservableObject {
             let currentMonth = Calendar.current.component(.month, from: Date())
             let weekStartDate = Date().startOfWeek()
 
-            // Filter activities by date ranges
-            let yearlyActivities = activities.filter { activity in
-                guard let startDate = activity.start_date else { return false }
-                let activityDate = Date(timeIntervalSince1970: startDate)
-                return Calendar.current.component(.year, from: activityDate) == currentYear
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+
+            // Filter for cardio activities only (Run and Walk)
+            let cardioActivities = activities.filter { activity in
+                let activityType = activity.type?.lowercased() ?? ""
+                return activityType == "run" || activityType == "walk"
             }
 
-            let monthlyActivities = activities.filter { activity in
+            let monthlyActivities = cardioActivities.filter { activity in
                 guard let startDate = activity.start_date else { return false }
                 let activityDate = Date(timeIntervalSince1970: startDate)
                 return Calendar.current.component(.year, from: activityDate) == currentYear &&
@@ -208,9 +211,11 @@ class DataManager: ObservableObject {
             }
 
             // Calculate totals
-            let yearlyMiles = yearlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+            let yearlyMiles = cardioActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
             let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-            let totalRuns = yearlyActivities.count
+            let totalRuns = cardioActivities.count
+            
+            print("📊 DataManager: Yearly Miles: \(yearlyMiles * 0.000621371), Monthly Miles: \(monthlyMiles * 0.000621371), Total Runs: \(totalRuns)")
 
             // Store totals
             userDefaults.set(yearlyMiles * 0.000621371, forKey: "miles")
@@ -230,7 +235,7 @@ class DataManager: ObservableObject {
 
             let encoder = JSONEncoder()
 
-            for activity in activities {
+            for activity in cardioActivities {
                 guard let startDate = activity.start_date,
                       let distance = activity.distance,
                       let elapsedTime = activity.elapsed_time,
@@ -272,38 +277,38 @@ class DataManager: ObservableObject {
     // MARK: - Computed Properties
 
     /// Get activities for the current week
-    var currentWeekActivities: [Activity] {
-        let weekStart = Date().startOfWeek()
-        return activities.filter { activity in
-            guard let startDate = activity.start_date else { return false }
-            return startDate > weekStart
-        }
-    }
+//    var currentWeekActivities: [Activity] {
+//        let weekStart = Date().startOfWeek()
+//        return activities.filter { activity in
+//            guard let startDate = activity.start_date else { return false }
+//            return startDate > weekStart
+//        }
+//    }
+//
+//    /// Get activities for the current month
+//    var currentMonthActivities: [Activity] {
+//        let currentMonth = Calendar.current.component(.month, from: Date())
+//        let currentYear = Calendar.current.component(.year, from: Date())
+//
+//        return activities.filter { activity in
+//            guard let startDate = activity.start_date else { return false }
+//            let activityDate = Date(timeIntervalSince1970: startDate)
+//            return Calendar.current.component(.month, from: activityDate) == currentMonth &&
+//                   Calendar.current.component(.year, from: activityDate) == currentYear
+//        }
+//    }
 
-    /// Get activities for the current month
-    var currentMonthActivities: [Activity] {
-        let currentMonth = Calendar.current.component(.month, from: Date())
-        let currentYear = Calendar.current.component(.year, from: Date())
-
-        return activities.filter { activity in
-            guard let startDate = activity.start_date else { return false }
-            let activityDate = Date(timeIntervalSince1970: startDate)
-            return Calendar.current.component(.month, from: activityDate) == currentMonth &&
-                   Calendar.current.component(.year, from: activityDate) == currentYear
-        }
-    }
-
-    /// Get total miles for current year
-    var totalYearMiles: Double {
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let yearlyActivities = activities.filter { activity in
-            guard let startDate = activity.start_date else { return false }
-            let activityDate = Date(timeIntervalSince1970: startDate)
-            return Calendar.current.component(.year, from: activityDate) == currentYear
-        }
-        let totalMeters = yearlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-        return totalMeters * 0.000621371
-    }
+//    /// Get total miles for current year
+//    var totalYearMiles: Double {
+//        let currentYear = Calendar.current.component(.year, from: Date())
+//        let yearlyActivities = activities.filter { activity in
+//            guard let startDate = activity.start_date else { return false }
+//            let activityDate = Date(timeIntervalSince1970: startDate)
+//            return Calendar.current.component(.year, from: activityDate) == currentYear
+//        }
+//        let totalMeters = yearlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+//        return totalMeters * 0.000621371
+//    }
 
     // MARK: - Background Task Management
 
