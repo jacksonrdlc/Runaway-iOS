@@ -51,7 +51,7 @@ public final class RealtimeService: ObservableObject {
     }
     
     public func forceRefreshWidget(with activities: [Activity]) {
-        createActivityRecord(activities: activities)
+        updateDataManager(with: activities)
     }
     
     // MARK: - Private Methods
@@ -146,11 +146,8 @@ public final class RealtimeService: ObservableObject {
             
             // Update UserDefaults for widget
             await MainActor.run {
-                createActivityRecord(activities: activities)
+                updateDataManager(with: activities)
             }
-            
-            // Notify UI via NotificationCenter
-            NotificationCenter.default.post(name: .activitiesUpdated, object: activities)
             
         } catch {
             print("Error refreshing activity data: \(error)")
@@ -215,118 +212,10 @@ public final class RealtimeService: ObservableObject {
     
     // MARK: - Widget Data Management
     
-    private func createActivityRecord(activities: [Activity]) {
-        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
-            print("Failed to access shared UserDefaults")
-            return
+    private func updateDataManager(with activities: [Activity]) {
+        Task { @MainActor in
+            DataManager.shared.handleRealtimeUpdate(activities: activities)
         }
-
-
-        // Use autoreleasepool to manage memory during heavy processing
-        autoreleasepool {
-            // Clear existing arrays first
-            let arrayKeys = ["sunArray", "monArray", "tueArray", "wedArray", "thuArray", "friArray", "satArray"]
-            arrayKeys.forEach { userDefaults.removeObject(forKey: $0) }
-
-            // Use dictionary instead of separate arrays for better memory management
-            var weeklyArrays: [String: [String]] = [
-                "Sunday": [],
-                "Monday": [],
-                "Tuesday": [],
-                "Wednesday": [],
-                "Thursday": [],
-                "Friday": [],
-                "Saturday": []
-            ]
-        
-        // Calculate totals for the year and month
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let currentMonth = Calendar.current.component(.month, from: Date())
-        
-        let yearlyActivities = activities.filter { activity in
-            guard let startDate = activity.start_date else { return false }
-            let activityDate = Date(timeIntervalSince1970: startDate)
-            return Calendar.current.component(.year, from: activityDate) == currentYear
-        }
-        
-        let monthlyActivities = activities.filter { activity in
-            guard let startDate = activity.start_date else { return false }
-            let activityDate = Date(timeIntervalSince1970: startDate)
-            return Calendar.current.component(.year, from: activityDate) == currentYear &&
-                   Calendar.current.component(.month, from: activityDate) == currentMonth
-        }
-        
-        // Print monthly activities start dates
-        print("=== Monthly Activities Start Dates ===")
-        print("Found \(monthlyActivities.count) activities for current month")
-        for (index, activity) in monthlyActivities.enumerated() {
-            if let startDate = activity.start_date {
-                let activityDate = Date(timeIntervalSince1970: startDate)
-                let formatter = DateFormatter()
-                formatter.dateStyle = .medium
-                formatter.timeStyle = .short
-                print("Activity \(index + 1): \(formatter.string(from: activityDate)) - Type: \(activity.type ?? "Unknown")")
-            }
-        }
-        print("=====================================")
-        
-        let yearlyMiles = yearlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-        let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-        let totalRuns = yearlyActivities.count
-        
-        userDefaults.set((yearlyMiles * 0.000621371), forKey: "miles")
-        userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
-        userDefaults.set(totalRuns, forKey: "runs")
-        
-            // Process weekly activities more efficiently
-            let weekStartDate = Date().startOfWeek()
-            let encoder = JSONEncoder() // Reuse encoder instance
-
-            for activity in activities {
-                guard let startDate = activity.start_date,
-                      let distance = activity.distance,
-                      let elapsedTime = activity.elapsed_time,
-                      startDate > weekStartDate else { continue }
-
-                let dayOfWeek = Date(timeIntervalSince1970: startDate).dayOfTheWeek
-
-                let raActivity = RAActivity(
-                    day: String(dayOfWeek.prefix(1)),
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60
-                )
-
-                // Use more efficient encoding with error handling
-                do {
-                    let jsonData = try encoder.encode(raActivity)
-                    if let jsonString = String(data: jsonData, encoding: .utf8) {
-                        weeklyArrays[dayOfWeek]?.append(jsonString)
-                    }
-                } catch {
-                    print("Failed to encode activity: \(error)")
-                }
-            }
-        
-            // Save all arrays to UserDefaults efficiently
-            userDefaults.set(weeklyArrays["Sunday"], forKey: "sunArray")
-            userDefaults.set(weeklyArrays["Monday"], forKey: "monArray")
-            userDefaults.set(weeklyArrays["Tuesday"], forKey: "tueArray")
-            userDefaults.set(weeklyArrays["Wednesday"], forKey: "wedArray")
-            userDefaults.set(weeklyArrays["Thursday"], forKey: "thuArray")
-            userDefaults.set(weeklyArrays["Friday"], forKey: "friArray")
-            userDefaults.set(weeklyArrays["Saturday"], forKey: "satArray")
-
-            let totalWeeklyActivities = weeklyArrays.values.reduce(0) { $0 + $1.count }
-
-        } // End autoreleasepool
-
-        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
-// MARK: - Notification Extensions
-
-extension Notification.Name {
-    static let activitiesUpdated = Notification.Name("activitiesUpdated")
-}

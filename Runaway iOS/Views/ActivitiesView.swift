@@ -6,9 +6,8 @@ import WidgetKit
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var realtimeService: RealtimeService
-    @Binding var activities: [Activity]
-    @State private var isRefreshing = false
     @State private var selectedActivity: LocalActivity?
     @State private var showingDetail = false
     @State private var showingRecording = false
@@ -25,36 +24,8 @@ struct ActivitiesView: View {
         )
     }
     
-    private func fetchActivities() async {
-        guard let userId = userManager.userId else {
-            print("No user ID available")
-            return
-        }
-        
-        // Start background task to prevent cancellation
-        let backgroundTaskId = UIApplication.shared.beginBackgroundTask { 
-            print("Background task expired during activity fetch")
-        }
-        defer {
-            UIApplication.shared.endBackgroundTask(backgroundTaskId)
-        }
-        
-        do {
-            let fetchedActivities = try await ActivityService.getAllActivitiesByUser(userId: userId)
-            DispatchQueue.main.async {
-                self.activities = fetchedActivities
-                self.isRefreshing = false
-                // Force refresh widget UserDefaults when activities are manually refreshed
-                self.realtimeService.forceRefreshWidget(with: fetchedActivities)
-                // Refresh widgets after manual data refresh
-                WidgetRefreshService.refreshForActivityUpdate()
-            }
-        } catch {
-            print("Error fetching activities: \(error)")
-            DispatchQueue.main.async {
-                self.isRefreshing = false
-            }
-        }
+    private func refreshActivities() async {
+        await dataManager.refreshActivities()
     }
     
     var body: some View {
@@ -62,12 +33,23 @@ struct ActivitiesView: View {
             AppTheme.Colors.background.ignoresSafeArea()
             
             VStack {
-                if activities.isEmpty {
-                    EmptyActivitiesView()
+                if dataManager.activities.isEmpty {
+                    if dataManager.isLoadingActivities {
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
+                            Text("Loading activities...")
+                                .font(AppTheme.Typography.body)
+                                .foregroundColor(AppTheme.Colors.secondaryText)
+                        }
+                    } else {
+                        EmptyActivitiesView()
+                    }
                 } else {
                     ScrollView {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
-                            ForEach(activities, id: \.id) { activity in
+                            ForEach(dataManager.activities, id: \.id) { activity in
                                 CardView(activity: convertToLocalActivity(activity)) {
                                     selectedActivity = convertToLocalActivity(activity)
                                     showingDetail = true
@@ -78,8 +60,7 @@ struct ActivitiesView: View {
                         .padding(.top, AppTheme.Spacing.md)
                     }
                     .refreshable {
-                        isRefreshing = true
-                        await fetchActivities()
+                        await refreshActivities()
                     }
                 }
             }
@@ -126,14 +107,13 @@ struct ActivitiesView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         Task {
-                            isRefreshing = true
-                            await fetchActivities()
+                            await refreshActivities()
                         }
                     }) {
                         Image(systemName: AppIcons.refresh)
                             .foregroundColor(AppTheme.Colors.primary)
                     }
-                    .disabled(isRefreshing)
+                    .disabled(dataManager.isLoadingActivities)
                 }
             }
         }
@@ -168,9 +148,10 @@ struct EmptyActivitiesView: View {
 
 struct ActivitiesView_Previews: PreviewProvider {
     static var previews: some View {
-        ActivitiesView(activities: .constant([]))
+        ActivitiesView()
             .environmentObject(AuthManager.shared)
             .environmentObject(UserManager.shared)
+            .environmentObject(DataManager.shared)
             .environmentObject(RealtimeService.shared)
     }
 }

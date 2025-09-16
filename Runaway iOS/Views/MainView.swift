@@ -1,6 +1,6 @@
 //
-//  Profile.swift
-//  RunawayUI
+//  MainView.swift
+//  Runaway iOS
 //
 //  Created by Jack Rudelic on 7/16/24.
 //
@@ -8,28 +8,21 @@ import SwiftUI
 import WidgetKit
 import Supabase
 
-
 struct MainView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var realtimeService: RealtimeService
     @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var dataManager: DataManager
     @State var selectedTab = 0
-    @State var isSupabaseDataReady: Bool = false
-    @State var activityDays: [ActivityDay] = []
-    @State var activities: [Activity] = []
-    @State var athlete: Athlete?
-    @State var stats: AthleteStats?
-    @State var runs: String? = ""
-    @State var miles: String? = ""
-    @State var minutes: String? = ""
+    @State var isDataReady: Bool = false
     @State private var showingSettings = false
     
     
     var body: some View {
-        if isSupabaseDataReady {
+        if isDataReady {
             TabView(selection: $selectedTab) {
                 NavigationView {
-                    ActivitiesView(activities: $activities)
+                    ActivitiesView()
                         .navigationTitle("Activity Feed")
                         .navigationBarTitleDisplayMode(.large)
                         .toolbar {
@@ -47,9 +40,9 @@ struct MainView: View {
                     Label("Feed", systemImage: "newspaper")
                 }
                 .tag(0)
-                
+
                 NavigationView {
-                    AnalysisView(activities: activities)
+                    AnalysisView()
                         .navigationTitle("Analysis")
                         .navigationBarTitleDisplayMode(.large)
                         .toolbar {
@@ -67,7 +60,7 @@ struct MainView: View {
                     Label("Analysis", systemImage: AppIcons.analysis)
                 }
                 .tag(1)
-                
+
                 NavigationView {
                     ResearchView()
                         .toolbar {
@@ -85,9 +78,9 @@ struct MainView: View {
                     Label("Research", systemImage: "flask")
                 }
                 .tag(2)
-                
+
                 NavigationView {
-                    if let athlete = athlete, let stats = stats {
+                    if let athlete = dataManager.athlete, let stats = dataManager.stats {
                         AthleteView(athlete: athlete, stats: stats)
                             .navigationTitle("Profile")
                             .navigationBarTitleDisplayMode(.large)
@@ -138,13 +131,8 @@ struct MainView: View {
                     .environmentObject(userManager)
             }
             .onAppear {
-                fetchSupabaseData()
+                loadInitialData()
                 realtimeService.startRealtimeSubscription()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .activitiesUpdated)) { notification in
-                if let updatedActivities = notification.object as? [Activity] {
-                    self.activities = updatedActivities
-                }
             }
             .background(AppTheme.Colors.background.ignoresSafeArea())
         } else {
@@ -196,294 +184,42 @@ struct MainView: View {
                 .padding(AppTheme.Spacing.xl)
             }
             .onAppear {
-                print("Auth manager user ID: \(String(describing: authManager.currentUser?.id))")
-                fetchSupabaseData()
+                loadInitialData()
             }
         }
     }
 }
 
 extension MainView {
-    private func fetchSupabaseData() {
-        clearUserDefaults()
+    /// Load initial user data through DataManager
+    private func loadInitialData() {
         Task {
-            //            try await authManager.signOut()
-            print("Fetching data with user ID: \(String(describing: authManager.currentUser?.id))")
             guard let authId = authManager.currentUser?.id else {
-                print("No user ID available")
-                isSupabaseDataReady = true
+                print("❌ MainView: No auth ID available")
+                isDataReady = true
                 return
             }
-            
-            let user: User
+
             do {
-                // Fetch userId data using userService
-                user = try await UserService.getUserByAuthId(authId: authId)
-                print("Successfully fetched user: \(user)")
+                // Fetch and set user profile
+                let user = try await UserService.getUserByAuthId(authId: authId)
+                await MainActor.run {
+                    userManager.setUser(user)
+                }
+
+                // Load all data through DataManager
+                await dataManager.loadAllData(for: user.userId)
+
+                await MainActor.run {
+                    isDataReady = true
+                }
+
             } catch {
-                print("Error fetching User data: \(error)")
-                isSupabaseDataReady = true
-                return
-            }
-            
-            print("Fetched user: \(user)")
-            print("User ID: \(user.userId)")
-            
-            // Store user in UserManager for global access
-            await MainActor.run {
-                userManager.setUser(user)
-            }
-            
-            do {
-                // Fetch athlete data using AthleteService
-                print("Fetching athlete data for user ID: \(user.userId)")
-                let athlete = try await AthleteService.getAthleteByUserId(userId: user.userId)
-                print("Successfully fetched athlete: \(athlete.firstname) \(athlete.lastname)")
-                self.athlete = athlete
-            } catch {
-                print("Error fetching Athlete data: \(error)")
-            }
-            
-            do {
-                // Fetch athlete stats if needed
-                let stats = try await AthleteService.getAthleteStats(userId: user.userId)
-                self.stats = stats
-                setStats(stats: stats)
-                print("Successfully fetched athlete stats:")
-                print("  - Raw object: \(stats)")
-                
-                // Print detailed stats using Mirror for reflection
-                let mirror = Mirror(reflecting: stats)
-                print("Athlete Stats Properties:")
-                for (label, value) in mirror.children {
-                    if let propertyName = label {
-                        print("  - \(propertyName): \(value)")
-                    }
-                }
-            } catch {
-                print("Error fetching Athlete data: \(error)")
-            }
-            
-            do {
-                self.activities = try await ActivityService.getAllActivitiesByUser(userId: user.userId)
-                createActivityRecord(activities: self.activities)
-                isSupabaseDataReady = true
-            } catch {
-                print("Error fetching Activity data: \(error)")
-                self.activities = []
-                isSupabaseDataReady = true
-            }
-        }
-    }
-    
-    private func setStats(stats: AthleteStats) {
-        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
-            if let runsInt = stats.count {
-                self.runs = String(runsInt)
-                userDefaults.set(runsInt, forKey: "runs")
-            }
-            if let milesInt = stats.ytdDistance {
-                self.miles = String(format: "%.1f", milesInt * Double(0.000621371))
-                userDefaults.set(milesInt, forKey: "miles")
-            }
-            if let minutesInt = stats.elapsedTime {
-                self.minutes = String(format: "%.0f", minutesInt / 60)
-                userDefaults.set(minutesInt, forKey: "minutes")
-            }
-        }
-    }
-    
-    private func createActivityRecord(activities : [Activity]) {
-        print("Creating activity record with \(activities.count) activities")
-        
-        // Print all activity start dates
-        print("=== All Activities Start Dates - cAR ===")
-        for (index, activity) in activities.enumerated() {
-            if let startDate = activity.start_date {
-                let activityDate = Date(timeIntervalSince1970: startDate)
-                let formatter = DateFormatter()
-                formatter.dateStyle = .medium
-                formatter.timeStyle = .short
-                print("Activity \(index + 1): \(formatter.string(from: activityDate)) - Type: \(activity.type ?? "Unknown") - Distance: \(String(format: "%.2f", (activity.distance ?? 0.0) * 0.000621371)) miles")
-            } else {
-                print("Activity \(index + 1): No start date available - Type: \(activity.type ?? "Unknown")")
-            }
-        }
-        print("====================================")
-        
-        // Move heavy operations to background thread
-        Task.detached(priority: .utility) {
-            var sunArray: Array<String> = [];
-            var monArray: Array<String> = [];
-            var tueArray: Array<String> = [];
-            var wedArray: Array<String> = [];
-            var thuArray: Array<String> = [];
-            var friArray: Array<String> = [];
-            var satArray: Array<String> = [];
-            
-            guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
-                print("Failed to access shared UserDefaults")
-                return
-            }
-            
-            print("Creating activity record")
-            
-            // Clear existing arrays
-            userDefaults.removeObject(forKey: "sunArray")
-            userDefaults.removeObject(forKey: "monArray")
-            userDefaults.removeObject(forKey: "tueArray")
-            userDefaults.removeObject(forKey: "wedArray")
-            userDefaults.removeObject(forKey: "thuArray")
-            userDefaults.removeObject(forKey: "friArray")
-            userDefaults.removeObject(forKey: "satArray")
-            
-            let currentYear = Calendar.current.component(.year, from: Date())
-            let currentMonth = Calendar.current.component(.month, from: Date())
-            
-            let monthlyActivities = activities.filter { activity in
-                guard let startDate = activity.start_date else { return false }
-                let activityDate = Date(timeIntervalSince1970: startDate)
-                return Calendar.current.component(.year, from: activityDate) == currentYear &&
-                Calendar.current.component(.month, from: activityDate) == currentMonth
-            }
-            
-            let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-            
-            
-            
-            userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
-            
-            let weeklyActivities = activities.filter { act in
-                guard let startDate = act.start_date else { return false }
-                return startDate > Date().startOfWeek()
-            }
-            
-            for activity in weeklyActivities {
-                guard let startDate = activity.start_date,
-                      let distance = activity.distance,
-                      let elapsedTime = activity.elapsed_time else { continue }
-                
-                if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Sunday") {
-                    let sundayAct = RAActivity(
-                        day: "S",
-                        type: activity.type,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60)
-                    
-                    guard let jsonData = try? JSONEncoder().encode(sundayAct),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                    sunArray.append(jsonString);
-                    userDefaults.set(sunArray, forKey: "sunArray");
-                }
-                if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Monday") {
-                    let mondayAct = RAActivity(
-                        day: "M",
-                        type: activity.type,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60)
-                    
-                    guard let jsonData = try? JSONEncoder().encode(mondayAct),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                    monArray.append(jsonString);
-                    print("Monday activity added: \(jsonString)")
-                    userDefaults.set(monArray, forKey: "monArray");
-                }
-                if let startDate = activity.start_date,
-                   let distance = activity.distance,
-                   let elapsedTime = activity.elapsed_time,
-                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Tuesday" {
-                    let tuesdayAct = RAActivity(
-                        day: "T",
-                        type: activity.type,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60);
-                    
-                    guard let jsonData = try? JSONEncoder().encode(tuesdayAct),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                    tueArray.append(jsonString);
-                    userDefaults.set(tueArray, forKey: "tueArray");
-                }
-                if let startDate = activity.start_date,
-                   let distance = activity.distance,
-                   let elapsedTime = activity.elapsed_time,
-                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Wednesday" {
-                    let wednesdayAct = RAActivity(
-                        day: "W",
-                        type: activity.type,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60);
-                    
-                    guard let jsonData = try? JSONEncoder().encode(wednesdayAct),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                    wedArray.append(jsonString);
-                    userDefaults.set(wedArray, forKey: "wedArray");
-                }
-                if let startDate = activity.start_date,
-                   let distance = activity.distance,
-                   let elapsedTime = activity.elapsed_time,
-                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Thursday" {
-                    let thursdayAct = RAActivity(
-                        day: "Th",
-                        type: activity.type,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60);
-                    guard let jsonData = try? JSONEncoder().encode(thursdayAct),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                    thuArray.append(jsonString);
-                    userDefaults.set(thuArray, forKey: "thuArray");
-                }
-                if let startDate = activity.start_date,
-                   let distance = activity.distance,
-                   let elapsedTime = activity.elapsed_time,
-                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Friday" {
-                    let fridayAct = RAActivity(
-                        day: "F",
-                        type: activity.type,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60);
-                    
-                    guard let jsonData = try? JSONEncoder().encode(fridayAct),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                    friArray.append(jsonString);
-                    userDefaults.set(friArray, forKey: "friArray");
-                }
-                if let startDate = activity.start_date,
-                   let distance = activity.distance,
-                   let elapsedTime = activity.elapsed_time,
-                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Saturday" {
-                    let saturdayAct = RAActivity(
-                        day: "Sat",
-                        type: activity.type,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60);
-                    
-                    guard let jsonData = try? JSONEncoder().encode(saturdayAct),
-                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                    satArray.append(jsonString);
-                    userDefaults.set(satArray, forKey: "satArray");
+                print("❌ MainView: Error loading initial data: \(error)")
+                await MainActor.run {
+                    isDataReady = true
                 }
             }
-            
-            // Force synchronization and reload widget on main thread
-            await MainActor.run {
-                userDefaults.synchronize()
-                WidgetCenter.shared.reloadAllTimelines()
-                print("UserDefaults synchronized and widget timeline reloaded")
-            }
-        }
-    }
-    
-    func clearUserDefaults() {
-        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
-            userDefaults.removeObject(forKey: "sunArray");
-            userDefaults.removeObject(forKey: "monArray");
-            userDefaults.removeObject(forKey: "tueArray");
-            userDefaults.removeObject(forKey: "wedArray");
-            userDefaults.removeObject(forKey: "thuArray");
-            userDefaults.removeObject(forKey: "friArray");
-            userDefaults.removeObject(forKey: "satArray");
-            userDefaults.removeObject(forKey: "weeklyMiles");
-            userDefaults.removeObject(forKey: "monthlyMiles");
         }
     }
 }
