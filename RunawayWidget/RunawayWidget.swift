@@ -106,7 +106,7 @@ struct Provider: AppIntentTimelineProvider {
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
                 
-                
+                print("Miles: \(miles), Runs: \(runs), Monthly Miles: \(monthlyMiles)")
                 
                 let sunArray: Array<String> = userDefaults.stringArray(forKey: "sunArray") ?? []
                 let monArray: Array<String> = userDefaults.stringArray(forKey: "monArray") ?? []
@@ -291,7 +291,7 @@ struct RunawayWidgetEntryView : View {
             HStack(alignment: .bottom){
                 VStack(alignment: .leading){
                     Text("\(String(Calendar.current.component(.year, from: Date()))) Miles:").font(.system(size: 14, weight: .semibold)).foregroundColor(.white).padding(.bottom,1)
-                    Text(String((entry.miles * Double(0.000621371)).thousandsOfMiles)).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).foregroundColor(.white).tracking(-1)
+                    Text(String(entry.miles.thousandsOfMiles)).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).foregroundColor(.white).tracking(-1)
                 }.frame(minWidth: 140).padding(.bottom,8)
                 Spacer()
                 VStack{

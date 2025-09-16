@@ -11,8 +11,8 @@ import Charts
 import Foundation
 
 struct AnalysisView: View {
+    @EnvironmentObject var dataManager: DataManager
     @StateObject private var analyzer = RunningAnalyzer()
-    let activities: [Activity]
     
     var body: some View {
         ZStack {
@@ -20,15 +20,15 @@ struct AnalysisView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    RunningGoalCard(activities: activities, goalReadiness: analyzer.analysisResults?.insights.goalReadiness)
+                    RunningGoalCard(activities: dataManager.activities, goalReadiness: analyzer.analysisResults?.insights.goalReadiness)
                     
                     // Always show progress overview regardless of analysis state
-                    ProgressOverviewCard(activities: activities)
+                    ProgressOverviewCard(activities: dataManager.activities)
                     
                     if analyzer.isAnalyzing {
                         EnhancedAnalysisLoadingView()
                     } else if let results = analyzer.analysisResults {
-                        AnalysisResultsView(results: results, activities: activities)
+                        AnalysisResultsView(results: results, activities: dataManager.activities)
                     } else {
                         EnhancedEmptyAnalysisView()
                     }
@@ -40,7 +40,7 @@ struct AnalysisView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     Task {
-                        await analyzer.analyzePerformance(activities: activities)
+                        await analyzer.analyzePerformance(activities: dataManager.activities)
                     }
                 }) {
                     HStack(spacing: AppTheme.Spacing.xs) {
@@ -54,9 +54,9 @@ struct AnalysisView: View {
             }
         }
         .onAppear {
-            if analyzer.analysisResults == nil && !activities.isEmpty {
+            if analyzer.analysisResults == nil && !dataManager.activities.isEmpty {
                 Task {
-                    await analyzer.analyzePerformance(activities: activities)
+                    await analyzer.analyzePerformance(activities: dataManager.activities)
                 }
             }
         }

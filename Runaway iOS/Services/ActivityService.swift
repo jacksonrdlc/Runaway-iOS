@@ -35,10 +35,8 @@ class ActivityService {
     
     // Function to get all activities for a user in a time range
     static func getAllActivitiesByUser(userId: Int) async throws -> [Activity] {
-        let startOfMonthMinusSevenDays = Date().startOfLastMonth
-        let endOfMonth = Date().endOfMonth
-        print("Start of month: \(startOfMonthMinusSevenDays)")
-        print("End of month: \(endOfMonth)")
+        let startOfThisYear = Date().startOfThisYear
+        print("Start of year: \(startOfThisYear)")
         return try await supabase
             .from("activities_with_maps")
             .select(
@@ -53,8 +51,7 @@ class ActivityService {
                 """
             )
             .eq("user_id", value: userId)
-            .gte("start_date", value: startOfMonthMinusSevenDays)
-//            .lte("start_date", value: endOfMonth)
+            .gte("start_date", value: startOfThisYear)
             .order("start_date", ascending: false)
             .execute().value
     }
