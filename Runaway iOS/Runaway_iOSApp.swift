@@ -14,6 +14,7 @@ struct Runaway_iOSApp: App {
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var realtimeService = RealtimeService.shared
     @StateObject private var userManager = UserManager.shared
+    @StateObject private var dataManager = DataManager.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     var body: some Scene {
@@ -22,6 +23,7 @@ struct Runaway_iOSApp: App {
                 .environmentObject(authManager)
                 .environmentObject(realtimeService)
                 .environmentObject(userManager)
+                .environmentObject(dataManager)
                 .onAppear {
                     // Start location services when app appears
                     LocationManager.shared.requestLocationPermission()
