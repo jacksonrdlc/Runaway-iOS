@@ -256,6 +256,20 @@ public final class RealtimeService: ObservableObject {
                    Calendar.current.component(.month, from: activityDate) == currentMonth
         }
         
+        // Print monthly activities start dates
+        print("=== Monthly Activities Start Dates ===")
+        print("Found \(monthlyActivities.count) activities for current month")
+        for (index, activity) in monthlyActivities.enumerated() {
+            if let startDate = activity.start_date {
+                let activityDate = Date(timeIntervalSince1970: startDate)
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                print("Activity \(index + 1): \(formatter.string(from: activityDate)) - Type: \(activity.type ?? "Unknown")")
+            }
+        }
+        print("=====================================")
+        
         let yearlyMiles = yearlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
         let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
         let totalRuns = yearlyActivities.count
