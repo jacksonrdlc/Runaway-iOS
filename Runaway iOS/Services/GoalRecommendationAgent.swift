@@ -10,6 +10,8 @@ import Foundation
 class GoalRecommendationAgent: ObservableObject {
     @Published var isAnalyzing = false
     
+    private let apiService = RunawayCoachAPIService()
+    
     // MARK: - Main Analysis Function
     func analyzeGoalAndGenerateRecommendations(
         goal: RunningGoal,
@@ -25,6 +27,90 @@ class GoalRecommendationAgent: ObservableObject {
             }
         }
         
+        // Try to use the agentic API first, fallback to local analysis
+        do {
+            let apiResponse = try await apiService.assessGoals(
+                goals: [goal],
+                activities: activities
+            )
+            
+            if let assessment = apiResponse.goalAssessments.first {
+                return convertAPIAssessmentToGoalAnalysis(assessment: assessment, goal: goal)
+            }
+        } catch {
+            print("API analysis failed, falling back to local analysis: \(error)")
+        }
+        
+        // Fallback to local analysis
+        return await performLocalAnalysis(goal: goal, activities: activities)
+    }
+    
+    // MARK: - API-Enhanced Analysis
+    private func convertAPIAssessmentToGoalAnalysis(
+        assessment: GoalAssessment,
+        goal: RunningGoal
+    ) -> GoalAnalysis {
+        let progress = assessment.progressPercentage / 100.0
+        let projectedCompletion = assessment.feasibilityScore * 100.0
+        
+        let recommendations = assessment.recommendations.map { recommendation in
+            TrainingRecommendation(
+                runNumber: 1,
+                distance: 5.0, // Default values, could be enhanced
+                targetPace: 7.0,
+                description: recommendation,
+                reasoning: "AI-powered recommendation based on comprehensive analysis"
+            )
+        }
+        
+        // Generate progress points based on current status
+        let progressPoints = generateProgressTrajectoryFromAPI(
+            goal: goal,
+            currentProgress: progress,
+            assessment: assessment
+        )
+        
+        return GoalAnalysis(
+            goal: goal,
+            currentProgress: progress,
+            projectedCompletion: projectedCompletion,
+            isOnTrack: assessment.currentStatus == "on_track",
+            recommendations: recommendations,
+            progressPoints: progressPoints
+        )
+    }
+    
+    private func generateProgressTrajectoryFromAPI(
+        goal: RunningGoal,
+        currentProgress: Double,
+        assessment: GoalAssessment
+    ) -> [GoalProgressPoint] {
+        let weeksRemaining = Int(ceil(goal.weeksRemaining))
+        var progressPoints: [GoalProgressPoint] = []
+        
+        let currentDate = Date()
+        
+        // Generate weekly progress points based on API assessment
+        for week in 0...weeksRemaining {
+            let weekDate = Calendar.current.date(byAdding: .weekOfYear, value: week, to: currentDate) ?? currentDate
+            
+            // Use feasibility score to project realistic progress
+            let targetProgress = currentProgress + ((assessment.feasibilityScore / 100.0) - currentProgress) * (Double(week) / Double(weeksRemaining))
+            let actualProgress = week == 0 ? currentProgress : targetProgress * 0.95 // Slightly conservative
+            
+            progressPoints.append(GoalProgressPoint(
+                date: weekDate,
+                actualProgress: actualProgress,
+                targetProgress: targetProgress,
+                weekNumber: week
+            ))
+        }
+        
+        return progressPoints
+    }
+    
+    // MARK: - Local Analysis Fallback
+    private func performLocalAnalysis(goal: RunningGoal, activities: [Activity]) async -> GoalAnalysis {
         // Process activities for analysis
         let processedActivities = preprocessActivities(activities)
         

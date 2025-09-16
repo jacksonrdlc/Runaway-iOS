@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import Supabase
+import WidgetKit
 
 // Import User model from the same directory
 @MainActor
@@ -44,6 +45,8 @@ public final class AuthManager: ObservableObject {
                 self.currentUser = nil
                 self.isAuthenticated = false
             }
+            // Refresh widgets after sign out
+            WidgetRefreshService.refreshForAuthUpdate()
         case .tokenRefreshed:
             if let user = session?.user {
                 await updateAuthState(with: user)
@@ -58,6 +61,8 @@ public final class AuthManager: ObservableObject {
             self.currentUser = user
             self.isAuthenticated = true
         }
+        // Refresh widgets after authentication state update
+        WidgetRefreshService.refreshForAuthUpdate()
     }
 
     func signUp(email: String, password: String) async throws {

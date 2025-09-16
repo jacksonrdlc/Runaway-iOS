@@ -7,6 +7,20 @@
 
 import Foundation
 import Supabase
+import WidgetKit
+
+// MARK: - AnyEncodable Helper
+struct AnyEncodable: Encodable {
+    let value: Encodable
+    
+    init(_ value: Encodable) {
+        self.value = value
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        try value.encode(to: encoder)
+    }
+}
 
 class ActivityService {
     
@@ -21,7 +35,7 @@ class ActivityService {
     
     // Function to get all activities for a user in a time range
     static func getAllActivitiesByUser(userId: Int) async throws -> [Activity] {
-        let startOfMonthMinusSevenDays = Date().startOfMonth.addingTimeInterval(-7*24*60*60)
+        let startOfMonthMinusSevenDays = Date().startOfLastMonth
         let endOfMonth = Date().endOfMonth
         print("Start of month: \(startOfMonthMinusSevenDays)")
         print("End of month: \(endOfMonth)")
@@ -40,7 +54,7 @@ class ActivityService {
             )
             .eq("user_id", value: userId)
             .gte("start_date", value: startOfMonthMinusSevenDays)
-            .lte("start_date", value: endOfMonth)
+//            .lte("start_date", value: endOfMonth)
             .order("start_date", ascending: false)
             .execute().value
     }
@@ -63,6 +77,35 @@ class ActivityService {
             .single()
             .execute()
             .value
+        
+        // Refresh widgets after creating activity
+        WidgetRefreshService.refreshForActivityUpdate()
+        
+        return activity
+    }
+    
+    // Function to create an activity with custom data (for recording)
+    static func createActivity(data: [String: AnyEncodable]) async throws -> Activity {
+        let activity: Activity = try await supabase.from("activities")
+            .insert(data)
+            .select(
+                """
+                id,
+                name,
+                type,
+                summary_polyline,
+                distance,
+                start_date,
+                elapsed_time
+                """
+            )
+            .single()
+            .execute()
+            .value
+        
+        // Refresh widgets after creating activity
+        WidgetRefreshService.refreshForActivityUpdate()
+        
         return activity
     }
     
@@ -79,6 +122,9 @@ class ActivityService {
                 .eq("id", value: id)
                 .execute()
             print("Activity successfully updated")
+            
+            // Refresh widgets after updating activity
+            WidgetRefreshService.refreshForActivityUpdate()
         } catch {
             print("Failed to update activity: \(error)")
             throw error  // Optionally rethrow to handle elsewhere
@@ -92,6 +138,9 @@ class ActivityService {
             .delete()
             .eq("id", value: id)
             .execute().value
+        
+        // Refresh widgets after deleting activity
+        WidgetRefreshService.refreshForActivityUpdate()
     }
 }
 
