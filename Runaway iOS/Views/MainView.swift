@@ -13,12 +13,15 @@ struct MainView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var realtimeService: RealtimeService
     @EnvironmentObject var userManager: UserManager
-    @State var selectedTab = 1
+    @State var selectedTab = 0
     @State var isSupabaseDataReady: Bool = false
     @State var activityDays: [ActivityDay] = []
     @State var activities: [Activity] = []
     @State var athlete: Athlete?
     @State var stats: AthleteStats?
+    @State var runs: String? = ""
+    @State var miles: String? = ""
+    @State var minutes: String? = ""
     @State private var showingSettings = false
     
     
@@ -27,7 +30,7 @@ struct MainView: View {
             TabView(selection: $selectedTab) {
                 NavigationView {
                     ActivitiesView(activities: $activities)
-                        .navigationTitle("Activities")
+                        .navigationTitle("Activity Feed")
                         .navigationBarTitleDisplayMode(.large)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
@@ -41,7 +44,7 @@ struct MainView: View {
                         }
                 }
                 .tabItem {
-                    Label("Activities", systemImage: AppIcons.activities)
+                    Label("Feed", systemImage: "newspaper")
                 }
                 .tag(0)
                 
@@ -79,7 +82,7 @@ struct MainView: View {
                         }
                 }
                 .tabItem {
-                    Label("Research", systemImage: "newspaper")
+                    Label("Research", systemImage: "flask")
                 }
                 .tag(2)
                 
@@ -124,7 +127,7 @@ struct MainView: View {
                     }
                 }
                 .tabItem {
-                    Label("Profile", systemImage: "person.circle.fill")
+                    Label("Profile", systemImage: "person.fill")
                 }
                 .tag(3)
             }
@@ -245,6 +248,7 @@ extension MainView {
                 // Fetch athlete stats if needed
                 let stats = try await AthleteService.getAthleteStats(userId: user.userId)
                 self.stats = stats
+                setStats(stats: stats)
                 print("Successfully fetched athlete stats:")
                 print("  - Raw object: \(stats)")
                 
@@ -256,7 +260,6 @@ extension MainView {
                         print("  - \(propertyName): \(value)")
                     }
                 }
-                
             } catch {
                 print("Error fetching Athlete data: \(error)")
             }
@@ -273,8 +276,40 @@ extension MainView {
         }
     }
     
+    private func setStats(stats: AthleteStats) {
+        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+            if let runsInt = stats.count {
+                self.runs = String(runsInt)
+                userDefaults.set(runsInt, forKey: "runs")
+            }
+            if let milesInt = stats.ytdDistance {
+                self.miles = String(format: "%.1f", milesInt * Double(0.000621371))
+                userDefaults.set(milesInt, forKey: "miles")
+            }
+            if let minutesInt = stats.elapsedTime {
+                self.minutes = String(format: "%.0f", minutesInt / 60)
+                userDefaults.set(minutesInt, forKey: "minutes")
+            }
+        }
+    }
+    
     private func createActivityRecord(activities : [Activity]) {
         print("Creating activity record with \(activities.count) activities")
+        
+        // Print all activity start dates
+        print("=== All Activities Start Dates - cAR ===")
+        for (index, activity) in activities.enumerated() {
+            if let startDate = activity.start_date {
+                let activityDate = Date(timeIntervalSince1970: startDate)
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                print("Activity \(index + 1): \(formatter.string(from: activityDate)) - Type: \(activity.type ?? "Unknown") - Distance: \(String(format: "%.2f", (activity.distance ?? 0.0) * 0.000621371)) miles")
+            } else {
+                print("Activity \(index + 1): No start date available - Type: \(activity.type ?? "Unknown")")
+            }
+        }
+        print("====================================")
         
         // Move heavy operations to background thread
         Task.detached(priority: .utility) {
@@ -290,130 +325,143 @@ extension MainView {
                 print("Failed to access shared UserDefaults")
                 return
             }
-        
-        print("Creating activity record")
-        
-        // Clear existing arrays
-        userDefaults.removeObject(forKey: "sunArray")
-        userDefaults.removeObject(forKey: "monArray")
-        userDefaults.removeObject(forKey: "tueArray")
-        userDefaults.removeObject(forKey: "wedArray")
-        userDefaults.removeObject(forKey: "thuArray")
-        userDefaults.removeObject(forKey: "friArray")
-        userDefaults.removeObject(forKey: "satArray")
-        
-        let monthlyMiles = activities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-        userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
-        
-        let weeklyActivities = activities.filter { act in
-            guard let startDate = act.start_date else { return false }
-            return startDate > Date().startOfWeek()
-        }
-        
-        for activity in weeklyActivities {
-            guard let startDate = activity.start_date,
-                  let distance = activity.distance,
-                  let elapsedTime = activity.elapsed_time else { continue }
             
-            if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Sunday") {
-                let sundayAct = RAActivity(
-                    day: "S",
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60)
+            print("Creating activity record")
+            
+            // Clear existing arrays
+            userDefaults.removeObject(forKey: "sunArray")
+            userDefaults.removeObject(forKey: "monArray")
+            userDefaults.removeObject(forKey: "tueArray")
+            userDefaults.removeObject(forKey: "wedArray")
+            userDefaults.removeObject(forKey: "thuArray")
+            userDefaults.removeObject(forKey: "friArray")
+            userDefaults.removeObject(forKey: "satArray")
+            
+            let currentYear = Calendar.current.component(.year, from: Date())
+            let currentMonth = Calendar.current.component(.month, from: Date())
+            
+            let monthlyActivities = activities.filter { activity in
+                guard let startDate = activity.start_date else { return false }
+                let activityDate = Date(timeIntervalSince1970: startDate)
+                return Calendar.current.component(.year, from: activityDate) == currentYear &&
+                Calendar.current.component(.month, from: activityDate) == currentMonth
+            }
+            
+            let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+            
+            
+            
+            userDefaults.set((monthlyMiles * 0.000621371), forKey: "monthlyMiles")
+            
+            let weeklyActivities = activities.filter { act in
+                guard let startDate = act.start_date else { return false }
+                return startDate > Date().startOfWeek()
+            }
+            
+            for activity in weeklyActivities {
+                guard let startDate = activity.start_date,
+                      let distance = activity.distance,
+                      let elapsedTime = activity.elapsed_time else { continue }
                 
-                guard let jsonData = try? JSONEncoder().encode(sundayAct),
-                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                sunArray.append(jsonString);
-                userDefaults.set(sunArray, forKey: "sunArray");
-            }
-            if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Monday") {
-                let mondayAct = RAActivity(
-                    day: "M",
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60)
-                
-                guard let jsonData = try? JSONEncoder().encode(mondayAct),
-                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                monArray.append(jsonString);
-                print("Monday activity added: \(jsonString)")
-                userDefaults.set(monArray, forKey: "monArray");
-            }
-            if let startDate = activity.start_date,
-               let distance = activity.distance,
-               let elapsedTime = activity.elapsed_time,
-               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Tuesday" {
-                let tuesdayAct = RAActivity(
-                    day: "T",
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60);
-                
-                guard let jsonData = try? JSONEncoder().encode(tuesdayAct),
-                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                tueArray.append(jsonString);
-                userDefaults.set(tueArray, forKey: "tueArray");
-            }
-            if let startDate = activity.start_date,
-               let distance = activity.distance,
-               let elapsedTime = activity.elapsed_time,
-               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Wednesday" {
-                let wednesdayAct = RAActivity(
-                    day: "W",
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60);
-                
-                guard let jsonData = try? JSONEncoder().encode(wednesdayAct),
-                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                wedArray.append(jsonString);
-                userDefaults.set(wedArray, forKey: "wedArray");
-            }
-            if let startDate = activity.start_date,
-               let distance = activity.distance,
-               let elapsedTime = activity.elapsed_time,
-               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Thursday" {
-                let thursdayAct = RAActivity(
-                    day: "Th",
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60);
-                guard let jsonData = try? JSONEncoder().encode(thursdayAct),
-                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                thuArray.append(jsonString);
-                userDefaults.set(thuArray, forKey: "thuArray");
-            }
-            if let startDate = activity.start_date,
-               let distance = activity.distance,
-               let elapsedTime = activity.elapsed_time,
-               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Friday" {
-                let fridayAct = RAActivity(
-                    day: "F",
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60);
-                
-                guard let jsonData = try? JSONEncoder().encode(fridayAct),
-                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                friArray.append(jsonString);
-                userDefaults.set(friArray, forKey: "friArray");
-            }
-            if let startDate = activity.start_date,
-               let distance = activity.distance,
-               let elapsedTime = activity.elapsed_time,
-               Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Saturday" {
-                let saturdayAct = RAActivity(
-                    day: "Sat",
-                    type: activity.type,
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60);
-                
-                guard let jsonData = try? JSONEncoder().encode(saturdayAct),
-                      let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
-                satArray.append(jsonString);
-                userDefaults.set(satArray, forKey: "satArray");
-            }
+                if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Sunday") {
+                    let sundayAct = RAActivity(
+                        day: "S",
+                        type: activity.type,
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60)
+                    
+                    guard let jsonData = try? JSONEncoder().encode(sundayAct),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
+                    sunArray.append(jsonString);
+                    userDefaults.set(sunArray, forKey: "sunArray");
+                }
+                if (Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Monday") {
+                    let mondayAct = RAActivity(
+                        day: "M",
+                        type: activity.type,
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60)
+                    
+                    guard let jsonData = try? JSONEncoder().encode(mondayAct),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
+                    monArray.append(jsonString);
+                    print("Monday activity added: \(jsonString)")
+                    userDefaults.set(monArray, forKey: "monArray");
+                }
+                if let startDate = activity.start_date,
+                   let distance = activity.distance,
+                   let elapsedTime = activity.elapsed_time,
+                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Tuesday" {
+                    let tuesdayAct = RAActivity(
+                        day: "T",
+                        type: activity.type,
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60);
+                    
+                    guard let jsonData = try? JSONEncoder().encode(tuesdayAct),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
+                    tueArray.append(jsonString);
+                    userDefaults.set(tueArray, forKey: "tueArray");
+                }
+                if let startDate = activity.start_date,
+                   let distance = activity.distance,
+                   let elapsedTime = activity.elapsed_time,
+                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Wednesday" {
+                    let wednesdayAct = RAActivity(
+                        day: "W",
+                        type: activity.type,
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60);
+                    
+                    guard let jsonData = try? JSONEncoder().encode(wednesdayAct),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
+                    wedArray.append(jsonString);
+                    userDefaults.set(wedArray, forKey: "wedArray");
+                }
+                if let startDate = activity.start_date,
+                   let distance = activity.distance,
+                   let elapsedTime = activity.elapsed_time,
+                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Thursday" {
+                    let thursdayAct = RAActivity(
+                        day: "Th",
+                        type: activity.type,
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60);
+                    guard let jsonData = try? JSONEncoder().encode(thursdayAct),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
+                    thuArray.append(jsonString);
+                    userDefaults.set(thuArray, forKey: "thuArray");
+                }
+                if let startDate = activity.start_date,
+                   let distance = activity.distance,
+                   let elapsedTime = activity.elapsed_time,
+                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Friday" {
+                    let fridayAct = RAActivity(
+                        day: "F",
+                        type: activity.type,
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60);
+                    
+                    guard let jsonData = try? JSONEncoder().encode(fridayAct),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
+                    friArray.append(jsonString);
+                    userDefaults.set(friArray, forKey: "friArray");
+                }
+                if let startDate = activity.start_date,
+                   let distance = activity.distance,
+                   let elapsedTime = activity.elapsed_time,
+                   Date(timeIntervalSince1970: startDate).dayOfTheWeek == "Saturday" {
+                    let saturdayAct = RAActivity(
+                        day: "Sat",
+                        type: activity.type,
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60);
+                    
+                    guard let jsonData = try? JSONEncoder().encode(saturdayAct),
+                          let jsonString = String(data: jsonData, encoding: .utf8) else { continue }
+                    satArray.append(jsonString);
+                    userDefaults.set(satArray, forKey: "satArray");
+                }
             }
             
             // Force synchronization and reload widget on main thread

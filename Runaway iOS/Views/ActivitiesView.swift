@@ -1,11 +1,17 @@
 import SwiftUI
 import Foundation
+import UIKit
+import WidgetKit
 
 struct ActivitiesView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var realtimeService: RealtimeService
     @Binding var activities: [Activity]
     @State private var isRefreshing = false
+    @State private var selectedActivity: LocalActivity?
+    @State private var showingDetail = false
+    @State private var showingRecording = false
     
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
         return LocalActivity(
@@ -25,11 +31,23 @@ struct ActivitiesView: View {
             return
         }
         
+        // Start background task to prevent cancellation
+        let backgroundTaskId = UIApplication.shared.beginBackgroundTask { 
+            print("Background task expired during activity fetch")
+        }
+        defer {
+            UIApplication.shared.endBackgroundTask(backgroundTaskId)
+        }
+        
         do {
             let fetchedActivities = try await ActivityService.getAllActivitiesByUser(userId: userId)
             DispatchQueue.main.async {
                 self.activities = fetchedActivities
                 self.isRefreshing = false
+                // Force refresh widget UserDefaults when activities are manually refreshed
+                self.realtimeService.forceRefreshWidget(with: fetchedActivities)
+                // Refresh widgets after manual data refresh
+                WidgetRefreshService.refreshForActivityUpdate()
             }
         } catch {
             print("Error fetching activities: \(error)")
@@ -50,8 +68,11 @@ struct ActivitiesView: View {
                     ScrollView {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
                             ForEach(activities, id: \.id) { activity in
-                                CardView(activity: convertToLocalActivity(activity))
-                                    .padding(.horizontal, AppTheme.Spacing.md)
+                                CardView(activity: convertToLocalActivity(activity)) {
+                                    selectedActivity = convertToLocalActivity(activity)
+                                    showingDetail = true
+                                }
+                                .padding(.horizontal, AppTheme.Spacing.md)
                             }
                         }
                         .padding(.top, AppTheme.Spacing.md)
@@ -61,6 +82,45 @@ struct ActivitiesView: View {
                         await fetchActivities()
                     }
                 }
+            }
+            
+            // Floating Action Button
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        showingRecording = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(width: 56, height: 56)
+                            .background(
+                                LinearGradient(
+                                    colors: [AppTheme.Colors.primary, AppTheme.Colors.primaryDark],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            
+            .sheet(isPresented: $showingDetail) {
+                if let activity = selectedActivity {
+                    NavigationView {
+                        ActivityDetailView(activity: activity)
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showingRecording) {
+                PreRecordingView()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -111,5 +171,6 @@ struct ActivitiesView_Previews: PreviewProvider {
         ActivitiesView(activities: .constant([]))
             .environmentObject(AuthManager.shared)
             .environmentObject(UserManager.shared)
+            .environmentObject(RealtimeService.shared)
     }
 }
