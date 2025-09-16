@@ -170,6 +170,9 @@ struct QuickStatItem: View {
 // MARK: - Weekly Stats Card
 struct WeeklyStatsCard: View {
     let stats: AthleteStats
+    @State private var weeklyRuns = 0
+    @State private var weeklyDistance = "0.0 mi"
+    @State private var weeklyTime = "0h 0m"
     
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
@@ -186,19 +189,62 @@ struct WeeklyStatsCard: View {
             }
             
             HStack(spacing: AppTheme.Spacing.lg) {
-                StatPair(label: "Runs", value: "3", color: AppTheme.Colors.primary)
-                StatPair(label: "Distance", value: "12.4 mi", color: AppTheme.Colors.accent)
-                StatPair(label: "Time", value: "2h 15m", color: AppTheme.Colors.warning)
+                StatPair(label: "Runs", value: String(weeklyRuns), color: AppTheme.Colors.primary)
+                StatPair(label: "Distance", value: weeklyDistance, color: AppTheme.Colors.accent)
+                StatPair(label: "Time", value: weeklyTime, color: AppTheme.Colors.warning)
                 Spacer()
             }
         }
         .surfaceCard()
+        .onAppear {
+            loadWeeklyStats()
+        }
+    }
+    
+    private func loadWeeklyStats() {
+        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+            print("Failed to access shared UserDefaults")
+            return
+        }
+        
+        let dayArrays = [
+            userDefaults.stringArray(forKey: "sunArray") ?? [],
+            userDefaults.stringArray(forKey: "monArray") ?? [],
+            userDefaults.stringArray(forKey: "tueArray") ?? [],
+            userDefaults.stringArray(forKey: "wedArray") ?? [],
+            userDefaults.stringArray(forKey: "thuArray") ?? [],
+            userDefaults.stringArray(forKey: "friArray") ?? [],
+            userDefaults.stringArray(forKey: "satArray") ?? []
+        ]
+        
+        var totalRuns = 0
+        var totalDistance = 0.0
+        var totalTime = 0.0
+        
+        for dayArray in dayArrays {
+            totalRuns += dayArray.count
+            
+            for activityJson in dayArray {
+                if let data = activityJson.data(using: .utf8),
+                   let activity = try? JSONDecoder().decode(RAActivity.self, from: data) {
+                    totalDistance += activity.distance
+                    totalTime += activity.time
+                }
+            }
+        }
+        
+        weeklyRuns = totalRuns
+        weeklyDistance = String(format: "%.1f mi", totalDistance)
+        weeklyTime = formatTime(minutes: totalTime)
     }
 }
 
 // MARK: - Monthly Stats Card
 struct MonthlyStatsCard: View {
     let stats: AthleteStats
+    @State private var monthlyRuns = 0
+    @State private var monthlyDistance = "0.0 mi"
+    @State private var averagePace = "0:00"
     
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
@@ -215,13 +261,71 @@ struct MonthlyStatsCard: View {
             }
             
             HStack(spacing: AppTheme.Spacing.lg) {
-                StatPair(label: "Runs", value: "12", color: AppTheme.Colors.primary)
-                StatPair(label: "Distance", value: "58.7 mi", color: AppTheme.Colors.accent)
-                StatPair(label: "Avg Pace", value: "8:23", color: AppTheme.Colors.warning)
+                StatPair(label: "Runs", value: String(monthlyRuns), color: AppTheme.Colors.primary)
+                StatPair(label: "Distance", value: monthlyDistance, color: AppTheme.Colors.accent)
+                StatPair(label: "Avg Pace", value: averagePace, color: AppTheme.Colors.warning)
                 Spacer()
             }
         }
         .surfaceCard()
+        .onAppear {
+            loadMonthlyStats()
+        }
+    }
+    
+    private func loadMonthlyStats() {
+        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+            print("Failed to access shared UserDefaults")
+            return
+        }
+        
+        // Get monthly distance from UserDefaults
+        let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
+        
+        // Calculate monthly runs and pace from all activity data
+        let dayArrays = [
+            userDefaults.stringArray(forKey: "sunArray") ?? [],
+            userDefaults.stringArray(forKey: "monArray") ?? [],
+            userDefaults.stringArray(forKey: "tueArray") ?? [],
+            userDefaults.stringArray(forKey: "wedArray") ?? [],
+            userDefaults.stringArray(forKey: "thuArray") ?? [],
+            userDefaults.stringArray(forKey: "friArray") ?? [],
+            userDefaults.stringArray(forKey: "satArray") ?? []
+        ]
+        
+        var totalMonthlyRuns = 0
+        var totalMonthlyTime = 0.0
+        var totalMonthlyDistance = 0.0
+        
+        // Count all activities (not just this week) for monthly stats
+        // Note: This is an approximation since UserDefaults only stores weekly data
+        // For more accurate monthly data, you'd need to store monthly activity arrays separately
+        for dayArray in dayArrays {
+            for activityJson in dayArray {
+                if let data = activityJson.data(using: .utf8),
+                   let activity = try? JSONDecoder().decode(RAActivity.self, from: data) {
+                    totalMonthlyRuns += 1
+                    totalMonthlyTime += activity.time
+                    totalMonthlyDistance += activity.distance
+                }
+            }
+        }
+        
+        // Use the stored monthly miles if available, otherwise use calculated value
+        let displayDistance = monthlyMiles > 0 ? monthlyMiles : totalMonthlyDistance
+        
+        monthlyRuns = totalMonthlyRuns
+        monthlyDistance = String(format: "%.1f mi", displayDistance)
+        
+        // Calculate average pace (minutes per mile)
+        if displayDistance > 0 && totalMonthlyTime > 0 {
+            let avgPaceMinutes = totalMonthlyTime / displayDistance
+            let paceMinutes = Int(avgPaceMinutes)
+            let paceSeconds = Int((avgPaceMinutes - Double(paceMinutes)) * 60)
+            averagePace = String(format: "%d:%02d", paceMinutes, paceSeconds)
+        } else {
+            averagePace = "0:00"
+        }
     }
 }
 
