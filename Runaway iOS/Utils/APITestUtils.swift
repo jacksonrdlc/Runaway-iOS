@@ -17,7 +17,7 @@ class APITestUtils {
     
     func testHealthCheck() async -> (success: Bool, message: String) {
         // Print current configuration for debugging
-        APIConfiguration.RunawayCoach.printCurrentConfiguration()
+        await APIConfiguration.RunawayCoach.printCurrentConfiguration()
         
         do {
             let health = try await apiService.healthCheck()

@@ -553,7 +553,7 @@ struct GoalInputSheet: View {
                     // Update existing goal
                     let updatedGoal = RunningGoal(
                         id: existingGoal.id,
-                        userId: existingGoal.userId,
+                        athleteId: existingGoal.athleteId,
                         type: selectedType,
                         targetValue: value,
                         deadline: deadline,

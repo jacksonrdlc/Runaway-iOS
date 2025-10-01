@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Supabase
 
 struct APIConfiguration {
     // MARK: - API Keys
@@ -70,23 +71,78 @@ struct APIConfiguration {
         static let enableLocalAnalysisFallback = true
         static let enableResponseValidation = true
         
-        static func getAuthHeaders() -> [String: String] {
+        static func getAuthHeaders() async -> [String: String] {
             var headers = [
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             ]
-            
-            if let authToken = getAuthToken() {
-                // Try different auth formats - uncomment the one that works
-                headers["Authorization"] = "Bearer \(authToken)"  // Most common
-                // headers["Authorization"] = "\(authToken)"      // Direct token
-                // headers["X-API-Key"] = "\(authToken)"          // X-API-Key header
-                // headers["X-Auth-Token"] = "\(authToken)"       // X-Auth-Token header
+
+            // Try JWT token first (from Supabase Auth) with improved refresh handling
+            if let jwtToken = await getJWTToken() {
+                headers["Authorization"] = "Bearer \(jwtToken)"
+                print("🔐 APIConfiguration: Using JWT token for authentication")
+                return headers
             }
-            
+
+            // Fallback to API key for backwards compatibility
+            if let authToken = getAuthToken() {
+                headers["Authorization"] = "Bearer \(authToken)"
+                print("🔐 APIConfiguration: Using API key for authentication (fallback)")
+            } else {
+                print("❌ APIConfiguration: No authentication token available (neither JWT nor API key)")
+            }
+
             return headers
         }
-        
+
+        static func getAuthHeadersSync() -> [String: String] {
+            var headers = [
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            ]
+
+            // Fallback to API key only for sync calls
+            if let authToken = getAuthToken() {
+                headers["Authorization"] = "Bearer \(authToken)"
+            }
+
+            return headers
+        }
+
+        private static func getJWTToken() async -> String? {
+            do {
+                // This automatically refreshes the token if needed
+                let session = try await supabase.auth.session
+                let token = session.accessToken
+
+                // Check if token is about to expire (within 5 minutes)
+                let expiresAt = session.expiresAt
+                let timeUntilExpiry = expiresAt - Date().timeIntervalSince1970
+
+                if timeUntilExpiry < 300 { // Less than 5 minutes
+                    print("⏰ APIConfiguration: JWT token expires soon (in \(Int(timeUntilExpiry))s), but Supabase will auto-refresh")
+                }
+
+                print("🔐 APIConfiguration: Successfully got JWT token (length: \(token.count), expires in \(Int(timeUntilExpiry))s)")
+                return token
+            } catch {
+                print("⚠️ APIConfiguration: Failed to get JWT token: \(error)")
+                return nil
+            }
+        }
+
+        static func getCurrentAuthUserId() async -> String? {
+            do {
+                let session = try await supabase.auth.session
+                let userId = session.user.id.uuidString
+                print("👤 APIConfiguration: Current auth user ID: \(userId)")
+                return userId
+            } catch {
+                print("⚠️ APIConfiguration: Failed to get auth user ID: \(error)")
+                return nil
+            }
+        }
+
         private static func getAuthToken() -> String? {
             // Check for environment variable first (recommended for security)
             if let envToken = ProcessInfo.processInfo.environment["RUNAWAY_API_KEY"] {
@@ -127,22 +183,37 @@ struct APIConfiguration {
         }
         
         // Helper function to check current configuration
-        static func printCurrentConfiguration() {
-            let hasAuth = getAuthToken() != nil
+        static func printCurrentConfiguration() async {
+            let hasAPIKey = getAuthToken() != nil
+            let hasJWT = await getJWTToken() != nil
             let authSource = getAuthTokenSource()
-            
+            let authUserId = await getCurrentAuthUserId()
+
             print("🔧 Runaway Coach API Configuration:")
             print("   Current URL: \(currentBaseURL)")
             print("   Production URL: \(baseURL)")
             print("   Development URL: \(devBaseURL)")
             print("   Environment Override: \(ProcessInfo.processInfo.environment["RUNAWAY_API_URL"] ?? "None")")
-            print("   🔐 Authentication: \(hasAuth ? "✅ Configured" : "❌ Not Configured")")
+            print("   🔐 JWT Authentication: \(hasJWT ? "✅ Available" : "❌ Not Available")")
+            print("   🔐 API Key Fallback: \(hasAPIKey ? "✅ Configured" : "❌ Not Configured")")
             print("   🔐 Auth Source: \(authSource)")
+            print("   👤 Current Auth User ID: \(authUserId ?? "None")")
             #if DEBUG
             print("   Build Mode: DEBUG")
             #else
             print("   Build Mode: RELEASE")
             #endif
+        }
+
+        // Synchronous version for backwards compatibility
+        static func printCurrentConfigurationSync() {
+            let hasAuth = getAuthToken() != nil
+            let authSource = getAuthTokenSource()
+
+            print("🔧 Runaway Coach API Configuration (Sync):")
+            print("   Current URL: \(currentBaseURL)")
+            print("   🔐 API Key Authentication: \(hasAuth ? "✅ Configured" : "❌ Not Configured")")
+            print("   🔐 Auth Source: \(authSource)")
         }
         
         private static func getAuthTokenSource() -> String {

@@ -33,7 +33,7 @@ enum GoalType: String, CaseIterable, Codable {
 // MARK: - Running Goal
 struct RunningGoal: Codable, Identifiable {
     let id: Int?
-    let userId: Int?
+    let athleteId: Int?  // Changed from userId to athleteId to match ERD
     let type: GoalType
     let targetValue: Double
     let deadline: Date
@@ -48,7 +48,7 @@ struct RunningGoal: Codable, Identifiable {
     // Client-side init for new goals
     init(type: GoalType, targetValue: Double, deadline: Date, title: String) {
         self.id = nil
-        self.userId = nil
+        self.athleteId = nil
         self.type = type
         self.targetValue = targetValue
         self.deadline = deadline
@@ -62,11 +62,11 @@ struct RunningGoal: Codable, Identifiable {
     }
     
     // Database init for existing goals
-    init(id: Int?, userId: Int?, type: GoalType, targetValue: Double, deadline: Date, 
-         createdDate: Date, updatedDate: Date?, title: String, isActive: Bool, 
+    init(id: Int?, athleteId: Int?, type: GoalType, targetValue: Double, deadline: Date,
+         createdDate: Date, updatedDate: Date?, title: String, isActive: Bool,
          isCompleted: Bool, currentProgress: Double, completedDate: Date?) {
         self.id = id
-        self.userId = userId
+        self.athleteId = athleteId
         self.type = type
         self.targetValue = targetValue
         self.deadline = deadline
@@ -81,7 +81,7 @@ struct RunningGoal: Codable, Identifiable {
     
     enum CodingKeys: String, CodingKey {
         case id
-        case userId = "user_id"
+        case athleteId = "athlete_id"
         case type = "goal_type"
         case targetValue = "target_value"
         case deadline
@@ -97,7 +97,7 @@ struct RunningGoal: Codable, Identifiable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(id, forKey: .id)
-        try container.encodeIfPresent(userId, forKey: .userId)
+        try container.encodeIfPresent(athleteId, forKey: .athleteId)
         try container.encode(type.rawValue, forKey: .type)
         try container.encode(targetValue, forKey: .targetValue)
         try container.encode(deadline, forKey: .deadline)
@@ -113,7 +113,7 @@ struct RunningGoal: Codable, Identifiable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(Int.self, forKey: .id)
-        userId = try container.decodeIfPresent(Int.self, forKey: .userId)
+        athleteId = try container.decodeIfPresent(Int.self, forKey: .athleteId)
         
         // Decode goal type
         let typeString = try container.decode(String.self, forKey: .type)

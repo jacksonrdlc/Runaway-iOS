@@ -11,9 +11,8 @@ import Foundation
   Athletes are Strava users, Strava users are athletes. The object is returned in detailed, summary or meta representations.
  **/
 public final class Athlete: Identifiable, Decodable {
-//    public var id: Int
+    public var id: Int?
     public var userId: UUID?
-//    public let resourceState: ResourceState?
     public var firstname: String?
     public var lastname: String?
     public var profileMedium: URL?
@@ -21,9 +20,8 @@ public final class Athlete: Identifiable, Decodable {
     public var city: String?
     public var state: String?
     public var country: String?
-//    public let sex: Sex?
-//    public let friend: FollowingStatus?
-//    public let follower: FollowingStatus?
+    public var sex: String?
+    public var description: String?
     public var premium: Bool?
     public var createdAt: Date?
     public var updatedAt: Date?
@@ -31,16 +29,35 @@ public final class Athlete: Identifiable, Decodable {
     public var followerCount: Int?
     public var mutualFriendCount: Int?
     public var datePreference: String?
-//    public let measurementPreference: Units?
     public var email: String?
     public var FTP: Int?
     public var weight: Double?
-//    public let clubs: [Club]?
-//    public let bikes: [Bike]?
-//    public let shoes: [Shoe]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "auth_user_id"
+        case firstname = "first_name"
+        case lastname = "last_name"
+        case profileMedium = "profile_medium"
+        case profile = "profile"
+        case city
+        case state
+        case country
+        case sex
+        case description
+        case premium
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case friendCount = "friend_count"
+        case followerCount = "follower_count"
+        case mutualFriendCount = "mutual_friend_count"
+        case datePreference = "date_preference"
+        case email
+        case FTP = "ftp"
+        case weight
+    }
 
     required public init(userId: UUID?, firstname: String?, lastname: String?, profileMedium: URL?, profile: URL?, city: String?, state: String?, country: String?, premium: Bool?, createdAt: Date?, updatedAt: Date?, friendCount: Int?, followerCount: Int?, mutualFriendCount: Int?, datePreference: String?, email: String?, FTP: Int?, weight: Double?) {
-//        self.id = id
         self.userId = userId
         self.firstname = firstname
         self.lastname = lastname
@@ -63,7 +80,7 @@ public final class Athlete: Identifiable, Decodable {
 }
 
 public final class AthleteStats: Decodable {
-    public var userId: Int?
+    public var athleteId: Int?
     public var count: Int?
     public var distance: Double?
     public var movingTime: TimeInterval?
@@ -73,7 +90,7 @@ public final class AthleteStats: Decodable {
     public var ytdDistance: Double?
     
     enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
+        case athleteId = "athlete_id"
         case count = "count"
         case distance = "distance"
         case movingTime = "moving_time"

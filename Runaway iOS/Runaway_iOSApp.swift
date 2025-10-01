@@ -29,11 +29,13 @@ struct Runaway_iOSApp: App {
                     LocationManager.shared.requestLocationPermission()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                    print("📱 App became active - starting realtime services")
                     realtimeService.startRealtimeSubscription()
                     LocationManager.shared.requestLocationPermission()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                    // Keep subscription running in background
+                    print("📱 App entered background - scheduling background tasks")
+                    realtimeService.scheduleBackgroundRefresh()
                 }
         }
     }

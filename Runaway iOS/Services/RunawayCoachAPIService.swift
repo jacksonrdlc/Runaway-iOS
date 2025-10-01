@@ -171,10 +171,19 @@ class RunawayCoachAPIService: ObservableObject {
         request.httpMethod = method
         request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
         
-        // Add headers from configuration
-        let authHeaders = APIConfiguration.RunawayCoach.getAuthHeaders()
+        // Add headers from configuration (with JWT support)
+        let authHeaders = await APIConfiguration.RunawayCoach.getAuthHeaders()
         for (key, value) in authHeaders {
             request.setValue(value, forHTTPHeaderField: key)
+        }
+
+        // Debug: Print request details for auth troubleshooting
+        print("🌐 API Request Debug:")
+        print("   URL: \(url)")
+        print("   Method: \(method)")
+        print("   Headers: \(authHeaders.keys.joined(separator: ", "))")
+        if let authHeader = authHeaders["Authorization"] {
+            print("   Auth Header: Bearer \(String(authHeader.dropFirst(7).prefix(10)))...")
         }
         
         

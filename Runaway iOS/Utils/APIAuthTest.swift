@@ -18,7 +18,7 @@ class APIAuthTest {
         print("=" * 40)
         
         // Print current configuration
-        APIConfiguration.RunawayCoach.printCurrentConfiguration()
+        await APIConfiguration.RunawayCoach.printCurrentConfiguration()
         
         // Test health endpoint (usually doesn't require auth)
         await testHealthEndpoint()
@@ -90,11 +90,11 @@ class APIAuthTest {
         }
     }
     
-    func debugAuthHeaders() {
+    func debugAuthHeaders() async {
         print("🔍 Debug Authentication Headers")
         print("=" * 40)
-        
-        let headers = APIConfiguration.RunawayCoach.getAuthHeaders()
+
+        let headers = await APIConfiguration.RunawayCoach.getAuthHeaders()
         
         for (key, value) in headers {
             if key == "Authorization" {

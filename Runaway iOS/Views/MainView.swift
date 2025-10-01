@@ -23,7 +23,7 @@ struct MainView: View {
             TabView(selection: $selectedTab) {
                 NavigationView {
                     ActivitiesView()
-                        .navigationTitle("Activity Feed")
+                        .navigationTitle("Log Book")
                         .navigationBarTitleDisplayMode(.large)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {

@@ -11,7 +11,6 @@
 
 2. **Add your API keys to `Runaway-iOS-Info.plist`:**
    - Replace `YOUR_RUNAWAY_API_KEY_HERE` with your actual Runaway Coach API key
-   - Replace `YOUR_YOUTUBE_API_KEY_HERE` with your YouTube API key
    - Replace `YOUR_MAPBOX_TOKEN_HERE` with your Mapbox access token
 
 3. **For development (optional):**

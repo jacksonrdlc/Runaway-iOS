@@ -13,44 +13,53 @@ import Foundation
 struct AnalysisView: View {
     @EnvironmentObject var dataManager: DataManager
     @StateObject private var analyzer = RunningAnalyzer()
-    
+
     var body: some View {
         ZStack {
             AppTheme.Colors.background.ignoresSafeArea()
-            
-            ScrollView {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                    RunningGoalCard(activities: dataManager.activities, goalReadiness: analyzer.analysisResults?.insights.goalReadiness)
-                    
-                    // Always show progress overview regardless of analysis state
-                    ProgressOverviewCard(activities: dataManager.activities)
-                    
-                    if analyzer.isAnalyzing {
-                        EnhancedAnalysisLoadingView()
-                    } else if let results = analyzer.analysisResults {
-                        AnalysisResultsView(results: results, activities: dataManager.activities)
-                    } else {
-                        EnhancedEmptyAnalysisView()
+
+            if dataManager.activities.isEmpty {
+                EmptyAnalysisStateView()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: AppTheme.Spacing.lg) {
+                        // Performance Dashboard - Week vs Week
+                        PerformanceDashboardCard(activities: dataManager.activities)
+
+                        // Monthly Progress Ring
+                        MonthlyProgressRing(activities: dataManager.activities)
+
+                        // AI Analysis Status/Results
+                        if analyzer.isAnalyzing {
+                            AnalysisLoadingCard()
+                        } else if let results = analyzer.analysisResults {
+                            QuickInsightsCard(results: results)
+                        } else {
+                            AnalysisPromptCard {
+                                Task {
+                                    await analyzer.analyzePerformance(activities: dataManager.activities)
+                                }
+                            }
+                        }
+
+                        // Activity Heatmap
+                        ActivityHeatmapCard(activities: dataManager.activities)
+
+                        // Pace Trends Chart
+                        PaceTrendsChart(activities: dataManager.activities)
+
+                        // Running Goal Card (if exists)
+                        if dataManager.currentGoal != nil || analyzer.analysisResults?.insights.goalReadiness != nil {
+                            RunningGoalCard(activities: dataManager.activities, goalReadiness: analyzer.analysisResults?.insights.goalReadiness)
+                        }
+
+                        // Full AI Analysis Results (if available)
+                        if let results = analyzer.analysisResults {
+                            DetailedAnalysisResultsView(results: results, activities: dataManager.activities)
+                        }
                     }
+                    .padding(AppTheme.Spacing.md)
                 }
-                .padding(AppTheme.Spacing.md)
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    Task {
-                        await analyzer.analyzePerformance(activities: dataManager.activities)
-                    }
-                }) {
-                    HStack(spacing: AppTheme.Spacing.xs) {
-                        Image(systemName: AppIcons.analyze)
-                        Text("Analyze")
-                            .font(AppTheme.Typography.caption)
-                    }
-                    .foregroundColor(analyzer.isAnalyzing ? AppTheme.Colors.mutedText : AppTheme.Colors.primary)
-                }
-                .disabled(analyzer.isAnalyzing)
             }
         }
         .onAppear {
@@ -60,6 +69,207 @@ struct AnalysisView: View {
                 }
             }
         }
+        .refreshable {
+            Task {
+                await dataManager.refreshActivities()
+                if !dataManager.activities.isEmpty {
+                    await analyzer.analyzePerformance(activities: dataManager.activities)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Empty Analysis State
+
+struct EmptyAnalysisStateView: View {
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.xl) {
+            Image(systemName: "chart.bar.doc.horizontal")
+                .font(.system(size: 80))
+                .foregroundColor(AppTheme.Colors.primary)
+
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("No Data to Analyze")
+                    .font(AppTheme.Typography.title)
+                    .foregroundColor(AppTheme.Colors.primaryText)
+
+                Text("Start logging activities to see detailed analytics and insights about your performance.")
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(AppTheme.Spacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Analysis Loading Card
+
+struct AnalysisLoadingCard: View {
+    @State private var animationPhase = 0.0
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            ZStack {
+                Circle()
+                    .stroke(AppTheme.Colors.cardBackground, lineWidth: 4)
+                    .frame(width: 40, height: 40)
+
+                Circle()
+                    .trim(from: 0, to: 0.7)
+                    .stroke(AppTheme.Colors.primary, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .frame(width: 40, height: 40)
+                    .rotationEffect(.degrees(animationPhase))
+                    .animation(.linear(duration: 2).repeatForever(autoreverses: false), value: animationPhase)
+            }
+
+            Text("Analyzing...")
+                .font(AppTheme.Typography.body)
+                .fontWeight(.semibold)
+                .foregroundColor(AppTheme.Colors.primaryText)
+
+            Text("Generating AI insights")
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.secondaryText)
+        }
+        .frame(maxWidth: .infinity, minHeight: 120)
+        .padding(AppTheme.Spacing.lg)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .onAppear {
+            animationPhase = 360
+        }
+    }
+}
+
+// MARK: - Analysis Prompt Card
+
+struct AnalysisPromptCard: View {
+    let onAnalyze: () -> Void
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 32))
+                .foregroundColor(AppTheme.Colors.accent)
+
+            Text("AI Analysis")
+                .font(AppTheme.Typography.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(AppTheme.Colors.primaryText)
+
+            Text("Get personalized insights about your training")
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.secondaryText)
+                .multilineTextAlignment(.center)
+
+            Button(action: onAnalyze) {
+                HStack {
+                    Image(systemName: "sparkles")
+                    Text("Analyze")
+                }
+                .font(AppTheme.Typography.body)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.sm)
+                .background(AppTheme.Colors.primary)
+                .cornerRadius(AppTheme.CornerRadius.medium)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 120)
+        .padding(AppTheme.Spacing.lg)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - Quick Insights Card
+
+struct QuickInsightsCard: View {
+    let results: AnalysisResults
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(.orange)
+                Text("AI Insights")
+                    .font(AppTheme.Typography.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppTheme.Colors.primaryText)
+            }
+
+            if !results.insights.recommendations.isEmpty {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                    ForEach(results.insights.recommendations.prefix(2), id: \.self) { recommendation in
+                        HStack(alignment: .top, spacing: AppTheme.Spacing.xs) {
+                            Circle()
+                                .fill(AppTheme.Colors.accent)
+                                .frame(width: 4, height: 4)
+                                .padding(.top, 6)
+
+                            Text(recommendation)
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.secondaryText)
+                                .lineLimit(2)
+                        }
+                    }
+                }
+            }
+
+            Text("Updated \(results.lastUpdated, style: .relative) ago")
+                .font(.caption2)
+                .foregroundColor(AppTheme.Colors.mutedText)
+        }
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+        .padding(AppTheme.Spacing.lg)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - Detailed Analysis Results
+
+struct DetailedAnalysisResultsView: View {
+    let results: AnalysisResults
+    let activities: [Activity]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+            Text("Detailed Analysis")
+                .font(AppTheme.Typography.title)
+                .fontWeight(.bold)
+                .foregroundColor(AppTheme.Colors.primaryText)
+
+            LazyVStack(spacing: AppTheme.Spacing.md) {
+                // Recommendations
+                RecommendationsCard(recommendations: results.insights.recommendations)
+
+                // Performance Overview
+                PerformanceOverviewCard(insights: results.insights)
+
+                // Weekly Volume Chart
+                WeeklyVolumeChart(weeklyData: results.insights.weeklyVolume)
+
+                // Performance Trend
+                PerformanceTrendCard(insights: results.insights)
+
+                // Next Run Prediction
+                if let prediction = results.insights.nextRunPrediction {
+                    NextRunPredictionCard(prediction: prediction)
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.lg)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -643,23 +853,35 @@ struct ProgressOverviewCard: View {
     @State private var cachedTotalMiles: Double = 0.0
     private let metricsCache = ActivityMetricsCache()
 
-    // Calculate actual progress from activities with caching
-    private func calculateTotalMiles() -> Double {
-        // Try to get from cache first
-        if let cached = metricsCache.getTotalMiles(for: activities) {
-            return cached
+    // Calculate monthly miles from activities with caching
+    private func calculateMonthlyMiles() -> Double {
+        let currentMonth = Calendar.current.component(.month, from: Date())
+        let currentYear = Calendar.current.component(.year, from: Date())
+
+        print("📊 AnalysisView: Calculating monthly miles - Total activities: \(activities.count)")
+        print("📊 AnalysisView: Current month: \(currentMonth), year: \(currentYear)")
+
+        // Filter activities for current month only
+        let monthlyActivities = activities.filter { activity in
+            // Use activity_date if available, otherwise fall back to start_date
+            let dateInterval = activity.activity_date ?? activity.start_date
+            guard let dateInterval = dateInterval else { return false }
+            let activityDate = Date(timeIntervalSince1970: dateInterval)
+            return Calendar.current.component(.month, from: activityDate) == currentMonth &&
+                   Calendar.current.component(.year, from: activityDate) == currentYear
         }
 
-        // Calculate if not in cache
-        let activitiesWithDistance = activities.compactMap { activity -> Double? in
+        print("📊 AnalysisView: Monthly activities found: \(monthlyActivities.count)")
+
+        // Calculate monthly miles
+        let activitiesWithDistance = monthlyActivities.compactMap { activity -> Double? in
             return activity.distance
         }
 
         let totalMeters = activitiesWithDistance.reduce(0, +)
         let miles = totalMeters * 0.000621371 // Convert meters to miles
 
-        // Cache the result
-        metricsCache.cacheTotalMiles(miles, for: activities)
+        print("📊 AnalysisView: Monthly miles calculated: \(miles)")
 
         return miles
     }
@@ -792,12 +1014,12 @@ struct ProgressOverviewCard: View {
         .background(AppTheme.Colors.cardBackground)
         .cornerRadius(12)
         .onAppear {
-            // Calculate total miles when view appears
-            cachedTotalMiles = calculateTotalMiles()
+            // Calculate monthly miles when view appears
+            cachedTotalMiles = calculateMonthlyMiles()
         }
         .onChange(of: activities.count) { _ in
             // Recalculate when activities change
-            cachedTotalMiles = calculateTotalMiles()
+            cachedTotalMiles = calculateMonthlyMiles()
         }
     }
 }
