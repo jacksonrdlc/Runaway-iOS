@@ -33,7 +33,7 @@ class GoalService {
         // Create a new goal with the user ID set
         let goalWithUserId = RunningGoal(
             id: nil,
-            userId: userId,
+            athleteId: userId,
             type: goal.type,
             targetValue: goal.targetValue,
             deadline: goal.deadline,
@@ -71,7 +71,7 @@ class GoalService {
         let goals: [RunningGoal] = try await supabase
             .from("running_goals")
             .select("*")
-            .eq("user_id", value: userId)
+            .eq("athlete_id", value: userId)
             .eq("is_active", value: true)
             .order("created_at", ascending: false)
             .execute()
@@ -89,7 +89,7 @@ class GoalService {
             .from("running_goals")
             .select("*")
             .eq("id", value: goalId)
-            .eq("user_id", value: userId)
+            .eq("athlete_id", value: userId)
             .limit(1)
             .execute()
             .value
@@ -104,7 +104,7 @@ class GoalService {
         let goals: [RunningGoal] = try await supabase
             .from("running_goals")
             .select("*")
-            .eq("user_id", value: userId)
+            .eq("athlete_id", value: userId)
             .order("created_at", ascending: false)
             .execute()
             .value
@@ -120,7 +120,7 @@ class GoalService {
         let goals: [RunningGoal] = try await supabase
             .from("running_goals")
             .select("*")
-            .eq("user_id", value: userId)
+            .eq("athlete_id", value: userId)
             .eq("goal_type", value: type.rawValue)
             .eq("is_active", value: true)
             .order("created_at", ascending: false)
@@ -145,7 +145,7 @@ class GoalService {
             .from("running_goals")
             .update(goal)
             .eq("id", value: goalId)
-            .eq("user_id", value: userId)
+            .eq("athlete_id", value: userId)
             .select()
             .single()
             .execute()
@@ -172,7 +172,7 @@ class GoalService {
         // Create updated goal with new progress
         let updatedGoal = RunningGoal(
             id: existingGoal.id,
-            userId: existingGoal.userId,
+            athleteId: existingGoal.athleteId,
             type: existingGoal.type,
             targetValue: existingGoal.targetValue,
             deadline: existingGoal.deadline,
@@ -205,7 +205,7 @@ class GoalService {
         // Create updated goal with deactivated status
         let deactivatedGoal = RunningGoal(
             id: existingGoal.id,
-            userId: existingGoal.userId,
+            athleteId: existingGoal.athleteId,
             type: existingGoal.type,
             targetValue: existingGoal.targetValue,
             deadline: existingGoal.deadline,
@@ -233,7 +233,7 @@ class GoalService {
             .from("running_goals")
             .delete()
             .eq("id", value: goalId)
-            .eq("user_id", value: userId)
+            .eq("athlete_id", value: userId)
             .execute()
         
         print("🗑️ Goal deleted permanently")

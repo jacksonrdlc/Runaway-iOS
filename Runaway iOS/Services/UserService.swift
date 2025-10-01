@@ -12,9 +12,9 @@ class UserService {
     // Function to get athlete by user ID
     static func getUserByAuthId(authId: UUID) async throws -> User {
         return try await supabase
-            .from("profiles")
+            .from("athletes")
             .select()
-            .eq("auth_id", value: authId)
+            .eq("auth_user_id", value: authId)
             .single()
             .execute()
             .value

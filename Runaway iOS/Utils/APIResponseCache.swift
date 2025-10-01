@@ -74,25 +74,54 @@ struct APIRequestBuilder {
         endpoint: String,
         method: HTTPMethod = .GET,
         body: Data? = nil
-    ) -> URLRequest? {
+    ) async -> URLRequest? {
         guard let url = URL(string: APIConfiguration.RunawayCoach.currentBaseURL + endpoint) else {
             return nil
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
-        
-        // Add headers
-        for (key, value) in APIConfiguration.RunawayCoach.getAuthHeaders() {
+
+        // Add headers (now async)
+        let headers = await APIConfiguration.RunawayCoach.getAuthHeaders()
+        for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
         }
-        
+
         // Add body if provided
         if let body = body {
             request.httpBody = body
         }
-        
+
+        return request
+    }
+
+    // Synchronous version for backwards compatibility (uses API key only)
+    static func buildRequestSync(
+        endpoint: String,
+        method: HTTPMethod = .GET,
+        body: Data? = nil
+    ) -> URLRequest? {
+        guard let url = URL(string: APIConfiguration.RunawayCoach.currentBaseURL + endpoint) else {
+            return nil
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
+
+        // Add headers (sync version - API key only)
+        let headers = APIConfiguration.RunawayCoach.getAuthHeadersSync()
+        for (key, value) in headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+
+        // Add body if provided
+        if let body = body {
+            request.httpBody = body
+        }
+
         return request
     }
 }

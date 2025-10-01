@@ -94,6 +94,27 @@ struct SettingsView: View {
                             }
                         }
                         
+                        // Debug Section (only show in debug builds)
+                        #if DEBUG
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                            Text("Debug")
+                                .font(AppTheme.Typography.headline)
+                                .foregroundColor(AppTheme.Colors.primaryText)
+                            
+                            NavigationLink(destination: DebugMenuView()) {
+                                SettingsRow(
+                                    icon: "wrench.and.screwdriver",
+                                    title: "Background Task Monitor",
+                                    subtitle: "Monitor realtime connections and background tasks",
+                                    color: .purple
+                                ) {
+                                    // Navigation handled by NavigationLink
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        #endif
+                        
                         // Danger Zone
                         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
                             Text("Account")

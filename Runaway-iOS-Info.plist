@@ -29,15 +29,17 @@
 	</array>
 	<key>MBXAccessToken</key>
 	<string>pk.eyJ1IjoiamFja3J1ZGVsaWMiLCJhIjoiY2x6YmJleDF0MHBibTJqcHh5dW00MXAzayJ9.gvQwL0C6knMFeB3Fol1gvQ</string>
+	<key>RUNAWAY_API_KEY</key>
+	<string>afa390428e8800601dbdbb2ad0018acd2768d66753a0980275309b28f0bd5eed</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>background-app-refresh</string>
+		<string>background-processing</string>
 		<string>remote-notification</string>
 		<string>processing</string>
 		<string>fetch</string>
 	</array>
 	<key>YOUTUBE_API_KEY</key>
 	<string>AIzaSyAfEB6jgCsiEalyd3RYjWUXzWlbp4gO7vY</string>
-	<key>RUNAWAY_API_KEY</key>
-	<string>afa390428e8800601dbdbb2ad0018acd2768d66753a0980275309b28f0bd5eed</string>
 </dict>
 </plist>

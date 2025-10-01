@@ -230,7 +230,7 @@ class ActivityRecordingService: ObservableObject {
 
             // Create activity for database
             return [
-                "user_id": AnyEncodable(userId),
+                "athlete_id": AnyEncodable(userId),
                 "name": AnyEncodable(session.name),
                 "type": AnyEncodable(session.activityType),
                 "distance": AnyEncodable(session.totalDistance),

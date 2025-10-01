@@ -35,19 +35,77 @@ struct SimpleEntry: TimelineEntry {
 
 struct BarChart: View {
     var days: [Day]
+    
+    // Check if user has any activities this week
+    private var hasActivitiesThisWeek: Bool {
+        days.contains { $0.minutes > 0 }
+    }
+    
+    // Array of fun empty state messages
+    private var emptyStateMessages: [String] {
+        [
+            "You better be lacing up your sneakers...",
+            "Those running shoes are looking lonely 👟",
+            "Time to turn those couch miles into real miles!",
+            "Your sneakers are gathering dust...",
+            "The pavement is calling your name!",
+            "Zero miles? Time to change that! 🏃‍♀️",
+            "Your weekly chart is thirsty for some data!",
+            "Ready to paint this chart with some miles?",
+            "Empty bars = time for full effort! 💪",
+            "This chart needs some serious activity love!"
+        ]
+    }
+    
+    // Get a random message (but consistent for the current week)
+    private var randomEmptyMessage: String {
+        // Use week of year as seed for consistent message throughout the week
+        let weekOfYear = Calendar.current.component(.weekOfYear, from: Date())
+        let messageIndex = weekOfYear % emptyStateMessages.count
+        return emptyStateMessages[messageIndex]
+    }
+    
     var body: some View {
-        Chart {
-            ForEach(days) { day in
-                BarMark(
-                    x: .value("Day", day.name),
-                    y: .value("Minutes", day.minutes)
-                ).foregroundStyle(by: .value("Type", day.type))
+        ZStack {
+            Chart {
+                ForEach(days) { day in
+                    BarMark(
+                        x: .value("Day", day.name),
+                        y: .value("Minutes", day.minutes)
+                    ).foregroundStyle(by: .value("Type", day.type))
+                }
             }
+            .chartForegroundStyleScale([
+                "Run": Color(red: 0.2, green: 0.6, blue: 1.0), 
+                "Walk": Color(red: 0.4, green: 0.8, blue: 0.4), 
+                "Weight Training": Color(red: 1.0, green: 0.7, blue: 0.0), 
+                "Yoga": Color(red: 0.8, green: 0.4, blue: 0.8)
+            ])
             
+            // Empty State Overlay
+            if !hasActivitiesThisWeek {
+                VStack(spacing: 4) {
+                    
+                    Text(randomEmptyMessage)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.green.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .padding(.horizontal, 8)
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(red: 0.02, green: 0.02, blue: 0.08))
+//                        .overlay(
+//                            RoundedRectangle(cornerRadius: 12)
+//                                .stroke(.white.opacity(0.2), lineWidth: 1)
+//                        )
+                )
+//                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+            }
         }
-        .chartForegroundStyleScale([
-            "Run": Color(red: 0.2, green: 0.6, blue: 1.0), "Walk": Color(red: 0.4, green: 0.8, blue: 0.4), "Weight Training": Color(red: 1.0, green: 0.7, blue: 0.0), "Yoga": Color(red: 0.8, green: 0.4, blue: 0.8)
-        ])
     }
 }
 
@@ -115,6 +173,24 @@ struct Provider: AppIntentTimelineProvider {
                 let thursArray: Array<String> = userDefaults.stringArray(forKey: "thuArray") ?? []
                 let friArray: Array<String> = userDefaults.stringArray(forKey: "friArray") ?? []
                 let satArray: Array<String> = userDefaults.stringArray(forKey: "satArray") ?? []
+
+                // Log received activity data from UserDefaults
+                print("🔵 Widget: Received activity data from UserDefaults:")
+                print("🔵   Sunday: \(sunArray.count) activities")
+                print("🔵   Monday: \(monArray.count) activities")
+                print("🔵   Tuesday: \(tuesArray.count) activities")
+                print("🔵   Wednesday: \(wednesArray.count) activities")
+                print("🔵   Thursday: \(thursArray.count) activities")
+                print("🔵   Friday: \(friArray.count) activities")
+                print("🔵   Saturday: \(satArray.count) activities")
+
+                // Log sample activity data for debugging
+                if !sunArray.isEmpty {
+                    print("🔵   Sample Sunday activity: \(sunArray.first!)")
+                }
+                if !monArray.isEmpty {
+                    print("🔵   Sample Monday activity: \(monArray.first!)")
+                }
                 
                 
                 var sundayActivities: Array<Activity> = []
@@ -235,23 +311,34 @@ struct Provider: AppIntentTimelineProvider {
                 let weekActivitiesPt2: [Activity] = wednesdayActivities.sorted(by: { $0.type < $1.type }) + thursdayActivities.sorted(by: { $0.type < $1.type }) + fridayActivities.sorted(by: { $0.type < $1.type }) + saturdayActivities.sorted(by: { $0.type < $1.type })
                 
                 let weekActivities: [Activity] = weekActivitiesPt1 + weekActivitiesPt2
-                
-                
+
+                // Log processed activities
+                print("🔵 Widget: Processed \(weekActivities.count) total activities for week")
+                for (index, activity) in weekActivities.enumerated() {
+                    print("🔵   Activity \(index + 1): \(activity.day) - \(activity.type) - \(activity.distance) mi - \(activity.time) min")
+                }
+
                 var daysData: [Day] = [
                     
-                    .init(name: "S", type: "Run", minutes: 0.0, miles: 0.0),
-                    .init(name: "M", type: "Run", minutes: 0.0, miles: 0.0),
-                    .init(name: "T", type: "Run", minutes: 0.0, miles: 0.0),
-                    .init(name: "W", type: "Run", minutes: 0.0, miles: 0.0),
+                    .init(name: "Su", type: "Run", minutes: 0.0, miles: 0.0),
+                    .init(name: "Mo", type: "Run", minutes: 0.0, miles: 0.0),
+                    .init(name: "Tu", type: "Run", minutes: 0.0, miles: 0.0),
+                    .init(name: "We", type: "Run", minutes: 0.0, miles: 0.0),
                     .init(name: "Th", type: "Run", minutes: 0.0, miles: 0.0),
-                    .init(name: "F", type: "Run", minutes: 0.0, miles: 0.0),
-                    .init(name: "Sat", type: "Run", minutes: 0.0, miles: 0.0)
+                    .init(name: "Fr", type: "Run", minutes: 0.0, miles: 0.0),
+                    .init(name: "Sa", type: "Run", minutes: 0.0, miles: 0.0)
                 ]
                 
                 for act in weekActivities {
                     daysData.append(Day(name: act.day, type: act.type, minutes: act.time, miles: act.distance))
                 }
-                
+
+                // Log final widget data that will be displayed
+                print("🔵 Widget: Final daysData for display (\(daysData.count) items):")
+                for day in daysData {
+                    print("🔵   \(day.name): \(day.type) - \(day.minutes) min - \(day.miles) mi")
+                }
+
                 entry = SimpleEntry(date: entryDate, miles: miles, monthlyMiles: monthlyMiles, runs: runs, days: daysData)
             }
             entries.append(entry)

@@ -44,11 +44,26 @@ struct ActivitiesView: View {
                                 .foregroundColor(AppTheme.Colors.secondaryText)
                         }
                     } else {
-                        EmptyActivitiesView()
+                        ScrollView {
+                            VStack(spacing: AppTheme.Spacing.lg) {
+                                // Activity Commitment Card
+                                ActivityCommitmentCard()
+                                    .padding(.horizontal, AppTheme.Spacing.md)
+
+                                // Empty state
+                                EmptyActivitiesView()
+                            }
+                            .padding(.top, AppTheme.Spacing.md)
+                        }
                     }
                 } else {
                     ScrollView {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
+                            // Activity Commitment Card
+                            ActivityCommitmentCard()
+                                .padding(.horizontal, AppTheme.Spacing.md)
+
+                            // Activities List
                             ForEach(dataManager.activities, id: \.id) { activity in
                                 CardView(activity: convertToLocalActivity(activity)) {
                                     selectedActivity = convertToLocalActivity(activity)

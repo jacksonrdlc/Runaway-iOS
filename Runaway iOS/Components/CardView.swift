@@ -47,11 +47,21 @@ struct CardView: View {
                 }
                 
                 Spacer()
-                
+
                 if let startDate = activity.start_date {
-                    Text(startDate, style: .date)
-                        .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.mutedText)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(startDate, style: .date)
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.secondaryText)
+
+                        Text(startDate, style: .time)
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.mutedText)
+
+                        Text(timeAgoString(from: startDate))
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.Colors.mutedText)
+                    }
                 }
             }
             
@@ -120,6 +130,28 @@ struct CardView: View {
         let minutes = Int(paceInSeconds) / 60
         let seconds = Int(paceInSeconds) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private func timeAgoString(from date: Date) -> String {
+        let timeInterval = Date().timeIntervalSince(date)
+
+        if timeInterval < 60 {
+            return "just now"
+        } else if timeInterval < 3600 {
+            let minutes = Int(timeInterval / 60)
+            return "\(minutes)m ago"
+        } else if timeInterval < 86400 {
+            let hours = Int(timeInterval / 3600)
+            return "\(hours)h ago"
+        } else if timeInterval < 2592000 { // 30 days
+            let days = Int(timeInterval / 86400)
+            return "\(days)d ago"
+        } else {
+            // For older activities, just show the date
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            return formatter.string(from: date)
+        }
     }
 }
 
