@@ -37,4 +37,4 @@ GoogleService-Info.plist
 .env.production
 
 # Swift Package Manager
-.build/
+.build/Runaway-iOS-Info.plist

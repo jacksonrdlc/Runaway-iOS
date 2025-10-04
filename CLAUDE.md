@@ -99,9 +99,14 @@ The app shares data with its widget through:
 - Development fallback: Available but uses production by default
 - Authentication: Environment variables > Info.plist > hardcoded (null)
 
+#### Supabase Configuration
+- Configured via: `SupabaseConfiguration` class
+- Credentials priority: Environment variables > Info.plist > hardcoded (null)
+- Environment variables: `SUPABASE_URL`, `SUPABASE_KEY`
+- Info.plist keys: `SUPABASE_URL`, `SUPABASE_KEY`
+
 #### Required Setup Files
-- `Config.xcconfig` - Supabase credentials (not in repo)
-- `Runaway-iOS-Info.plist` - API keys (generated from template)
+- `Runaway-iOS-Info.plist` - API keys and Supabase credentials (generated from template)
 - `GoogleService-Info.plist` - Firebase configuration
 
 ## Development Workflow
@@ -151,10 +156,33 @@ let result = await enhancedService.performAnalysis(data: activityData)
 ## Security Notes
 
 ### API Key Management
-- Never commit API keys to source control
+- **Never commit API keys or credentials to source control**
 - Use template files: `Runaway-iOS-Info.plist.template`
 - Environment variables take precedence over Info.plist
-- Supabase credentials are hardcoded in `Utils/Supabase.swift` (consider moving)
+
+#### Supabase Credentials Setup
+**Option 1: Environment Variables (Recommended)**
+```bash
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_KEY="your-anon-key-here"
+```
+
+**Option 2: Info.plist**
+1. Copy `Runaway-iOS-Info.plist.template` to `Runaway-iOS-Info.plist`
+2. Replace placeholders:
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_KEY`: Your Supabase anon key (NOT service role key)
+
+**Getting Credentials:**
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
+2. Select your project
+3. Navigate to Settings > API
+4. Copy Project URL and anon public key
+
+**⚠️ SECURITY WARNING:**
+- Use ANON key for client apps (not service role key)
+- Add `Runaway-iOS-Info.plist` to `.gitignore`
+- Rotate keys if accidentally committed
 
 ### Data Privacy
 - All user data stored in Supabase with Row Level Security (RLS)
@@ -189,6 +217,7 @@ Widget functionality can be tested by:
 - Use `APIConfiguration.RunawayCoach.printCurrentConfiguration()` for debugging
 
 ### Real-time Sync Problems
-- Ensure Supabase credentials are properly configured
+- Ensure Supabase credentials are properly configured (use `SupabaseConfiguration.printConfiguration()` to debug)
 - Check network connectivity and Supabase project status
 - Verify RealtimeService subscription is active
+- Confirm credentials are loaded from environment variables or Info.plist

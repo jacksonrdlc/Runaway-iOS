@@ -12,11 +12,11 @@ import WidgetKit
 class GoalService {
     
     // MARK: - Helper Methods
-    
+
     /// Get the current user ID safely from MainActor context
     private static func getCurrentUserId() async throws -> Int {
         let userId = await MainActor.run {
-            UserManager.shared.userId
+            UserSession.shared.userId
         }
         guard let userId = userId else {
             throw GoalServiceError.userNotAuthenticated

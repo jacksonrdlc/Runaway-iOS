@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LoginView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var userSession: UserSession
     @State private var email = ""
     @State private var password = ""
     @State private var isSignUp = false
@@ -34,9 +34,9 @@ struct LoginView: View {
                 Task {
                     do {
                         if isSignUp {
-                            try await authManager.signUp(email: email, password: password)
+                            try await userSession.signUp(email: email, password: password)
                         } else {
-                            try await authManager.signIn(email: email, password: password)
+                            try await userSession.signIn(email: email, password: password)
                         }
                     } catch {
                         showError = true

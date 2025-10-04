@@ -39,13 +39,13 @@ public final class RealtimeService: ObservableObject {
     public func startRealtimeSubscription() {
         Task {
             let userId = await MainActor.run {
-                UserManager.shared.userId
+                UserSession.shared.userId
             }
             guard let userId = userId else {
                 print("No authenticated user, cannot start realtime subscription")
                 return
             }
-            
+
             await setupRealtimeSubscriptionWithRetry(userId: userId)
         }
     }
@@ -180,22 +180,22 @@ public final class RealtimeService: ObservableObject {
     
     private func refreshActivityData() async {
         let userId = await MainActor.run {
-            UserManager.shared.userId
+            UserSession.shared.userId
         }
         guard let userId = userId else {
             print("No authenticated user for data refresh")
             return
         }
-        
-        
+
+
         do {
             let activities = try await ActivityService.getAllActivitiesByUser(userId: userId)
-            
+
             // Update UserDefaults for widget
             await MainActor.run {
                 updateDataManager(with: activities)
             }
-            
+
         } catch {
             print("Error refreshing activity data: \(error)")
         }
@@ -261,7 +261,7 @@ public final class RealtimeService: ObservableObject {
                 try? await Task.sleep(for: .seconds(25)) // Increased from 10s to 25s
             } else {
                 // Attempt to reconnect if not connected
-                let userId = await MainActor.run { UserManager.shared.userId }
+                let userId = await MainActor.run { UserSession.shared.userId }
                 if let userId = userId {
                     await setupRealtimeSubscription(userId: userId)
                     await refreshActivityData()
@@ -349,7 +349,7 @@ public final class RealtimeService: ObservableObject {
             } else {
                 connectionHealth = .disconnected
                 // Return whether we need reconnection and the userId
-                return (lastUpdate, isConnected, UserManager.shared.userId)
+                return (lastUpdate, isConnected, UserSession.shared.userId)
             }
         }
 

@@ -9,9 +9,8 @@ import WidgetKit
 import Supabase
 
 struct MainView: View {
-    @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var userSession: UserSession
     @EnvironmentObject var realtimeService: RealtimeService
-    @EnvironmentObject var userManager: UserManager
     @EnvironmentObject var dataManager: DataManager
     @State var selectedTab = 0
     @State var isDataReady: Bool = false
@@ -42,9 +41,7 @@ struct MainView: View {
                 .tag(0)
 
                 NavigationView {
-                    AnalysisView()
-                        .navigationTitle("Analysis")
-                        .navigationBarTitleDisplayMode(.large)
+                    UnifiedInsightsView()
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
                                 Button(action: {
@@ -57,7 +54,7 @@ struct MainView: View {
                         }
                 }
                 .tabItem {
-                    Label("Analysis", systemImage: AppIcons.analysis)
+                    Label("Insights", systemImage: "chart.bar.fill")
                 }
                 .tag(1)
 
@@ -127,8 +124,7 @@ struct MainView: View {
             .accentColor(AppTheme.Colors.primary)
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
-                    .environmentObject(authManager)
-                    .environmentObject(userManager)
+                    .environmentObject(userSession)
             }
             .onAppear {
                 loadInitialData()
@@ -194,7 +190,7 @@ extension MainView {
     /// Load initial user data through DataManager
     private func loadInitialData() {
         Task {
-            guard let authId = authManager.currentUser?.id else {
+            guard let authId = userSession.currentUser?.id else {
                 print("❌ MainView: No auth ID available")
                 isDataReady = true
                 return
@@ -204,7 +200,7 @@ extension MainView {
                 // Fetch and set user profile
                 let user = try await UserService.getUserByAuthId(authId: authId)
                 await MainActor.run {
-                    userManager.setUser(user)
+                    userSession.setProfile(user)
                 }
 
                 // Load all data through DataManager

@@ -217,7 +217,7 @@ class ActivityRecordingService: ObservableObject {
         print("💾 Saving recorded activity to database")
 
         // Get user ID
-        guard let userId = UserManager.shared.userId else {
+        guard let userId = UserSession.shared.userId else {
             throw RecordingError.noUser
         }
 

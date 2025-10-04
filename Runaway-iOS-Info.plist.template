@@ -37,5 +37,9 @@
 	</array>
 	<key>RUNAWAY_API_KEY</key>
 	<string>YOUR_RUNAWAY_API_KEY_HERE</string>
+	<key>SUPABASE_URL</key>
+	<string>YOUR_SUPABASE_PROJECT_URL_HERE</string>
+	<key>SUPABASE_KEY</key>
+	<string>YOUR_SUPABASE_ANON_KEY_HERE</string>
 </dict>
 </plist>

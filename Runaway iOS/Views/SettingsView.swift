@@ -8,8 +8,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var userSession: UserSession
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -129,8 +128,7 @@ struct SettingsView: View {
                                 isDestructive: true
                             ) {
                                 Task {
-                                    try? await authManager.signOut()
-                                    userManager.clearUser()
+                                    try? await userSession.signOut()
                                     dismiss()
                                 }
                             }
@@ -218,7 +216,6 @@ struct SettingsRow: View {
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         SettingsView()
-            .environmentObject(AuthManager.shared)
-            .environmentObject(UserManager.shared)
+            .environmentObject(UserSession.shared)
     }
 }

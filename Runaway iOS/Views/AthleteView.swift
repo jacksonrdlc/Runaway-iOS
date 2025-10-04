@@ -28,7 +28,7 @@ struct AthleteView: View {
                     ProfileHeader(athlete: athlete)
                     
                     // Quick Stats Grid
-                    QuickStatsGrid(runs: String(stats.count!), miles: String(format: "%.1f", stats.ytdDistance! * Double(0.000621371)), minutes: String(format: "%.0f", stats.elapsedTime! / 60))
+                    QuickStatsGrid(runs: String(stats.count!), miles: String(format: "%.1f", stats.distance! * Double(0.000621371)), minutes: String(format: "%.0f", stats.elapsedTime! / 60))
                     
                     // Detailed Stats Cards
                     LazyVStack(spacing: AppTheme.Spacing.md) {
@@ -45,25 +45,6 @@ struct AthleteView: View {
 //        }
     }
 }
-
-//extension AthleteView {
-//    func setStats() {
-//        if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
-//            if let runsInt = stats.count {
-//                self.runs = String(runsInt)
-//                userDefaults.set(runsInt, forKey: "runs")
-//            }
-//            if let milesInt = stats.ytdDistance {
-//                self.miles = String(format: "%.1f", milesInt * Double(0.000621371))
-//                userDefaults.set(milesInt, forKey: "miles")
-//            }
-//            if let minutesInt = stats.elapsedTime {
-//                self.minutes = String(format: "%.0f", minutesInt / 60)
-//                userDefaults.set(minutesInt, forKey: "minutes")
-//            }
-//        }
-//    }
-//}
 
 // MARK: - Profile Header
 struct ProfileHeader: View {

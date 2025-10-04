@@ -60,6 +60,12 @@ struct APIConfiguration {
         static let paceRecommendation = "/feedback/pace-recommendation"
         static let assessGoals = "/goals/assess"
         static let trainingPlan = "/goals/training-plan"
+
+        // Quick Wins Endpoints
+        static let comprehensiveAnalysis = "/quick-wins/comprehensive-analysis"
+        static let weatherImpact = "/quick-wins/weather-impact"
+        static let vo2maxEstimate = "/quick-wins/vo2max-estimate"
+        static let trainingLoad = "/quick-wins/training-load"
         
         // Configuration
         static let requestTimeout: TimeInterval = 30.0

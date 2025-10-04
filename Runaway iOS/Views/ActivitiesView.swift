@@ -4,8 +4,7 @@ import UIKit
 import WidgetKit
 
 struct ActivitiesView: View {
-    @EnvironmentObject var authManager: AuthManager
-    @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var userSession: UserSession
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var realtimeService: RealtimeService
     @State private var selectedActivity: LocalActivity?
@@ -164,8 +163,7 @@ struct EmptyActivitiesView: View {
 struct ActivitiesView_Previews: PreviewProvider {
     static var previews: some View {
         ActivitiesView()
-            .environmentObject(AuthManager.shared)
-            .environmentObject(UserManager.shared)
+            .environmentObject(UserSession.shared)
             .environmentObject(DataManager.shared)
             .environmentObject(RealtimeService.shared)
     }
