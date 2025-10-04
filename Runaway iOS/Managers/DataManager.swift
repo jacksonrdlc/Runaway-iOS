@@ -182,7 +182,7 @@ class DataManager: ObservableObject {
 
     /// Refresh all data
     func refreshAllData() async {
-        guard let userId = UserManager.shared.userId else {
+        guard let userId = UserSession.shared.userId else {
             print("❌ DataManager: No user ID available for refresh")
             return
         }
@@ -192,7 +192,7 @@ class DataManager: ObservableObject {
 
     /// Refresh only activities
     func refreshActivities() async {
-        guard let userId = UserManager.shared.userId else {
+        guard let userId = UserSession.shared.userId else {
             print("❌ DataManager: No user ID available for activities refresh")
             return
         }
@@ -234,7 +234,7 @@ class DataManager: ObservableObject {
 
     /// Create a daily commitment
     func createCommitment(_ activityType: CommitmentActivityType) async throws {
-        guard let userId = UserManager.shared.userId else {
+        guard let userId = UserSession.shared.userId else {
             throw DataManagerError.noUserId
         }
 
@@ -253,7 +253,7 @@ class DataManager: ObservableObject {
 
     /// Check if a new activity fulfills today's commitment
     func checkActivityFulfillsCommitment(_ activity: Activity) async {
-        guard let userId = UserManager.shared.userId else {
+        guard let userId = UserSession.shared.userId else {
             print("❌ DataManager: No user ID available for commitment check")
             return
         }
@@ -280,7 +280,7 @@ class DataManager: ObservableObject {
 
     /// Refresh today's commitment
     func refreshTodaysCommitment() async {
-        guard let userId = UserManager.shared.userId else {
+        guard let userId = UserSession.shared.userId else {
             print("❌ DataManager: No user ID available for commitment refresh")
             return
         }
@@ -291,200 +291,235 @@ class DataManager: ObservableObject {
     // MARK: - Widget Data Management
 
     /// Single method for updating all widget data in UserDefaults
+    /// Optimized to run heavy processing on background queue to avoid blocking main thread
     func updateWidgetData() {
-        guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
-            print("❌ DataManager: Failed to access shared UserDefaults")
-            return
-        }
+        // Capture activities on main thread
+        let activitiesCopy = self.activities
 
-        // Use autoreleasepool for memory efficiency
-        autoreleasepool {
-            // Clear existing data
-            let arrayKeys = ["sunArray", "monArray", "tueArray", "wedArray", "thuArray", "friArray", "satArray"]
-            arrayKeys.forEach { userDefaults.removeObject(forKey: $0) }
-
-            // Calculate date ranges
-            let currentYear = Calendar.current.component(.year, from: Date())
-            let currentMonth = Calendar.current.component(.month, from: Date())
-            let weekStartDate = Date().startOfWeek()
-
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
-
-            // Debug all activity types
-            print("📊 DataManager: All activity types:")
-            for (index, activity) in activities.prefix(5).enumerated() {
-                print("📊 Activity \(index): \(activity.name ?? "Unknown") - Type: '\(activity.type ?? "nil")'")
+        // Run heavy processing on background queue
+        Task.detached(priority: .utility) {
+            guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+                print("❌ DataManager: Failed to access shared UserDefaults")
+                return
             }
 
-            // Filter for widget-relevant activities (Run, Walk, Weight Training, Workout)
-            let widgetActivities = activities.filter { activity in
-                // Normalize WeightTraining to "Weight Training" before filtering
-                var activityType = activity.type ?? ""
-                if activityType.lowercased() == "weighttraining" {
-                    activityType = "Weight Training"
+            // Use autoreleasepool for memory efficiency
+            autoreleasepool {
+                // Clear existing data
+                let arrayKeys = ["sunArray", "monArray", "tueArray", "wedArray", "thuArray", "friArray", "satArray"]
+                arrayKeys.forEach { userDefaults.removeObject(forKey: $0) }
+
+                // Calculate date ranges
+                let currentYear = Calendar.current.component(.year, from: Date())
+                let currentMonth = Calendar.current.component(.month, from: Date())
+                let weekStartDate = Date().startOfWeek()
+
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+
+                #if DEBUG
+                // Debug all activity types
+                print("📊 DataManager: All activity types:")
+                for (index, activity) in activitiesCopy.prefix(5).enumerated() {
+                    print("📊 Activity \(index): \(activity.name ?? "Unknown") - Type: '\(activity.type ?? "nil")'")
                 }
-                let normalizedType = activityType.lowercased()
+                #endif
 
-                let isIncluded = normalizedType == "run" ||
-                               normalizedType == "walk" ||
-                               normalizedType == "weight training"
-                if !isIncluded && !normalizedType.isEmpty {
-                    print("📊 DataManager: Excluding activity type: '\(normalizedType)'")
-                }
-                return isIncluded
-            }
-
-            let monthlyActivities = widgetActivities.filter { activity in
-                // Use activity_date if available, otherwise fall back to start_date
-                let dateInterval = activity.activity_date ?? activity.start_date
-                guard let dateInterval = dateInterval else { return false }
-                let activityDate = Date(timeIntervalSince1970: dateInterval)
-                return Calendar.current.component(.year, from: activityDate) == currentYear &&
-                       Calendar.current.component(.month, from: activityDate) == currentMonth
-            }
-
-            // Calculate totals
-            let yearlyMiles = widgetActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-            let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-            let totalRuns = widgetActivities.count
-            
-            print("📊 DataManager: Total activities: \(activities.count)")
-            print("📊 DataManager: Widget activities (Run/Walk/Weight): \(widgetActivities.count)")
-            print("📊 DataManager: Monthly activities: \(monthlyActivities.count)")
-            print("📊 DataManager: Current month: \(currentMonth), year: \(currentYear)")
-
-            // Debug first few monthly activities
-            for (index, activity) in monthlyActivities.prefix(3).enumerated() {
-                let dateInterval = activity.activity_date ?? activity.start_date
-                if let dateInterval = dateInterval {
-                    let activityDate = Date(timeIntervalSince1970: dateInterval)
-                    let activityMonth = Calendar.current.component(.month, from: activityDate)
-                    let activityYear = Calendar.current.component(.year, from: activityDate)
-                    print("📊 Monthly Activity \(index): \(activity.name ?? "Unknown") - Date: \(activityDate) - Month: \(activityMonth), Year: \(activityYear) - Distance: \(activity.distance ?? 0) meters")
-                } else {
-                    print("📊 Monthly Activity \(index): \(activity.name ?? "Unknown") - NO DATE AVAILABLE - Distance: \(activity.distance ?? 0) meters")
-                }
-            }
-
-            print("📊 DataManager: Yearly Miles: \(yearlyMiles * 0.000621371), Monthly Miles: \(monthlyMiles * 0.000621371), Total Runs: \(totalRuns)")
-
-            // Store totals
-            userDefaults.set(yearlyMiles * 0.000621371, forKey: "miles")
-            userDefaults.set(monthlyMiles * 0.000621371, forKey: "monthlyMiles")
-            userDefaults.set(totalRuns, forKey: "runs")
-
-            // Process weekly activities for widget display
-            var weeklyArrays: [String: [String]] = [
-                "Sunday": [],
-                "Monday": [],
-                "Tuesday": [],
-                "Wednesday": [],
-                "Thursday": [],
-                "Friday": [],
-                "Saturday": []
-            ]
-
-            let encoder = JSONEncoder()
-
-            print("📊 DataManager: Processing \(widgetActivities.count) activities for widget...")
-            print("📊 DataManager: Week start date: \(weekStartDate)")
-
-            for activity in widgetActivities {
-                print("📊 DataManager: Processing activity '\(activity.name ?? "Unknown")' - Type: '\(activity.type ?? "nil")'")
-                // Use activity_date first, fall back to start_date
-                let activityDateInterval = activity.activity_date ?? activity.start_date
-
-                // Enhanced debugging for date comparison
-                if let dateInterval = activityDateInterval {
-                    let activityDate = Date(timeIntervalSince1970: dateInterval)
-                    let weekStartDateFormatted = Date(timeIntervalSince1970: weekStartDate)
-                    print("📊 DataManager: Activity date: \(activityDate)")
-                    print("📊 DataManager: Week start: \(weekStartDateFormatted)")
-                    print("📊 DataManager: Activity is after week start: \(dateInterval > weekStartDate)")
-                } else {
-                    print("📊 DataManager: Activity has no date!")
-                }
-
-                guard let dateInterval = activityDateInterval,
-                      let distance = activity.distance,
-                      let elapsedTime = activity.elapsed_time,
-                      dateInterval > weekStartDate else {
-                    print("📊 DataManager: Skipping activity '\(activity.name ?? "Unknown")' - missing data or too old")
-                    continue
-                }
-
-                let dayOfWeek = Date(timeIntervalSince1970: dateInterval).dayOfTheWeek
-                print("📊 DataManager: Activity '\(activity.name ?? "Unknown")' is on \(dayOfWeek)")
-
-                // Normalize WeightTraining to "Weight Training" for widget
-                var normalizedType = activity.type ?? "Run"
-                if normalizedType.lowercased() == "weighttraining" {
-                    normalizedType = "Weight Training"
-                }
-
-                let raActivity = RAActivity(
-                    day: String(dayOfWeek.prefix(2)),
-                    type: normalizedType, // Use normalized type for widget compatibility
-                    distance: distance * 0.000621371,
-                    time: elapsedTime / 60
-                )
-
-                print("📊 DataManager: Adding activity '\(activity.name ?? "Unknown")' to \(dayOfWeek) - Distance: \(distance * 0.000621371) mi, Time: \(elapsedTime / 60) min")
-
-                do {
-                    let jsonData = try encoder.encode(raActivity)
-                    if let jsonString = String(data: jsonData, encoding: .utf8) {
-                        weeklyArrays[dayOfWeek]?.append(jsonString)
-                        print("📊 DataManager: Successfully encoded activity for \(dayOfWeek)")
+                // Filter for widget-relevant activities (Run, Walk, Weight Training, Workout)
+                let widgetActivities = activitiesCopy.filter { activity in
+                    // Normalize WeightTraining to "Weight Training" before filtering
+                    var activityType = activity.type ?? ""
+                    if activityType.lowercased() == "weighttraining" {
+                        activityType = "Weight Training"
                     }
-                } catch {
-                    print("❌ DataManager: Failed to encode activity for widget: \(error)")
+                    let normalizedType = activityType.lowercased()
+
+                    let isIncluded = normalizedType == "run" ||
+                                   normalizedType == "walk" ||
+                                   normalizedType == "weight training"
+                    #if DEBUG
+                    if !isIncluded && !normalizedType.isEmpty {
+                        print("📊 DataManager: Excluding activity type: '\(normalizedType)'")
+                    }
+                    #endif
+                    return isIncluded
                 }
-            }
 
-            // Debug weekly arrays before storing
-            print("📊 DataManager: Widget data summary:")
-            for (day, activities) in weeklyArrays {
-                print("📊   \(day): \(activities.count) activities")
-                if !activities.isEmpty {
-                    print("📊     First activity: \(activities.first ?? "nil")")
+                let monthlyActivities = widgetActivities.filter { activity in
+                    // Use activity_date if available, otherwise fall back to start_date
+                    let dateInterval = activity.activity_date ?? activity.start_date
+                    guard let dateInterval = dateInterval else { return false }
+                    let activityDate = Date(timeIntervalSince1970: dateInterval)
+                    return Calendar.current.component(.year, from: activityDate) == currentYear &&
+                           Calendar.current.component(.month, from: activityDate) == currentMonth
                 }
+
+                // Calculate totals
+                let yearlyMiles = widgetActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+                let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+                let totalRuns = widgetActivities.count
+
+                #if DEBUG
+                print("📊 DataManager: Total activities: \(activitiesCopy.count)")
+                print("📊 DataManager: Widget activities (Run/Walk/Weight): \(widgetActivities.count)")
+                print("📊 DataManager: Monthly activities: \(monthlyActivities.count)")
+                print("📊 DataManager: Current month: \(currentMonth), year: \(currentYear)")
+
+                // Debug first few monthly activities
+                for (index, activity) in monthlyActivities.prefix(3).enumerated() {
+                    let dateInterval = activity.activity_date ?? activity.start_date
+                    if let dateInterval = dateInterval {
+                        let activityDate = Date(timeIntervalSince1970: dateInterval)
+                        let activityMonth = Calendar.current.component(.month, from: activityDate)
+                        let activityYear = Calendar.current.component(.year, from: activityDate)
+                        print("📊 Monthly Activity \(index): \(activity.name ?? "Unknown") - Date: \(activityDate) - Month: \(activityMonth), Year: \(activityYear) - Distance: \(activity.distance ?? 0) meters")
+                    } else {
+                        print("📊 Monthly Activity \(index): \(activity.name ?? "Unknown") - NO DATE AVAILABLE - Distance: \(activity.distance ?? 0) meters")
+                    }
+                }
+
+                print("📊 DataManager: Yearly Miles: \(yearlyMiles * 0.000621371), Monthly Miles: \(monthlyMiles * 0.000621371), Total Runs: \(totalRuns)")
+                #endif
+
+                // Store totals
+                userDefaults.set(yearlyMiles * 0.000621371, forKey: "miles")
+                userDefaults.set(monthlyMiles * 0.000621371, forKey: "monthlyMiles")
+                userDefaults.set(totalRuns, forKey: "runs")
+
+                // Process weekly activities for widget display
+                var weeklyArrays: [String: [String]] = [
+                    "Sunday": [],
+                    "Monday": [],
+                    "Tuesday": [],
+                    "Wednesday": [],
+                    "Thursday": [],
+                    "Friday": [],
+                    "Saturday": []
+                ]
+
+                let encoder = JSONEncoder()
+
+                #if DEBUG
+                print("📊 DataManager: Processing \(widgetActivities.count) activities for widget...")
+                print("📊 DataManager: Week start date: \(weekStartDate)")
+                #endif
+
+                for activity in widgetActivities {
+                    #if DEBUG
+                    print("📊 DataManager: Processing activity '\(activity.name ?? "Unknown")' - Type: '\(activity.type ?? "nil")'")
+                    #endif
+
+                    // Use activity_date first, fall back to start_date
+                    let activityDateInterval = activity.activity_date ?? activity.start_date
+
+                    #if DEBUG
+                    // Enhanced debugging for date comparison
+                    if let dateInterval = activityDateInterval {
+                        let activityDate = Date(timeIntervalSince1970: dateInterval)
+                        let weekStartDateFormatted = Date(timeIntervalSince1970: weekStartDate)
+                        print("📊 DataManager: Activity date: \(activityDate)")
+                        print("📊 DataManager: Week start: \(weekStartDateFormatted)")
+                        print("📊 DataManager: Activity is after week start: \(dateInterval > weekStartDate)")
+                    } else {
+                        print("📊 DataManager: Activity has no date!")
+                    }
+                    #endif
+
+                    guard let dateInterval = activityDateInterval,
+                          let distance = activity.distance,
+                          let elapsedTime = activity.elapsed_time,
+                          dateInterval > weekStartDate else {
+                        #if DEBUG
+                        print("📊 DataManager: Skipping activity '\(activity.name ?? "Unknown")' - missing data or too old")
+                        #endif
+                        continue
+                    }
+
+                    let dayOfWeek = Date(timeIntervalSince1970: dateInterval).dayOfTheWeek
+
+                    #if DEBUG
+                    print("📊 DataManager: Activity '\(activity.name ?? "Unknown")' is on \(dayOfWeek)")
+                    #endif
+
+                    // Normalize WeightTraining to "Weight Training" for widget
+                    var normalizedType = activity.type ?? "Run"
+                    if normalizedType.lowercased() == "weighttraining" {
+                        normalizedType = "Weight Training"
+                    }
+
+                    let raActivity = RAActivity(
+                        day: String(dayOfWeek.prefix(2)),
+                        type: normalizedType, // Use normalized type for widget compatibility
+                        distance: distance * 0.000621371,
+                        time: elapsedTime / 60
+                    )
+
+                    #if DEBUG
+                    print("📊 DataManager: Adding activity '\(activity.name ?? "Unknown")' to \(dayOfWeek) - Distance: \(distance * 0.000621371) mi, Time: \(elapsedTime / 60) min")
+                    #endif
+
+                    do {
+                        let jsonData = try encoder.encode(raActivity)
+                        if let jsonString = String(data: jsonData, encoding: .utf8) {
+                            weeklyArrays[dayOfWeek]?.append(jsonString)
+                            #if DEBUG
+                            print("📊 DataManager: Successfully encoded activity for \(dayOfWeek)")
+                            #endif
+                        }
+                    } catch {
+                        print("❌ DataManager: Failed to encode activity for widget: \(error)")
+                    }
+                }
+
+                #if DEBUG
+                // Debug weekly arrays before storing
+                print("📊 DataManager: Widget data summary:")
+                for (day, activities) in weeklyArrays {
+                    print("📊   \(day): \(activities.count) activities")
+                    if !activities.isEmpty {
+                        print("📊     First activity: \(activities.first ?? "nil")")
+                    }
+                }
+                #endif
+
+                // Store weekly arrays
+                userDefaults.set(weeklyArrays["Sunday"], forKey: "sunArray")
+                userDefaults.set(weeklyArrays["Monday"], forKey: "monArray")
+                userDefaults.set(weeklyArrays["Tuesday"], forKey: "tueArray")
+                userDefaults.set(weeklyArrays["Wednesday"], forKey: "wedArray")
+                userDefaults.set(weeklyArrays["Thursday"], forKey: "thuArray")
+                userDefaults.set(weeklyArrays["Friday"], forKey: "friArray")
+                userDefaults.set(weeklyArrays["Saturday"], forKey: "satArray")
+
+                #if DEBUG
+                // Log what was actually stored in UserDefaults
+                print("📊 DataManager: Activities stored in UserDefaults:")
+                print("📊   sunArray: \(userDefaults.stringArray(forKey: "sunArray")?.count ?? 0) activities")
+                print("📊   monArray: \(userDefaults.stringArray(forKey: "monArray")?.count ?? 0) activities")
+                print("📊   tueArray: \(userDefaults.stringArray(forKey: "tueArray")?.count ?? 0) activities")
+                print("📊   wedArray: \(userDefaults.stringArray(forKey: "wedArray")?.count ?? 0) activities")
+                print("📊   thuArray: \(userDefaults.stringArray(forKey: "thuArray")?.count ?? 0) activities")
+                print("📊   friArray: \(userDefaults.stringArray(forKey: "friArray")?.count ?? 0) activities")
+                print("📊   satArray: \(userDefaults.stringArray(forKey: "satArray")?.count ?? 0) activities")
+
+                // Log sample activity data for debugging
+                if let sundayActivities = userDefaults.stringArray(forKey: "sunArray"), !sundayActivities.isEmpty {
+                    print("📊   Sample Sunday activity: \(sundayActivities.first!)")
+                }
+                if let mondayActivities = userDefaults.stringArray(forKey: "monArray"), !mondayActivities.isEmpty {
+                    print("📊   Sample Monday activity: \(mondayActivities.first!)")
+                }
+
+                print("📊 DataManager: Widget data updated successfully. Triggering widget refresh...")
+                #endif
             }
 
-            // Store weekly arrays
-            userDefaults.set(weeklyArrays["Sunday"], forKey: "sunArray")
-            userDefaults.set(weeklyArrays["Monday"], forKey: "monArray")
-            userDefaults.set(weeklyArrays["Tuesday"], forKey: "tueArray")
-            userDefaults.set(weeklyArrays["Wednesday"], forKey: "wedArray")
-            userDefaults.set(weeklyArrays["Thursday"], forKey: "thuArray")
-            userDefaults.set(weeklyArrays["Friday"], forKey: "friArray")
-            userDefaults.set(weeklyArrays["Saturday"], forKey: "satArray")
-
-            // Log what was actually stored in UserDefaults
-            print("📊 DataManager: Activities stored in UserDefaults:")
-            print("📊   sunArray: \(userDefaults.stringArray(forKey: "sunArray")?.count ?? 0) activities")
-            print("📊   monArray: \(userDefaults.stringArray(forKey: "monArray")?.count ?? 0) activities")
-            print("📊   tueArray: \(userDefaults.stringArray(forKey: "tueArray")?.count ?? 0) activities")
-            print("📊   wedArray: \(userDefaults.stringArray(forKey: "wedArray")?.count ?? 0) activities")
-            print("📊   thuArray: \(userDefaults.stringArray(forKey: "thuArray")?.count ?? 0) activities")
-            print("📊   friArray: \(userDefaults.stringArray(forKey: "friArray")?.count ?? 0) activities")
-            print("📊   satArray: \(userDefaults.stringArray(forKey: "satArray")?.count ?? 0) activities")
-
-            // Log sample activity data for debugging
-            if let sundayActivities = userDefaults.stringArray(forKey: "sunArray"), !sundayActivities.isEmpty {
-                print("📊   Sample Sunday activity: \(sundayActivities.first!)")
+            // Trigger widget refresh on main thread
+            await MainActor.run {
+                WidgetCenter.shared.reloadAllTimelines()
             }
-            if let mondayActivities = userDefaults.stringArray(forKey: "monArray"), !mondayActivities.isEmpty {
-                print("📊   Sample Monday activity: \(mondayActivities.first!)")
-            }
-
-            print("📊 DataManager: Widget data updated successfully. Triggering widget refresh...")
         }
-
-        // Trigger widget refresh
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - Computed Properties
