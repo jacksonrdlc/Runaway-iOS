@@ -59,6 +59,15 @@ struct MainView: View {
                 .tag(1)
 
                 NavigationView {
+                    ChatView()
+                        .environmentObject(dataManager)
+                }
+                .tabItem {
+                    Label("AI Coach", systemImage: "message.fill")
+                }
+                .tag(2)
+
+                NavigationView {
                     ResearchView()
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
@@ -74,7 +83,7 @@ struct MainView: View {
                 .tabItem {
                     Label("Research", systemImage: "flask")
                 }
-                .tag(2)
+                .tag(3)
 
                 NavigationView {
                     if let athlete = dataManager.athlete, let stats = dataManager.stats {
@@ -119,9 +128,10 @@ struct MainView: View {
                 .tabItem {
                     Label("Profile", systemImage: "person.fill")
                 }
-                .tag(3)
+                .tag(4)
             }
             .accentColor(AppTheme.Colors.primary)
+            .preferredColorScheme(.light)
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
                     .environmentObject(userSession)
@@ -133,52 +143,44 @@ struct MainView: View {
             .background(AppTheme.Colors.background.ignoresSafeArea())
         } else {
             ZStack {
-                // Much darker gradient background
-                LinearGradient(
-                    colors: [
-                        Color.black,
-                        Color(red: 0.02, green: 0.02, blue: 0.05),
-                        Color(red: 0.05, green: 0.05, blue: 0.1)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
+                AppTheme.Colors.background
+                    .ignoresSafeArea()
+
                 VStack(spacing: AppTheme.Spacing.xl) {
                     // App Logo/Title
                     VStack(spacing: AppTheme.Spacing.md) {
                         Image(systemName: "figure.run")
                             .font(.system(size: 80, weight: .light))
-                            .foregroundColor(.white)
-                            .shadow(color: .white.opacity(0.3), radius: 10, x: 0, y: 5)
-                        
+                            .foregroundColor(AppTheme.Colors.primary)
+                            .shadow(color: AppTheme.Colors.primary.opacity(0.3), radius: 10, x: 0, y: 5)
+
                         Text("Runaway")
                             .font(.system(size: 48, weight: .heavy, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.Colors.primary)
                             .italic()
                     }
-                    
+
                     // Loading indicator and text
                     VStack(spacing: AppTheme.Spacing.lg) {
                         ProgressView()
                             .scaleEffect(1.5)
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        
+                            .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
+
                         VStack(spacing: AppTheme.Spacing.sm) {
                             Text("Loading your data...")
                                 .font(AppTheme.Typography.headline)
-                                .foregroundColor(.white)
-                            
+                                .foregroundColor(AppTheme.Colors.primaryText)
+
                             Text("Syncing activities and performance metrics")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(AppTheme.Colors.secondaryText)
                                 .multilineTextAlignment(.center)
                         }
                     }
                 }
                 .padding(AppTheme.Spacing.xl)
             }
+            .preferredColorScheme(.light)
             .onAppear {
                 loadInitialData()
             }
@@ -201,6 +203,8 @@ extension MainView {
                 let user = try await UserService.getUserByAuthId(authId: authId)
                 await MainActor.run {
                     userSession.setProfile(user)
+                    // Notify that user is logged in (for FCM token save)
+                    NotificationCenter.default.post(name: NSNotification.Name("UserDidLogin"), object: nil)
                 }
 
                 // Load all data through DataManager

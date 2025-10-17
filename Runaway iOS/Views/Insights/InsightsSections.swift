@@ -114,11 +114,11 @@ struct UnifiedRecommendationsBanner: View {
                     .foregroundColor(.yellow)
                 Text("Recommendations")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
                 Spacer()
                 Button(action: { isExpanded.toggle() }) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
                 }
             }
 
@@ -134,7 +134,7 @@ struct UnifiedRecommendationsBanner: View {
 
                     Text(recommendation)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
@@ -145,7 +145,7 @@ struct UnifiedRecommendationsBanner: View {
                 Button(action: { isExpanded = true }) {
                     Text("See \(recommendations.count - 3) more")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.primary)
+                        .foregroundColor(AppTheme.Colors.primaryLight)
                 }
             }
         }

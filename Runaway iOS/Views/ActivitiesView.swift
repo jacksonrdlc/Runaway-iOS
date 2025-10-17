@@ -63,11 +63,17 @@ struct ActivitiesView: View {
                                 .padding(.horizontal, AppTheme.Spacing.md)
 
                             // Activities List
-                            ForEach(dataManager.activities, id: \.id) { activity in
-                                CardView(activity: convertToLocalActivity(activity)) {
-                                    selectedActivity = convertToLocalActivity(activity)
-                                    showingDetail = true
-                                }
+                            ForEach(Array(dataManager.activities.enumerated()), id: \.element.id) { index, activity in
+                                CardView(
+                                    activity: convertToLocalActivity(activity),
+                                    previousActivities: dataManager.activities
+                                        .dropFirst(index + 1)
+                                        .map { convertToLocalActivity($0) },
+                                    onTap: {
+                                        selectedActivity = convertToLocalActivity(activity)
+                                        showingDetail = true
+                                    }
+                                )
                                 .padding(.horizontal, AppTheme.Spacing.md)
                             }
                         }

@@ -31,7 +31,8 @@ public final class RealtimeService: ObservableObject {
     
     private init() {
         print("RealtimeService initialized")
-        registerBackgroundTask()
+        // Background tasks disabled - using silent push notifications instead
+        // registerBackgroundTask()
     }
     
     // MARK: - Public Methods
@@ -136,8 +137,9 @@ public final class RealtimeService: ObservableObject {
         
         // Listen for insertions
         Task {
-            for await _ in insertions {
-                print("Activity inserted - refreshing data")
+            for await insertion in insertions {
+                print("🆕 Activity inserted via Realtime - refreshing data")
+                print("   Insertion data: \(insertion)")
                 await handleRealtimeUpdate()
                 await updateConnectionHealth(.healthy)
             }
@@ -245,8 +247,9 @@ public final class RealtimeService: ObservableObject {
     }
     
     private func handleBackgroundTask(task: BGAppRefreshTask) {
-        scheduleBackgroundRefresh()
-        
+        // Background tasks disabled - using silent push notifications instead
+        // scheduleBackgroundRefresh()
+
         task.expirationHandler = {
             task.setTaskCompleted(success: false)
         }
@@ -272,20 +275,9 @@ public final class RealtimeService: ObservableObject {
     }
     
     public func scheduleBackgroundRefresh() {
-        let request = BGAppRefreshTaskRequest(identifier: backgroundTaskIdentifier)
-        
-        // Use adaptive scheduling based on user activity patterns
-        let baseInterval: TimeInterval = 15 * 60 // 15 minutes base
-        let adaptiveInterval = calculateAdaptiveInterval(baseInterval: baseInterval)
-        
-        request.earliestBeginDate = Date(timeIntervalSinceNow: adaptiveInterval)
-        
-        do {
-            try BGTaskScheduler.shared.submit(request)
-            print("🔄 Background refresh scheduled for \(adaptiveInterval/60) minutes from now")
-        } catch {
-            print("❌ Failed to schedule background refresh: \(error)")
-        }
+        // Background tasks disabled - using silent push notifications for background sync
+        print("ℹ️ Background refresh via BGTaskScheduler is disabled. Using silent push notifications instead.")
+        return
     }
     
     private func calculateAdaptiveInterval(baseInterval: TimeInterval) -> TimeInterval {

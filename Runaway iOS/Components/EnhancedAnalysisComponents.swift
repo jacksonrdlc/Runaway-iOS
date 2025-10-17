@@ -30,11 +30,11 @@ struct PerformanceDashboardCard: View {
                     Text("Performance Dashboard")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                     Text("This week vs last week")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
                 }
 
                 Spacer()
@@ -239,11 +239,11 @@ struct ActivityHeatmapCard: View {
                     Text("Activity Heatmap")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                     Text("Last 50 days of activity intensity")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
                 }
 
                 Spacer()
@@ -271,7 +271,7 @@ struct ActivityHeatmapCard: View {
             HStack {
                 Text("Less")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
 
                 HStack(spacing: 2) {
                     ForEach(0..<5, id: \.self) { intensity in
@@ -283,7 +283,7 @@ struct ActivityHeatmapCard: View {
 
                 Text("More")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
 
                 Spacer()
             }
@@ -296,10 +296,10 @@ struct ActivityHeatmapCard: View {
 
     private func heatmapColor(for intensity: Double) -> Color {
         if intensity == 0 { return AppTheme.Colors.mutedText.opacity(0.1) }
-        if intensity <= 0.25 { return AppTheme.Colors.primary.opacity(0.3) }
-        if intensity <= 0.5 { return AppTheme.Colors.primary.opacity(0.5) }
-        if intensity <= 0.75 { return AppTheme.Colors.primary.opacity(0.7) }
-        return AppTheme.Colors.primary
+        if intensity <= 0.25 { return AppTheme.Colors.accent.opacity(0.3) }
+        if intensity <= 0.5 { return AppTheme.Colors.accent.opacity(0.5) }
+        if intensity <= 0.75 { return AppTheme.Colors.accent.opacity(0.7) }
+        return AppTheme.Colors.accent
     }
 }
 
@@ -341,11 +341,11 @@ struct PaceTrendsChart: View {
                     Text("Pace Trends")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                     Text("Last 20 runs - lower is better")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
                 }
 
                 Spacer()
@@ -361,14 +361,14 @@ struct PaceTrendsChart: View {
                         x: .value("Run", dataPoint.date),
                         y: .value("Pace", dataPoint.pace)
                     )
-                    .foregroundStyle(AppTheme.Colors.primary)
+                    .foregroundStyle(AppTheme.Colors.accent)
                     .lineStyle(StrokeStyle(lineWidth: 3))
 
                     PointMark(
                         x: .value("Run", dataPoint.date),
                         y: .value("Pace", dataPoint.pace)
                     )
-                    .foregroundStyle(AppTheme.Colors.primary)
+                    .foregroundStyle(AppTheme.Colors.accent)
                     .symbolSize(40)
                 }
                 .frame(height: 200)
@@ -395,7 +395,7 @@ struct PaceTrendsChart: View {
 
                     Text("Need at least 2 runs to show pace trends")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 200)
@@ -448,7 +448,7 @@ struct MonthlyProgressRing: View {
             Text("Monthly Goal")
                 .font(AppTheme.Typography.title)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
             ZStack {
                 // Background ring
@@ -475,15 +475,15 @@ struct MonthlyProgressRing: View {
                 VStack(spacing: 4) {
                     Text("\(Int(monthlyStats.progress * 100))%")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                     Text("\(String(format: "%.1f", monthlyStats.distance)) / \(Int(monthlyStats.goal)) mi")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
 
                     Text("\(monthlyStats.runs) runs")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.mutedText)
+                        .foregroundColor(AppTheme.Colors.cardMutedText)
                 }
             }
         }

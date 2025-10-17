@@ -23,11 +23,11 @@ struct ActivityCommitmentCard: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                     Text("Activity Tracker")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                     Text(dataManager.daysSinceLastActivityText)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
                 }
 
                 Spacer()
@@ -134,12 +134,12 @@ struct NoCommitmentView: View {
             Text("Today's Commitment")
                 .font(AppTheme.Typography.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
             HStack {
                 Text("I commit to:")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
 
                 Spacer()
 
@@ -187,7 +187,7 @@ struct ActiveCommitmentView: View {
                 Text("Today's Commitment")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                 Spacer()
 
@@ -210,12 +210,12 @@ struct ActiveCommitmentView: View {
                     Text(commitment.activityType.displayName)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                     if commitment.timeRemainingToday > 0 {
                         Text(commitment.timeRemainingText)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.secondaryText)
+                            .foregroundColor(AppTheme.Colors.cardSecondaryText)
                     } else {
                         Text("Commitment expired")
                             .font(AppTheme.Typography.caption)
@@ -261,11 +261,11 @@ struct FulfilledCommitmentView: View {
                 Text("LET'S FUCKING GO! 🔥")
                     .font(.title2)
                     .fontWeight(.heavy)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                 Text("You crushed your \(commitment.activityType.displayName.lowercased()) commitment today!")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
             }
 
             // Activity details
@@ -284,16 +284,16 @@ struct FulfilledCommitmentView: View {
                     Text(commitment.activityType.displayName)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
 
                     if let fulfilledTime = commitment.fulfilledAtAsDate {
                         Text("Completed at \(fulfilledTime, formatter: timeFormatter)")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.secondaryText)
+                            .foregroundColor(AppTheme.Colors.cardSecondaryText)
                     } else {
                         Text("Completed today")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.secondaryText)
+                            .foregroundColor(AppTheme.Colors.cardSecondaryText)
                     }
                 }
 
@@ -397,7 +397,7 @@ struct ActivityTypePickerSheet: View {
                     }) {
                         HStack(spacing: AppTheme.Spacing.md) {
                             Image(systemName: activityType.icon)
-                                .foregroundColor(AppTheme.Colors.primary)
+                                .foregroundColor(AppTheme.Colors.primaryLight)
                                 .font(.title2)
                                 .frame(width: 30)
 
@@ -409,7 +409,7 @@ struct ActivityTypePickerSheet: View {
 
                             if selectedType == activityType {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(AppTheme.Colors.primary)
+                                    .foregroundColor(AppTheme.Colors.primaryLight)
                             }
                         }
                         .padding(.vertical, AppTheme.Spacing.xs)

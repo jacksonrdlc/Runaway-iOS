@@ -32,8 +32,9 @@ struct Runaway_iOSApp: App {
                     LocationManager.shared.requestLocationPermission()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                    print("📱 App entered background - scheduling background tasks")
-                    realtimeService.scheduleBackgroundRefresh()
+                    print("📱 App entered background - using silent push notifications for background sync")
+                    // Background tasks disabled - using silent push notifications instead
+                    // realtimeService.scheduleBackgroundRefresh()
                 }
         }
     }

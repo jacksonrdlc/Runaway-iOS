@@ -16,12 +16,12 @@ struct MetricPill: View {
             HStack(alignment: .bottom, spacing: 1) {
                 Text(value)
                     .font(AppTheme.Typography.caption.weight(.semibold))
-                    .foregroundColor(AppTheme.Colors.primaryText)
-                
+                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
+
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.caption2)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
                 }
             }
         }

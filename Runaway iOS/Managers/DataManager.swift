@@ -197,7 +197,9 @@ class DataManager: ObservableObject {
             return
         }
 
+        print("🔄 DataManager: Refreshing activities for user \(userId)...")
         await loadActivities(for: userId)
+        print("✅ DataManager: Activities refreshed. Total count: \(activities.count)")
     }
 
     // MARK: - Data Modification Methods

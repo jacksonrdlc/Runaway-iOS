@@ -1,0 +1,27 @@
+{
+  "folders": [
+    {
+      "name": "Runaway iOS",
+      "path": "/Users/jack.rudelic/projects/labs/Runaway iOS"
+    },
+    {
+      "name": "Runaway Web",
+      "path": "/Users/jack.rudelic/projects/labs/runaway-web"
+    },
+    {
+      "name": "Runaway Edge",
+      "path": "/Users/jack.rudelic/projects/labs/runaway-edge"
+    },
+    {
+      "name": "Strava Webhooks",
+      "path": "/Users/jack.rudelic/projects/labs/strava-webhooks"
+    },
+    {
+      "name": "Runaway Coach",
+      "path": "/Users/jack.rudelic/projects/labs/runaway/runaway-coach"
+    }
+  ],
+  "settings": {
+    "description": "Full Runaway ecosystem workspace - all 5 projects"
+  }
+}
