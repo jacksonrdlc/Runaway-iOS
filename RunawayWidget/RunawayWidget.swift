@@ -31,16 +31,18 @@ struct SimpleEntry: TimelineEntry {
     let monthlyMiles: Double
     let runs: Int
     let days: [Day]
+    let selectedActivities: [ActivityTypeEntity]
 }
 
 struct BarChart: View {
     var days: [Day]
-    
+    var selectedActivities: [ActivityTypeEntity]
+
     // Check if user has any activities this week
     private var hasActivitiesThisWeek: Bool {
         days.contains { $0.minutes > 0 }
     }
-    
+
     // Array of fun empty state messages
     private var emptyStateMessages: [String] {
         [
@@ -56,7 +58,7 @@ struct BarChart: View {
             "This chart needs some serious activity love!"
         ]
     }
-    
+
     // Get a random message (but consistent for the current week)
     private var randomEmptyMessage: String {
         // Use week of year as seed for consistent message throughout the week
@@ -64,9 +66,23 @@ struct BarChart: View {
         let messageIndex = weekOfYear % emptyStateMessages.count
         return emptyStateMessages[messageIndex]
     }
-    
+
+    // Helper function to convert hex color to Color
+    private func colorFromHex(_ hex: String) -> Color {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r, g, b: UInt64
+        r = (int >> 16) & 0xFF
+        g = (int >> 8) & 0xFF
+        b = int & 0xFF
+        return Color(red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255)
+    }
+
     var body: some View {
         ZStack {
+            let colorMapping: [(String, Color)] = selectedActivities.map { ($0.name, colorFromHex($0.color)) }
+
             Chart {
                 ForEach(days) { day in
                     BarMark(
@@ -75,12 +91,7 @@ struct BarChart: View {
                     ).foregroundStyle(by: .value("Type", day.type))
                 }
             }
-            .chartForegroundStyleScale([
-                "Run": Color(red: 0.2, green: 0.6, blue: 1.0), 
-                "Walk": Color(red: 0.4, green: 0.8, blue: 0.4), 
-                "Weight Training": Color(red: 1.0, green: 0.7, blue: 0.0), 
-                "Yoga": Color(red: 0.8, green: 0.4, blue: 0.8)
-            ])
+            .chartForegroundStyleScale(domain: colorMapping.map { $0.0 }, range: colorMapping.map { $0.1 })
             
             // Empty State Overlay
             if !hasActivitiesThisWeek {
@@ -145,20 +156,34 @@ struct PieChartView: View {
 struct Provider: AppIntentTimelineProvider {
     typealias Entry = SimpleEntry
     typealias Intent = ConfigurationAppIntent
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [])
+
+    // Default activities if none selected
+    private var defaultActivities: [ActivityTypeEntity] {
+        [
+            ActivityTypeEntity(id: "run", name: "Run", color: "#3399FF"),
+            ActivityTypeEntity(id: "walk", name: "Walk", color: "#66CC66"),
+            ActivityTypeEntity(id: "weight_training", name: "Weight Training", color: "#FFB300"),
+            ActivityTypeEntity(id: "yoga", name: "Yoga", color: "#CC66CC")
+        ]
     }
-    
+
+    func placeholder(in context: Context) -> SimpleEntry {
+        SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: defaultActivities)
+    }
+
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [])
+        let activities = configuration.selectedActivities ?? defaultActivities
+        return SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities)
     }
     
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         var entries: [SimpleEntry] = []
         let currentDate = Date()
+        let activities = configuration.selectedActivities ?? defaultActivities
+
         for hourOffset in 0 ..< 5 {
             let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [])
+            var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities)
             if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
                 let miles = userDefaults.double(forKey: "miles")
                 let runs = userDefaults.integer(forKey: "runs")
@@ -339,7 +364,7 @@ struct Provider: AppIntentTimelineProvider {
                     print("🔵   \(day.name): \(day.type) - \(day.minutes) min - \(day.miles) mi")
                 }
 
-                entry = SimpleEntry(date: entryDate, miles: miles, monthlyMiles: monthlyMiles, runs: runs, days: daysData)
+                entry = SimpleEntry(date: entryDate, miles: miles, monthlyMiles: monthlyMiles, runs: runs, days: daysData, selectedActivities: activities)
             }
             entries.append(entry)
         }
@@ -373,7 +398,7 @@ struct RunawayWidgetEntryView : View {
                 Text("Runaway").font(.system(size: 16, weight: .heavy)).italic().foregroundColor(.white)
             }.padding(.bottom, 8)
             HStack(alignment: .top){
-                BarChart(days: entry.days)
+                BarChart(days: entry.days, selectedActivities: entry.selectedActivities)
             }
             HStack(alignment: .bottom){
                 VStack(alignment: .leading){
@@ -441,20 +466,6 @@ struct RunawayWidget: Widget {
     }
 }
 
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
-    }
-}
-
 extension Double {
     var thousandsOfMiles: String {
         let numberFormatter = NumberFormatter()
@@ -468,6 +479,12 @@ extension Double {
 #Preview(as: .systemLarge) {
     RunawayWidget()
 } timeline: {
-    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [])
-    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [])
+    let defaultActivities = [
+        ActivityTypeEntity(id: "run", name: "Run", color: "#3399FF"),
+        ActivityTypeEntity(id: "walk", name: "Walk", color: "#66CC66"),
+        ActivityTypeEntity(id: "weight_training", name: "Weight Training", color: "#FFB300"),
+        ActivityTypeEntity(id: "yoga", name: "Yoga", color: "#CC66CC")
+    ]
+    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities)
+    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities)
 }
