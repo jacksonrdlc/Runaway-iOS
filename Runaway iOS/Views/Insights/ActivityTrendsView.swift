@@ -72,7 +72,7 @@ struct ConsistencyCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Consistency Score")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             HStack {
                 // Circular progress
@@ -100,7 +100,7 @@ struct ConsistencyCard: View {
 
                     Text("Based on activity frequency over the last 30 days")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -156,7 +156,7 @@ struct BestWorstRunsCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Best & Worst Runs")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             if let best = bestRun {
                 RunSummaryRow(
@@ -204,20 +204,20 @@ struct RunSummaryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 if let speed = activity.average_speed {
                     let pace = calculatePace(from: speed)
                     Text(formatPace(pace))
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                 }
 
                 if let distance = activity.distance {
                     Text(String(format: "%.2f mi", distance * 0.000621371))
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.mutedText)
+                        .foregroundColor(AppTheme.Colors.textTertiary)
                 }
             }
 
@@ -227,7 +227,7 @@ struct RunSummaryRow: View {
                 let date = Date(timeIntervalSince1970: dateInterval)
                 Text(date, style: .date)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.mutedText)
+                    .foregroundColor(AppTheme.Colors.textTertiary)
             }
         }
         .padding()

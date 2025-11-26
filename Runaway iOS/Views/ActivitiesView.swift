@@ -40,7 +40,7 @@ struct ActivitiesView: View {
                                 .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
                             Text("Loading activities...")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.secondaryText)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                     } else {
                         ScrollView {
@@ -63,12 +63,14 @@ struct ActivitiesView: View {
                                 .padding(.horizontal, AppTheme.Spacing.md)
 
                             // Activities List
-                            ForEach(Array(dataManager.activities.enumerated()), id: \.element.id) { index, activity in
+                            ForEach(dataManager.activities.indices, id: \.self) { index in
+                                let activity = dataManager.activities[index]
+                                let previousActivities = dataManager.activities.dropFirst(index + 1)
+                                    .map { convertToLocalActivity($0) }
+
                                 CardView(
                                     activity: convertToLocalActivity(activity),
-                                    previousActivities: dataManager.activities
-                                        .dropFirst(index + 1)
-                                        .map { convertToLocalActivity($0) },
+                                    previousActivities: previousActivities,
                                     onTap: {
                                         selectedActivity = convertToLocalActivity(activity)
                                         showingDetail = true
@@ -97,7 +99,7 @@ struct ActivitiesView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
-                            .frame(width: 56, height: 56)
+                            .frame(width: AppTheme.Layout.fabSize, height: AppTheme.Layout.fabSize)
                             .background(
                                 LinearGradient(
                                     colors: [AppTheme.Colors.primary, AppTheme.Colors.primaryDark],
@@ -106,10 +108,10 @@ struct ActivitiesView: View {
                                 )
                             )
                             .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                            .themeShadow(.heavy)
                     }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
+                    .padding(.trailing, AppTheme.Layout.fabOffset)
+                    .padding(.bottom, AppTheme.Layout.fabOffset)
                 }
             }
             
@@ -153,11 +155,11 @@ struct EmptyActivitiesView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Activities Yet")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
                 
                 Text("Your running activities will appear here once you start tracking your workouts.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }

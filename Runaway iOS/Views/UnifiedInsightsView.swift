@@ -143,11 +143,11 @@ struct EmptyInsightsStateView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Insights Available")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                 Text("Start logging activities to see AI-powered insights and performance analytics.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -179,11 +179,11 @@ struct LoadingInsightsStateView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("Loading Insights")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                 Text("Analyzing your performance data...")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }

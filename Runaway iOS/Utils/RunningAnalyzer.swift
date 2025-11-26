@@ -7,9 +7,12 @@
 
 
 import Foundation
-import CreateML
 import CoreML
 import TabularData
+
+#if os(macOS)
+import CreateML
+#endif
 
 class RunningAnalyzer: ObservableObject {
     @Published var analysisResults: AnalysisResults?
@@ -189,17 +192,18 @@ class RunningAnalyzer: ObservableObject {
     
     // MARK: - ML Model Training
     private func trainPaceModel(from activities: [ProcessedActivity]) async throws -> MLModel? {
+        #if os(macOS)
         guard activities.count >= 10 else { return nil } // Need minimum data
-        
+
         // Create training data
         var trainingData: [[String: MLDataValueConvertible]] = []
-        
+
         for (index, activity) in activities.enumerated() {
             guard index > 0 else { continue } // Need previous activity for features
-            
+
             let previousActivity = activities[index - 1]
             let daysSinceLast = activity.date.timeIntervalSince(previousActivity.date) / (24 * 3600)
-            
+
             trainingData.append([
                 "distance": activity.distance,
                 "dayOfWeek": Double(activity.dayOfWeek),
@@ -209,27 +213,33 @@ class RunningAnalyzer: ObservableObject {
                 "targetPace": activity.pace
             ])
         }
-        
+
         do {
             // Extract individual columns
             let distances = trainingData.map { $0["distance"] as! Double }
             let daysSinceLast = trainingData.map { $0["daysSinceLast"] as! Double }
             let previousPaces = trainingData.map { $0["previousPace"] as! Double }
             let targetPaces = trainingData.map { $0["targetPace"] as! Double }
-            
+
             // Create DataFrame with explicit columns
             var dataTable = DataFrame()
             dataTable.append(column: Column(name: "distance", contents: distances))
             dataTable.append(column: Column(name: "daysSinceLast", contents: daysSinceLast))
             dataTable.append(column: Column(name: "previousPace", contents: previousPaces))
             dataTable.append(column: Column(name: "targetPace", contents: targetPaces))
-            
+
             let regressor = try MLLinearRegressor(trainingData: dataTable, targetColumn: "targetPace")
             return regressor.model
         } catch {
             print("Model training error: \(error)")
             return nil
         }
+        #else
+        // ML model training only available on macOS
+        // On iOS, the app will use local analysis without ML predictions
+        print("ML model training not available on iOS - using local analysis only")
+        return nil
+        #endif
     }
     
     // MARK: - Analysis Functions

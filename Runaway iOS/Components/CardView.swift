@@ -36,17 +36,17 @@ struct CardView: View {
                     HStack {
                         HStack(spacing: AppTheme.Spacing.xs) {
                             Image(systemName: activityIcon)
-                                .foregroundColor(.green)
+                                .foregroundColor(AppTheme.Colors.activityColor(for: activity.type ?? ""))
                                 .font(.title2)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(activity.name ?? "Unknown Activity")
                                     .font(AppTheme.Typography.headline)
-                                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                                 Text(activity.type ?? "Unknown Type")
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
                             }
                         }
 
@@ -56,15 +56,15 @@ struct CardView: View {
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(startDate, style: .date)
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                                 Text(startDate, style: .time)
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.cardMutedText)
+                                    .foregroundColor(AppTheme.Colors.textTertiary)
 
                                 Text(timeAgoString(from: startDate))
                                     .font(.caption2)
-                                    .foregroundColor(AppTheme.Colors.cardMutedText)
+                                    .foregroundColor(AppTheme.Colors.textTertiary)
                             }
                         }
                     }
@@ -72,9 +72,9 @@ struct CardView: View {
                     // Map view with modern styling
                     if let polyline = activity.summary_polyline, !polyline.isEmpty {
                         ActivityMapView(summaryPolyline: polyline)
-                            .frame(height: 200)
+                            .frame(height: AppTheme.Layout.mapPreviewHeight)
                             .cornerRadius(AppTheme.CornerRadius.medium)
-                            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                            .themeShadow(.light)
                     }
 
                     // Metrics row with modern styling

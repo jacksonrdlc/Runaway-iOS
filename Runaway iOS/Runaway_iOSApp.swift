@@ -14,6 +14,7 @@ struct Runaway_iOSApp: App {
     @StateObject private var userSession = UserSession.shared
     @StateObject private var realtimeService = RealtimeService.shared
     @StateObject private var dataManager = DataManager.shared
+    @StateObject private var stravaService = StravaService()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
     var body: some Scene {
@@ -36,6 +37,24 @@ struct Runaway_iOSApp: App {
                     // Background tasks disabled - using silent push notifications instead
                     // realtimeService.scheduleBackgroundRefresh()
                 }
+                .onOpenURL { url in
+                    handleDeepLink(url)
+                }
+        }
+    }
+
+    // MARK: - Deep Link Handling
+
+    private func handleDeepLink(_ url: URL) {
+        #if DEBUG
+        print("🔗 Deep link received: \(url)")
+        #endif
+
+        // Handle Strava OAuth callback
+        if url.scheme == "runaway" && url.host == "strava-connected" {
+            Task {
+                await stravaService.handleStravaCallback(url: url)
+            }
         }
     }
 } 

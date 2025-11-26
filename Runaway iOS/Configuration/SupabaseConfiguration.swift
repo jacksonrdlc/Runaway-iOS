@@ -70,10 +70,17 @@ struct SupabaseConfiguration {
             throw ConfigurationError.missingSupabaseKey
         }
 
-        return SupabaseClient(
+        // Create client with default configuration (includes session persistence)
+        let client = SupabaseClient(
             supabaseURL: url,
             supabaseKey: key
         )
+
+        #if DEBUG
+        print("🔐 Supabase client configured with session persistence enabled")
+        #endif
+
+        return client
     }
 
     // MARK: - Configuration Validation

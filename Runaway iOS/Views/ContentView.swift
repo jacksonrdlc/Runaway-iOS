@@ -11,7 +11,9 @@ struct ContentView: View {
     @EnvironmentObject var userSession: UserSession
 
     var body: some View {
-        if userSession.isAuthenticated {
+        if userSession.isCheckingAuth {
+            LoaderView()
+        } else if userSession.isAuthenticated {
             MainView()
         } else {
             LoginView()

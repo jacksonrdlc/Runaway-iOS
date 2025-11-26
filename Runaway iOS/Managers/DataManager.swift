@@ -30,6 +30,8 @@ class DataManager: ObservableObject {
 
     private let metricsCache = ActivityMetricsCache()
     private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
+    private var widgetUpdateTask: Task<Void, Never>?
+    private let widgetUpdateDebounceInterval: TimeInterval = 0.5
 
     // MARK: - Singleton
 
@@ -293,12 +295,30 @@ class DataManager: ObservableObject {
     // MARK: - Widget Data Management
 
     /// Single method for updating all widget data in UserDefaults
-    /// Optimized to run heavy processing on background queue to avoid blocking main thread
+    /// Optimized with debouncing and single-pass filtering to reduce processing overhead
     func updateWidgetData() {
+        // Cancel any pending widget update
+        widgetUpdateTask?.cancel()
+
         // Capture activities on main thread
         let activitiesCopy = self.activities
 
-        // Run heavy processing on background queue
+        // Debounce widget updates to batch changes
+        widgetUpdateTask = Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+
+            // Add debounce delay
+            try? await Task.sleep(nanoseconds: UInt64(self.widgetUpdateDebounceInterval * 1_000_000_000))
+
+            // Check if task was cancelled during debounce
+            guard !Task.isCancelled else { return }
+
+            await self.performWidgetUpdate(with: activitiesCopy)
+        }
+    }
+
+    /// Performs the actual widget update with optimized single-pass filtering
+    private func performWidgetUpdate(with activitiesCopy: [Activity]) async {
         Task.detached(priority: .utility) {
             guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
                 print("❌ DataManager: Failed to access shared UserDefaults")
@@ -328,64 +348,85 @@ class DataManager: ObservableObject {
                 }
                 #endif
 
-                // Filter for widget-relevant activities (Run, Walk, Weight Training, Workout)
-                let widgetActivities = activitiesCopy.filter { activity in
-                    // Normalize WeightTraining to "Weight Training" before filtering
-                    var activityType = activity.type ?? ""
-                    if activityType.lowercased() == "weighttraining" {
-                        activityType = "Weight Training"
-                    }
-                    let normalizedType = activityType.lowercased()
+                // OPTIMIZED: Single-pass filtering using reduce to avoid multiple iterations
+                struct FilteredActivities {
+                    var widgetActivities: [Activity] = []
+                    var yearlyRunning: [Activity] = []
+                    var monthlyRunning: [Activity] = []
+                }
 
-                    let isIncluded = normalizedType == "run" ||
-                                   normalizedType == "walk" ||
-                                   normalizedType == "weight training"
+                let filtered = activitiesCopy.reduce(into: FilteredActivities()) { result, activity in
+                    let normalizedType = (activity.type ?? "").lowercased()
+
+                    // Cache date calculation to avoid repeated parsing
+                    let dateInterval = activity.activity_date ?? activity.start_date
+                    let activityDate = dateInterval.map { Date(timeIntervalSince1970: $0) }
+                    let activityYear = activityDate.map { Calendar.current.component(.year, from: $0) }
+                    let activityMonth = activityDate.map { Calendar.current.component(.month, from: $0) }
+
+                    // Check for widget-relevant activities (Run, Walk, Weight Training)
+                    let isWidgetRelevant = normalizedType == "run" ||
+                                          normalizedType == "walk" ||
+                                          normalizedType == "weight training" ||
+                                          normalizedType == "weighttraining"
+
+                    if isWidgetRelevant {
+                        result.widgetActivities.append(activity)
+                    }
+
+                    // Check for running activities
+                    let isRunning = normalizedType.contains("run")
+
+                    if isRunning && activityYear == currentYear {
+                        result.yearlyRunning.append(activity)
+
+                        if activityMonth == currentMonth {
+                            result.monthlyRunning.append(activity)
+                        }
+                    }
+
                     #if DEBUG
-                    if !isIncluded && !normalizedType.isEmpty {
+                    if !isWidgetRelevant && !isRunning && !normalizedType.isEmpty {
                         print("📊 DataManager: Excluding activity type: '\(normalizedType)'")
                     }
                     #endif
-                    return isIncluded
                 }
 
-                let monthlyActivities = widgetActivities.filter { activity in
-                    // Use activity_date if available, otherwise fall back to start_date
-                    let dateInterval = activity.activity_date ?? activity.start_date
-                    guard let dateInterval = dateInterval else { return false }
-                    let activityDate = Date(timeIntervalSince1970: dateInterval)
-                    return Calendar.current.component(.year, from: activityDate) == currentYear &&
-                           Calendar.current.component(.month, from: activityDate) == currentMonth
-                }
+                let widgetActivities = filtered.widgetActivities
+                let allRunningActivitiesThisYear = filtered.yearlyRunning
+                let monthlyRunningActivities = filtered.monthlyRunning
 
-                // Calculate totals
-                let yearlyMiles = widgetActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-                let monthlyMiles = monthlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-                let totalRuns = widgetActivities.count
+                // Calculate totals - yearlyMiles from ALL running activities this year, monthlyMiles from monthly running activities
+                let yearlyMiles = allRunningActivitiesThisYear.reduce(0) { $0 + ($1.distance ?? 0.0) }
+                let monthlyMiles = monthlyRunningActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
+                let totalRuns = allRunningActivitiesThisYear.count
 
                 #if DEBUG
                 print("📊 DataManager: Total activities: \(activitiesCopy.count)")
                 print("📊 DataManager: Widget activities (Run/Walk/Weight): \(widgetActivities.count)")
-                print("📊 DataManager: Monthly activities: \(monthlyActivities.count)")
+                print("📊 DataManager: Running activities this year: \(allRunningActivitiesThisYear.count)")
+                print("📊 DataManager: Monthly running activities: \(monthlyRunningActivities.count)")
                 print("📊 DataManager: Current month: \(currentMonth), year: \(currentYear)")
 
-                // Debug first few monthly activities
-                for (index, activity) in monthlyActivities.prefix(3).enumerated() {
+                // Debug first few monthly running activities
+                for (index, activity) in monthlyRunningActivities.prefix(3).enumerated() {
                     let dateInterval = activity.activity_date ?? activity.start_date
                     if let dateInterval = dateInterval {
                         let activityDate = Date(timeIntervalSince1970: dateInterval)
                         let activityMonth = Calendar.current.component(.month, from: activityDate)
                         let activityYear = Calendar.current.component(.year, from: activityDate)
-                        print("📊 Monthly Activity \(index): \(activity.name ?? "Unknown") - Date: \(activityDate) - Month: \(activityMonth), Year: \(activityYear) - Distance: \(activity.distance ?? 0) meters")
+                        print("📊 Monthly Running Activity \(index): \(activity.name ?? "Unknown") - Type: \(activity.type ?? "Unknown") - Date: \(activityDate) - Month: \(activityMonth), Year: \(activityYear) - Distance: \(activity.distance ?? 0) meters")
                     } else {
-                        print("📊 Monthly Activity \(index): \(activity.name ?? "Unknown") - NO DATE AVAILABLE - Distance: \(activity.distance ?? 0) meters")
+                        print("📊 Monthly Running Activity \(index): \(activity.name ?? "Unknown") - Type: \(activity.type ?? "Unknown") - NO DATE AVAILABLE - Distance: \(activity.distance ?? 0) meters")
                     }
                 }
 
-                print("📊 DataManager: Yearly Miles: \(yearlyMiles * 0.000621371), Monthly Miles: \(monthlyMiles * 0.000621371), Total Runs: \(totalRuns)")
+                print("📊 DataManager: Yearly Running Miles: \(yearlyMiles * 0.000621371), Monthly Running Miles: \(monthlyMiles * 0.000621371), Total Runs: \(totalRuns)")
                 #endif
 
                 // Store totals
                 userDefaults.set(yearlyMiles * 0.000621371, forKey: "miles")
+                print(yearlyMiles * 0.000621371)
                 userDefaults.set(monthlyMiles * 0.000621371, forKey: "monthlyMiles")
                 userDefaults.set(totalRuns, forKey: "runs")
 
@@ -523,42 +564,6 @@ class DataManager: ObservableObject {
             }
         }
     }
-
-    // MARK: - Computed Properties
-
-    /// Get activities for the current week
-//    var currentWeekActivities: [Activity] {
-//        let weekStart = Date().startOfWeek()
-//        return activities.filter { activity in
-//            guard let startDate = activity.start_date else { return false }
-//            return startDate > weekStart
-//        }
-//    }
-//
-//    /// Get activities for the current month
-//    var currentMonthActivities: [Activity] {
-//        let currentMonth = Calendar.current.component(.month, from: Date())
-//        let currentYear = Calendar.current.component(.year, from: Date())
-//
-//        return activities.filter { activity in
-//            guard let startDate = activity.start_date else { return false }
-//            let activityDate = Date(timeIntervalSince1970: startDate)
-//            return Calendar.current.component(.month, from: activityDate) == currentMonth &&
-//                   Calendar.current.component(.year, from: activityDate) == currentYear
-//        }
-//    }
-
-//    /// Get total miles for current year
-//    var totalYearMiles: Double {
-//        let currentYear = Calendar.current.component(.year, from: Date())
-//        let yearlyActivities = activities.filter { activity in
-//            guard let startDate = activity.start_date else { return false }
-//            let activityDate = Date(timeIntervalSince1970: startDate)
-//            return Calendar.current.component(.year, from: activityDate) == currentYear
-//        }
-//        let totalMeters = yearlyActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-//        return totalMeters * 0.000621371
-//    }
 
     // MARK: - Background Task Management
 

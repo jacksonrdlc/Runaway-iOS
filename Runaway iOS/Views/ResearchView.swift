@@ -107,8 +107,8 @@ struct ResearchView: View {
                 // Last Updated
                 if let lastUpdated = researchService.lastUpdated {
                     Text("Last updated: \(lastUpdated, formatter: RelativeDateTimeFormatter())")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                         .padding(.vertical)
                 }
             }
@@ -182,28 +182,28 @@ struct CategoryPill: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Text(title)
-                    .font(.subheadline)
+                    .font(AppTheme.Typography.subheadline)
                     .fontWeight(isSelected ? .semibold : .regular)
-                
+
                 if count > 0 {
                     Text("\(count)")
-                        .font(.caption)
+                        .font(AppTheme.Typography.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(isSelected ? Color.blue.opacity(0.8) : Color.secondary)
+                        .foregroundColor(isSelected ? .black : AppTheme.Colors.textSecondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(isSelected ? Color.white.opacity(0.9) : Color.secondary.opacity(0.2))
+                                .fill(isSelected ? AppTheme.Colors.accent : AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.medium))
                         )
                 }
             }
-            .foregroundColor(isSelected ? .white : .primary)
+            .foregroundColor(isSelected ? .black : AppTheme.Colors.textPrimary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? Color.blue : Color(.systemGray6))
+                    .fill(isSelected ? AppTheme.Colors.accent : AppTheme.Colors.cardBackground)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -221,50 +221,51 @@ struct ArticleCard: View {
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: article.category.iconName)
-                        .foregroundColor(.blue)
-                        .font(.caption)
+                        .foregroundColor(AppTheme.Colors.accent)
+                        .font(AppTheme.Typography.caption)
                     Text(article.category.displayName)
-                        .font(.caption)
+                        .font(AppTheme.Typography.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(.blue)
+                        .foregroundColor(AppTheme.Colors.accent)
                 }
-                
-                
+
+
                 Spacer()
-                
+
                 Text(article.timeAgo)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
             
             // Main content
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(article.title)
-                        .font(.headline)
+                        .font(AppTheme.Typography.headline)
                         .fontWeight(.semibold)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
-                    
+
                     Text(article.summary)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(AppTheme.Typography.subheadline)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
-                    
+
                     // Source and location info
                     HStack {
                         Text(article.source)
-                            .font(.caption)
+                            .font(AppTheme.Typography.caption)
                             .fontWeight(.medium)
-                            .foregroundColor(.primary)
-                        
+                            .foregroundColor(AppTheme.Colors.textPrimary)
+
                         if let location = article.location, article.isLocalEvent {
                             Text("• \(location.displayLocation)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
-                        
+
                         Spacer()
                     }
                 }
@@ -276,15 +277,15 @@ struct ArticleCard: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(.systemGray6))
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+                            .fill(AppTheme.Colors.background)
                             .overlay(
                                 Image(systemName: "photo")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(AppTheme.Colors.textTertiary)
                             )
                     }
                     .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
                 }
             }
             
@@ -294,10 +295,11 @@ struct ArticleCard: View {
                     HStack(spacing: 8) {
                         ForEach(article.tags.prefix(3), id: \.self) { tag in
                             Text(tag)
-                                .font(.caption2)
+                                .font(AppTheme.Typography.caption2)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Color(.systemGray6))
+                                .background(AppTheme.Colors.background)
                                 .clipShape(Capsule())
                         }
                     }
@@ -306,8 +308,13 @@ struct ArticleCard: View {
         }
         .padding()
         .background(AppTheme.Colors.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+        .shadow(
+            color: AppTheme.Shadows.light.color,
+            radius: AppTheme.Shadows.light.radius,
+            x: AppTheme.Shadows.light.x,
+            y: AppTheme.Shadows.light.y
+        )
         .onTapGesture {
             onTap()
         }
@@ -320,9 +327,10 @@ struct LoadingView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.2)
+                .tint(AppTheme.Colors.accent)
             Text("Loading articles...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(AppTheme.Typography.subheadline)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
     }
 }
@@ -331,23 +339,29 @@ struct LoadingView: View {
 struct ErrorView: View {
     let message: String
     let retryAction: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundColor(.orange)
-            
+                .font(AppTheme.Typography.largeTitle)
+                .foregroundColor(AppTheme.Colors.warning)
+
             Text("Unable to load articles")
-                .font(.headline)
-            
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
             Text(message)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(AppTheme.Typography.subheadline)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
-            
+
             Button("Try Again", action: retryAction)
-                .buttonStyle(.bordered)
+                .font(AppTheme.Typography.bodyBold)
+                .foregroundColor(.black)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.sm)
+                .background(AppTheme.Colors.accent)
+                .cornerRadius(AppTheme.CornerRadius.medium)
         }
         .padding()
     }
@@ -358,15 +372,16 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "newspaper")
-                .font(.largeTitle)
-                .foregroundColor(.secondary)
-            
+                .font(AppTheme.Typography.largeTitle)
+                .foregroundColor(AppTheme.Colors.textTertiary)
+
             Text("No articles found")
-                .font(.headline)
-            
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
             Text("Try adjusting your filters or check back later for new content.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(AppTheme.Typography.subheadline)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding()

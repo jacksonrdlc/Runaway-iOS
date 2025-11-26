@@ -83,9 +83,7 @@ class QuickWinsService: ObservableObject {
         print("🏃 Quick Wins API Request:")
         print("   URL: \(url)")
         print("   Method: \(method)")
-        if let authHeader = authHeaders["Authorization"] {
-            print("   Auth: Bearer \(String(authHeader.dropFirst(7).prefix(10)))...")
-        }
+        print("   Auth: Configured")
         #endif
 
         do {

@@ -17,7 +17,7 @@ struct HeroStatsSection: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("At a Glance")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
                 .padding(.horizontal)
 
             if let data = quickWinsData {
@@ -64,7 +64,7 @@ struct PerformanceStatusBadge: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Performance Trend")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 Text(trend.description)
                     .font(AppTheme.Typography.headline)
@@ -75,7 +75,7 @@ struct PerformanceStatusBadge: View {
             Spacer()
 
             Image(systemName: "chevron.right")
-                .foregroundColor(AppTheme.Colors.mutedText)
+                .foregroundColor(AppTheme.Colors.textTertiary)
         }
         .padding()
         .background(trendColor.opacity(0.1))
@@ -114,11 +114,11 @@ struct UnifiedRecommendationsBanner: View {
                     .foregroundColor(.yellow)
                 Text("Recommendations")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
                 Spacer()
                 Button(action: { isExpanded.toggle() }) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
 
@@ -127,14 +127,14 @@ struct UnifiedRecommendationsBanner: View {
                     Text("\(index + 1)")
                         .font(AppTheme.Typography.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
                         .frame(width: 20, height: 20)
-                        .background(AppTheme.Colors.primary)
+                        .background(AppTheme.Colors.accent)
                         .clipShape(Circle())
 
                     Text(recommendation)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
@@ -145,7 +145,7 @@ struct UnifiedRecommendationsBanner: View {
                 Button(action: { isExpanded = true }) {
                     Text("See \(recommendations.count - 3) more")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.primaryLight)
+                        .foregroundColor(AppTheme.Colors.accent)
                 }
             }
         }
@@ -183,7 +183,7 @@ struct DeepDiveNavigationGrid: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Deep Dive Analysis")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.Spacing.md) {
                 if let weather = quickWinsData?.analyses.weatherContext {
@@ -267,11 +267,11 @@ struct DeepDiveCard: View {
 
                 Text(title)
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                 Text(subtitle)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
             .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
             .padding()

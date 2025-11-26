@@ -16,12 +16,13 @@ struct BackgroundTaskMonitorView: View {
             // Header
             VStack(alignment: .leading, spacing: 8) {
                 Text("Background Task Status")
-                    .font(.title2)
+                    .font(AppTheme.Typography.title2)
                     .fontWeight(.bold)
-                
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+
                 Text("Monitor your app's realtime background tasks")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
             
             // Connection Status Card
@@ -50,9 +51,10 @@ struct BackgroundTaskMonitorView: View {
                 
                 VStack(alignment: .leading) {
                     Text("Realtime Connection")
-                        .font(.headline)
+                        .font(AppTheme.Typography.headline)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                     Text(connectionStatusText)
-                        .font(.caption)
+                        .font(AppTheme.Typography.caption)
                         .foregroundColor(connectionColor)
                 }
                 
@@ -67,33 +69,39 @@ struct BackgroundTaskMonitorView: View {
             // Connection Health Details
             HStack {
                 Text("Health:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
+
                 Text(healthStatusText)
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
                     .fontWeight(.medium)
                     .foregroundColor(healthColor)
-                
+
                 Spacer()
-                
+
                 if let lastUpdate = realtimeService.lastUpdateTime {
                     Text("Updated \(timeAgoString(from: lastUpdate))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
         }
         .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(
+            color: AppTheme.Shadows.light.color,
+            radius: AppTheme.Shadows.light.radius,
+            x: AppTheme.Shadows.light.x,
+            y: AppTheme.Shadows.light.y
+        )
     }
     
     private var performanceMetricsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Background Task Performance")
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
             
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -104,37 +112,42 @@ struct BackgroundTaskMonitorView: View {
                     title: "Connection Status",
                     value: realtimeService.isConnected ? "Connected" : "Disconnected",
                     icon: "wifi",
-                    color: realtimeService.isConnected ? .green : .red
+                    color: realtimeService.isConnected ? AppTheme.Colors.success : AppTheme.Colors.error
                 )
-                
+
                 MetricView(
                     title: "Health Status",
                     value: healthStatusText,
                     icon: healthIcon,
                     color: healthColor
                 )
-                
+
                 MetricView(
                     title: "Widget Updates",
                     value: "Active",
                     icon: "widget.small",
-                    color: .blue
+                    color: AppTheme.Colors.accent
                 )
-                
+
                 MetricView(
                     title: "Background Refresh",
                     value: "Scheduled",
                     icon: "arrow.clockwise",
-                    color: .orange
+                    color: AppTheme.Colors.warning
                 )
             }
         }
         .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(
+            color: AppTheme.Shadows.light.color,
+            radius: AppTheme.Shadows.light.radius,
+            x: AppTheme.Shadows.light.x,
+            y: AppTheme.Shadows.light.y
+        )
     }
-    
+
     private var controlsSection: some View {
         VStack(spacing: 12) {
             Button(action: {
@@ -146,27 +159,29 @@ struct BackgroundTaskMonitorView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
+                .background(AppTheme.Colors.accent)
+                .foregroundColor(.black)
+                .cornerRadius(AppTheme.CornerRadius.medium)
             }
-            
+
             HStack(spacing: 12) {
                 Button("Refresh Widget") {
                     realtimeService.refreshWidget()
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color(.systemGray5))
-                .cornerRadius(10)
-                
+                .background(AppTheme.Colors.cardBackground)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+                .cornerRadius(AppTheme.CornerRadius.medium)
+
                 Button("View Details") {
                     showingDetails = true
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color(.systemGray5))
-                .cornerRadius(10)
+                .background(AppTheme.Colors.cardBackground)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+                .cornerRadius(AppTheme.CornerRadius.medium)
             }
         }
     }
@@ -189,13 +204,13 @@ struct BackgroundTaskMonitorView: View {
     private var connectionColor: Color {
         switch realtimeService.connectionHealth {
         case .healthy:
-            return .green
+            return AppTheme.Colors.success
         case .degraded:
-            return .orange
+            return AppTheme.Colors.warning
         case .disconnected:
-            return .red
+            return AppTheme.Colors.error
         case .unknown:
-            return .gray
+            return AppTheme.Colors.textTertiary
         }
     }
     
@@ -223,13 +238,13 @@ struct BackgroundTaskMonitorView: View {
     private var healthColor: Color {
         switch realtimeService.connectionHealth {
         case .healthy:
-            return .green
+            return AppTheme.Colors.success
         case .degraded:
-            return .orange
+            return AppTheme.Colors.warning
         case .disconnected:
-            return .red
+            return AppTheme.Colors.error
         case .unknown:
-            return .gray
+            return AppTheme.Colors.textTertiary
         }
     }
     
@@ -275,22 +290,22 @@ struct MetricView: View {
             HStack {
                 Image(systemName: icon)
                     .foregroundColor(color)
-                    .font(.caption)
-                
+                    .font(AppTheme.Typography.caption)
+
                 Spacer()
             }
-            
+
             Text(value)
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
                 .foregroundColor(color)
-            
+
             Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .padding(12)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
+        .background(AppTheme.Colors.background)
+        .cornerRadius(AppTheme.CornerRadius.small)
     }
 }
 
@@ -389,54 +404,62 @@ struct DetailCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(title)
-                    .font(.headline)
-                
+                    .font(AppTheme.Typography.headline)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+
                 Spacer()
-                
+
                 Text(status)
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(statusColor.opacity(0.2))
+                    .background(statusColor.opacity(AppTheme.Opacity.medium))
                     .foregroundColor(statusColor)
-                    .cornerRadius(6)
+                    .cornerRadius(AppTheme.CornerRadius.tiny)
             }
-            
+
             Text(description)
-                .font(.body)
-                .foregroundColor(.secondary)
+                .font(AppTheme.Typography.body)
+                .foregroundColor(AppTheme.Colors.textSecondary)
             
             if !recommendations.isEmpty {
                 Text("Recommendations:")
-                    .font(.subheadline)
+                    .font(AppTheme.Typography.subheadline)
                     .fontWeight(.medium)
-                
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+
                 ForEach(recommendations, id: \.self) { recommendation in
                     HStack(alignment: .top) {
                         Text("•")
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppTheme.Colors.accent)
                         Text(recommendation)
-                            .font(.caption)
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                 }
             }
         }
         .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(
+            color: AppTheme.Shadows.light.color,
+            radius: AppTheme.Shadows.light.radius,
+            x: AppTheme.Shadows.light.x,
+            y: AppTheme.Shadows.light.y
+        )
     }
     
     private var statusColor: Color {
         switch status.lowercased() {
         case "active", "enabled", "configured", "connected":
-            return .green
+            return AppTheme.Colors.success
         case "degraded", "warning":
-            return .orange
+            return AppTheme.Colors.warning
         case "disabled", "disconnected", "error":
-            return .red
+            return AppTheme.Colors.error
         default:
-            return .blue
+            return AppTheme.Colors.accent
         }
     }
 }

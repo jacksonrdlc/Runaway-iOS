@@ -10,7 +10,12 @@ import Foundation
 /**
   Athletes are Strava users, Strava users are athletes. The object is returned in detailed, summary or meta representations.
  **/
-public final class Athlete: Identifiable, Decodable {
+public final class Athlete: Identifiable, Decodable, Equatable {
+    public static func == (lhs: Athlete, rhs: Athlete) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.userId == rhs.userId &&
+               lhs.stravaConnected == rhs.stravaConnected
+    }
     public var id: Int?
     public var userId: UUID?
     public var firstname: String?
@@ -32,6 +37,11 @@ public final class Athlete: Identifiable, Decodable {
     public var email: String?
     public var FTP: Int?
     public var weight: Double?
+
+    // Strava connection tracking
+    public var stravaConnected: Bool?
+    public var stravaConnectedAt: Date?
+    public var stravaDisconnectedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -55,9 +65,12 @@ public final class Athlete: Identifiable, Decodable {
         case email
         case FTP = "ftp"
         case weight
+        case stravaConnected = "strava_connected"
+        case stravaConnectedAt = "strava_connected_at"
+        case stravaDisconnectedAt = "strava_disconnected_at"
     }
 
-    required public init(userId: UUID?, firstname: String?, lastname: String?, profileMedium: URL?, profile: URL?, city: String?, state: String?, country: String?, premium: Bool?, createdAt: Date?, updatedAt: Date?, friendCount: Int?, followerCount: Int?, mutualFriendCount: Int?, datePreference: String?, email: String?, FTP: Int?, weight: Double?) {
+    required public init(userId: UUID?, firstname: String?, lastname: String?, profileMedium: URL?, profile: URL?, city: String?, state: String?, country: String?, premium: Bool?, createdAt: Date?, updatedAt: Date?, friendCount: Int?, followerCount: Int?, mutualFriendCount: Int?, datePreference: String?, email: String?, FTP: Int?, weight: Double?, stravaConnected: Bool? = false, stravaConnectedAt: Date? = nil, stravaDisconnectedAt: Date? = nil) {
         self.userId = userId
         self.firstname = firstname
         self.lastname = lastname
@@ -76,6 +89,9 @@ public final class Athlete: Identifiable, Decodable {
         self.email = email
         self.FTP = FTP
         self.weight = weight
+        self.stravaConnected = stravaConnected
+        self.stravaConnectedAt = stravaConnectedAt
+        self.stravaDisconnectedAt = stravaDisconnectedAt
     }
 }
 

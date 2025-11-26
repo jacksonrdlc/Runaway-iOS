@@ -62,11 +62,9 @@ struct AnalysisView: View {
                 }
             }
         }
-        .onAppear {
+        .task {
             if analyzer.analysisResults == nil && !dataManager.activities.isEmpty {
-                Task {
-                    await analyzer.analyzePerformance(activities: dataManager.activities)
-                }
+                await analyzer.analyzePerformance(activities: dataManager.activities)
             }
         }
         .refreshable {
@@ -92,11 +90,11 @@ struct EmptyAnalysisStateView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Data to Analyze")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                 Text("Start logging activities to see detailed analytics and insights about your performance.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -128,11 +126,11 @@ struct AnalysisLoadingCard: View {
             Text("Analyzing...")
                 .font(AppTheme.Typography.body)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             Text("Generating AI insights")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.secondaryText)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity, minHeight: 120)
         .padding(AppTheme.Spacing.lg)
@@ -159,11 +157,11 @@ struct AnalysisPromptCard: View {
             Text("AI Analysis")
                 .font(AppTheme.Typography.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             Text("Get personalized insights about your training")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.secondaryText)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
 
             Button(action: onAnalyze) {
@@ -201,7 +199,7 @@ struct QuickInsightsCard: View {
                 Text("AI Insights")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
             }
 
             if !results.insights.recommendations.isEmpty {
@@ -215,7 +213,7 @@ struct QuickInsightsCard: View {
 
                             Text(recommendation)
                                 .font(AppTheme.Typography.caption)
-                                .foregroundColor(AppTheme.Colors.secondaryText)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                                 .lineLimit(2)
                         }
                     }
@@ -224,7 +222,7 @@ struct QuickInsightsCard: View {
 
             Text("Updated \(results.lastUpdated, style: .relative) ago")
                 .font(.caption2)
-                .foregroundColor(AppTheme.Colors.mutedText)
+                .foregroundColor(AppTheme.Colors.textTertiary)
         }
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
         .padding(AppTheme.Spacing.lg)
@@ -245,7 +243,7 @@ struct DetailedAnalysisResultsView: View {
             Text("Detailed Analysis")
                 .font(AppTheme.Typography.title)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             LazyVStack(spacing: AppTheme.Spacing.md) {
                 // Recommendations
@@ -298,11 +296,11 @@ struct EnhancedAnalysisLoadingView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("Analyzing Performance")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
                 
                 Text("Training ML models and generating insights from your running data")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -331,11 +329,11 @@ struct EnhancedEmptyAnalysisView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("Ready to Analyze")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
                 
                 Text("Tap 'Analyze' to generate AI insights and discover patterns in your running performance")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -364,7 +362,7 @@ struct FeatureItem: View {
             
             Text(text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.secondaryText)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
     }
 }
@@ -488,7 +486,7 @@ struct WeeklyVolumeChart: View {
                     ForEach(weeklyData, id: \.weekStart) { week in
                         BarMark(
                             x: .value("Week", week.weekStart),
-                            y: .value("Distance", week.totalDistance)
+                            y: .value("Distance (mi)", week.totalDistance)
                         )
                         .foregroundStyle(.blue.gradient)
                     }
@@ -501,9 +499,14 @@ struct WeeklyVolumeChart: View {
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { _ in
+                    AxisMarks { value in
                         AxisGridLine()
-                        AxisValueLabel()
+                        AxisValueLabel {
+                            if let distance = value.as(Double.self) {
+                                Text(String(format: "%.0f mi", distance))
+                                    .font(.caption2)
+                            }
+                        }
                     }
                 }
             } else {

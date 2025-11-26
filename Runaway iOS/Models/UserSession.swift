@@ -12,6 +12,9 @@ public final class UserSession: ObservableObject {
     /// Authentication state
     @Published public var isAuthenticated = false
 
+    /// Checking authentication state (for initial load)
+    @Published public var isCheckingAuth = true
+
     /// Supabase authentication user
     @Published public var currentUser: Supabase.User?
 
@@ -49,9 +52,18 @@ public final class UserSession: ObservableObject {
     private func checkAuthState() async {
         do {
             let session = try await supabase.auth.session
+            print("✅ Found existing session for user: \(session.user.email ?? "unknown")")
             await updateAuthState(with: session.user)
         } catch {
-            print("No existing session found: \(error)")
+            print("⚠️ No existing session found: \(error.localizedDescription)")
+            await MainActor.run {
+                self.isAuthenticated = false
+            }
+        }
+
+        // Mark auth check as complete
+        await MainActor.run {
+            self.isCheckingAuth = false
         }
     }
 

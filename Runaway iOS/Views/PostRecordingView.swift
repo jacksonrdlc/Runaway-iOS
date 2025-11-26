@@ -30,7 +30,7 @@ struct PostRecordingView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Route")
                                 .font(.headline)
-                                .foregroundColor(AppTheme.Colors.primaryText)
+                                .foregroundColor(AppTheme.Colors.textPrimary)
                             
                             RoutePreviewMap(
                                 routePoints: recordingService.gpsService.routePoints,
@@ -48,7 +48,7 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Activity Summary")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.primaryText)
+                            .foregroundColor(AppTheme.Colors.textPrimary)
                         
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                             SummaryMetricCard(
@@ -89,14 +89,14 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Activity Details")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.primaryText)
+                            .foregroundColor(AppTheme.Colors.textPrimary)
                         
                         VStack(spacing: 12) {
                             // Activity name input
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Activity Name")
                                     .font(.subheadline)
-                                    .foregroundColor(AppTheme.Colors.secondaryText)
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
                                 
                                 TextField("Enter activity name", text: $activityName)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -112,10 +112,10 @@ struct PostRecordingView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Type")
                                         .font(.caption)
-                                        .foregroundColor(AppTheme.Colors.secondaryText)
+                                        .foregroundColor(AppTheme.Colors.textSecondary)
                                     Text(recordingService.currentSession?.activityType ?? "Run")
                                         .font(.subheadline)
-                                        .foregroundColor(AppTheme.Colors.primaryText)
+                                        .foregroundColor(AppTheme.Colors.textPrimary)
                                 }
                                 
                                 Spacer()
@@ -123,10 +123,10 @@ struct PostRecordingView: View {
                                 VStack(alignment: .trailing, spacing: 4) {
                                     Text("Date")
                                         .font(.caption)
-                                        .foregroundColor(AppTheme.Colors.secondaryText)
+                                        .foregroundColor(AppTheme.Colors.textSecondary)
                                     Text(formatDate(recordingService.currentSession?.startTime ?? Date()))
                                         .font(.subheadline)
-                                        .foregroundColor(AppTheme.Colors.primaryText)
+                                        .foregroundColor(AppTheme.Colors.textPrimary)
                                 }
                             }
                             .padding(.vertical, 8)
@@ -140,7 +140,7 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Route Statistics")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.primaryText)
+                            .foregroundColor(AppTheme.Colors.textPrimary)
                         
                         HStack {
                             StatItem(
@@ -311,18 +311,18 @@ struct SummaryMetricCard: View {
                     Text(value)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                     
                     if !unit.isEmpty {
                         Text(unit)
                             .font(.caption)
-                            .foregroundColor(AppTheme.Colors.mutedText)
+                            .foregroundColor(AppTheme.Colors.textTertiary)
                     }
                 }
                 
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
         }
         .padding()
@@ -346,11 +346,11 @@ struct StatItem: View {
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
             
             Text(title)
                 .font(.caption2)
-                .foregroundColor(AppTheme.Colors.secondaryText)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }

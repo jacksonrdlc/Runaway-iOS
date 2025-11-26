@@ -17,7 +17,7 @@ public struct LoaderView: View {
                     .scaleEffect(2)
                 Text("Loading...")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
                     .padding(.top, 20)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

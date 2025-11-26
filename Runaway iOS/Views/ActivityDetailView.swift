@@ -72,11 +72,11 @@ struct ActivityDetailHeader: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(activity.name ?? "Unknown Activity")
                         .font(AppTheme.Typography.title)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                     
                     Text(activity.type ?? "Unknown Type")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
                 
                 Spacer()
@@ -86,16 +86,16 @@ struct ActivityDetailHeader: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Date & Time")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.mutedText)
+                        .foregroundColor(AppTheme.Colors.textTertiary)
                         .textCase(.uppercase)
                     
                     Text(startDate, style: .date)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                     
                     Text(startDate, style: .time)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
         }
@@ -207,18 +207,18 @@ struct DetailMetricCard: View {
                     Text(value)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                     
                     if !unit.isEmpty {
                         Text(unit)
                             .font(.caption)
-                            .foregroundColor(AppTheme.Colors.mutedText)
+                            .foregroundColor(AppTheme.Colors.textTertiary)
                     }
                 }
                 
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .textCase(.uppercase)
             }
         }
@@ -236,7 +236,7 @@ struct ActivityDetailInfo: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Activity Details")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
             
             VStack(spacing: AppTheme.Spacing.sm) {
                 DetailInfoRow(label: "Activity ID", value: "\(activity.id)")
@@ -277,13 +277,13 @@ struct DetailInfoRow: View {
         HStack {
             Text(label)
                 .font(.subheadline)
-                .foregroundColor(AppTheme.Colors.secondaryText)
+                .foregroundColor(AppTheme.Colors.textSecondary)
             
             Spacer()
             
             Text(value)
                 .font(.subheadline)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
         }
     }
 }

@@ -35,7 +35,7 @@ struct APIConfiguration {
     }
     
     struct RunawayCoach {
-        static let baseURL = "https://runaway-coach-api-203308554831.us-central1.run.app"
+        static let baseURL = "https://runaway-coach-api-a2xd4ppmsq-uc.a.run.app"
         static let devBaseURL = "http://localhost:8000"
         
         static var currentBaseURL: String {
@@ -86,16 +86,22 @@ struct APIConfiguration {
             // Try JWT token first (from Supabase Auth) with improved refresh handling
             if let jwtToken = await getJWTToken() {
                 headers["Authorization"] = "Bearer \(jwtToken)"
+                #if DEBUG
                 print("🔐 APIConfiguration: Using JWT token for authentication")
+                #endif
                 return headers
             }
 
             // Fallback to API key for backwards compatibility
             if let authToken = getAuthToken() {
                 headers["Authorization"] = "Bearer \(authToken)"
+                #if DEBUG
                 print("🔐 APIConfiguration: Using API key for authentication (fallback)")
+                #endif
             } else {
+                #if DEBUG
                 print("❌ APIConfiguration: No authentication token available (neither JWT nor API key)")
+                #endif
             }
 
             return headers
@@ -125,14 +131,17 @@ struct APIConfiguration {
                 let expiresAt = session.expiresAt
                 let timeUntilExpiry = expiresAt - Date().timeIntervalSince1970
 
+                #if DEBUG
                 if timeUntilExpiry < 300 { // Less than 5 minutes
                     print("⏰ APIConfiguration: JWT token expires soon (in \(Int(timeUntilExpiry))s), but Supabase will auto-refresh")
                 }
-
-                print("🔐 APIConfiguration: Successfully got JWT token (length: \(token.count), expires in \(Int(timeUntilExpiry))s)")
+                print("🔐 APIConfiguration: Successfully got JWT token")
+                #endif
                 return token
             } catch {
+                #if DEBUG
                 print("⚠️ APIConfiguration: Failed to get JWT token: \(error)")
+                #endif
                 return nil
             }
         }
@@ -141,10 +150,14 @@ struct APIConfiguration {
             do {
                 let session = try await supabase.auth.session
                 let userId = session.user.id.uuidString
+                #if DEBUG
                 print("👤 APIConfiguration: Current auth user ID: \(userId)")
+                #endif
                 return userId
             } catch {
+                #if DEBUG
                 print("⚠️ APIConfiguration: Failed to get auth user ID: \(error)")
+                #endif
                 return nil
             }
         }

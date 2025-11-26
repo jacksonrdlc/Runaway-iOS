@@ -30,7 +30,7 @@ struct MainView: View {
                                     showingSettings = true
                                 }) {
                                     Image(systemName: "gearshape.fill")
-                                        .foregroundColor(AppTheme.Colors.primary)
+                                        .foregroundColor(AppTheme.Colors.accent)
                                 }
                             }
                         }
@@ -48,7 +48,7 @@ struct MainView: View {
                                     showingSettings = true
                                 }) {
                                     Image(systemName: "gearshape.fill")
-                                        .foregroundColor(AppTheme.Colors.primary)
+                                        .foregroundColor(AppTheme.Colors.accent)
                                 }
                             }
                         }
@@ -75,7 +75,7 @@ struct MainView: View {
                                     showingSettings = true
                                 }) {
                                     Image(systemName: "gearshape.fill")
-                                        .foregroundColor(AppTheme.Colors.primary)
+                                        .foregroundColor(AppTheme.Colors.accent)
                                 }
                             }
                         }
@@ -96,7 +96,7 @@ struct MainView: View {
                                         showingSettings = true
                                     }) {
                                         Image(systemName: "gearshape.fill")
-                                            .foregroundColor(AppTheme.Colors.primary)
+                                            .foregroundColor(AppTheme.Colors.accent)
                                     }
                                 }
                             }
@@ -104,10 +104,10 @@ struct MainView: View {
                         VStack(spacing: AppTheme.Spacing.md) {
                             ProgressView()
                                 .scaleEffect(1.2)
-                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
+                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
                             Text("Loading profile...")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.secondaryText)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(AppTheme.Colors.background)
@@ -119,7 +119,7 @@ struct MainView: View {
                                     showingSettings = true
                                 }) {
                                     Image(systemName: "gearshape.fill")
-                                        .foregroundColor(AppTheme.Colors.primary)
+                                        .foregroundColor(AppTheme.Colors.accent)
                                 }
                             }
                         }
@@ -130,14 +130,14 @@ struct MainView: View {
                 }
                 .tag(4)
             }
-            .accentColor(AppTheme.Colors.primary)
-            .preferredColorScheme(.light)
+            .accentColor(AppTheme.Colors.accent)
+            .preferredColorScheme(.dark)
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
                     .environmentObject(userSession)
             }
-            .onAppear {
-                loadInitialData()
+            .task {
+                await loadInitialData()
                 realtimeService.startRealtimeSubscription()
             }
             .background(AppTheme.Colors.background.ignoresSafeArea())
@@ -151,12 +151,12 @@ struct MainView: View {
                     VStack(spacing: AppTheme.Spacing.md) {
                         Image(systemName: "figure.run")
                             .font(.system(size: 80, weight: .light))
-                            .foregroundColor(AppTheme.Colors.primary)
-                            .shadow(color: AppTheme.Colors.primary.opacity(0.3), radius: 10, x: 0, y: 5)
+                            .foregroundColor(AppTheme.Colors.accent)
+                            .shadow(color: AppTheme.Colors.accent.opacity(0.3), radius: 10, x: 0, y: 5)
 
                         Text("Runaway")
                             .font(.system(size: 48, weight: .heavy, design: .rounded))
-                            .foregroundColor(AppTheme.Colors.primary)
+                            .foregroundColor(AppTheme.Colors.accent)
                             .italic()
                     }
 
@@ -164,25 +164,25 @@ struct MainView: View {
                     VStack(spacing: AppTheme.Spacing.lg) {
                         ProgressView()
                             .scaleEffect(1.5)
-                            .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
+                            .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
 
                         VStack(spacing: AppTheme.Spacing.sm) {
                             Text("Loading your data...")
                                 .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.primaryText)
+                                .foregroundColor(AppTheme.Colors.textPrimary)
 
                             Text("Syncing activities and performance metrics")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.secondaryText)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                                 .multilineTextAlignment(.center)
                         }
                     }
                 }
                 .padding(AppTheme.Spacing.xl)
             }
-            .preferredColorScheme(.light)
-            .onAppear {
-                loadInitialData()
+            .preferredColorScheme(.dark)
+            .task {
+                await loadInitialData()
             }
         }
     }
@@ -190,35 +190,33 @@ struct MainView: View {
 
 extension MainView {
     /// Load initial user data through DataManager
-    private func loadInitialData() {
-        Task {
-            guard let authId = userSession.currentUser?.id else {
-                print("❌ MainView: No auth ID available")
-                isDataReady = true
-                return
+    private func loadInitialData() async {
+        guard let authId = userSession.currentUser?.id else {
+            print("❌ MainView: No auth ID available")
+            isDataReady = true
+            return
+        }
+
+        do {
+            // Fetch and set user profile
+            let user = try await UserService.getUserByAuthId(authId: authId)
+            await MainActor.run {
+                userSession.setProfile(user)
+                // Notify that user is logged in (for FCM token save)
+                NotificationCenter.default.post(name: NSNotification.Name("UserDidLogin"), object: nil)
             }
 
-            do {
-                // Fetch and set user profile
-                let user = try await UserService.getUserByAuthId(authId: authId)
-                await MainActor.run {
-                    userSession.setProfile(user)
-                    // Notify that user is logged in (for FCM token save)
-                    NotificationCenter.default.post(name: NSNotification.Name("UserDidLogin"), object: nil)
-                }
+            // Load all data through DataManager
+            await dataManager.loadAllData(for: user.userId)
 
-                // Load all data through DataManager
-                await dataManager.loadAllData(for: user.userId)
+            await MainActor.run {
+                isDataReady = true
+            }
 
-                await MainActor.run {
-                    isDataReady = true
-                }
-
-            } catch {
-                print("❌ MainView: Error loading initial data: \(error)")
-                await MainActor.run {
-                    isDataReady = true
-                }
+        } catch {
+            print("❌ MainView: Error loading initial data: \(error)")
+            await MainActor.run {
+                isDataReady = true
             }
         }
     }

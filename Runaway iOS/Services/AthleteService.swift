@@ -19,7 +19,10 @@ class AthleteService {
                 city,
                 state,
                 country,
-                created_at
+                created_at,
+                strava_connected,
+                strava_connected_at,
+                strava_disconnected_at
                 """
             )
             .eq("id", value: userId)

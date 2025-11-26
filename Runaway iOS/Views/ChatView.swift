@@ -116,11 +116,11 @@ struct WelcomeView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("AI Running Coach")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.primaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                 Text("Ask me anything about your training, get personalized advice, or request analysis of your performance.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.secondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -144,7 +144,7 @@ struct ChatMessageBubble: View {
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(isUser ? .white : AppTheme.Colors.cardPrimaryText)
+                    .foregroundColor(isUser ? .white : AppTheme.Colors.textPrimary)
                     .padding(AppTheme.Spacing.md)
                     .background(isUser ? AppTheme.Colors.primary : AppTheme.Colors.cardBackground)
                     .cornerRadius(AppTheme.CornerRadius.medium)
@@ -152,7 +152,7 @@ struct ChatMessageBubble: View {
                 if let date = ISO8601DateFormatter().date(from: message.timestamp) {
                     Text(date, style: .time)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.mutedText)
+                        .foregroundColor(AppTheme.Colors.textTertiary)
                         .padding(.horizontal, 4)
                 }
             }
@@ -202,7 +202,7 @@ struct SuggestedPromptsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Suggestions")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.secondaryText)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .padding(.horizontal)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -357,11 +357,11 @@ struct AnalysisDetailSheet: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                     Text("Analysis Type: \(analysis.type.capitalized)")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.primaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     Text("The coach has run an analysis for you. Check your Insights tab for detailed results.")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.secondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
 
                     Button(action: {
                         dismiss()

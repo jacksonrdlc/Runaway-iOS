@@ -30,11 +30,11 @@ struct PerformanceDashboardCard: View {
                     Text("Performance Dashboard")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     Text("This week vs last week")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -85,7 +85,7 @@ struct PerformanceDashboardCard: View {
         .padding(AppTheme.Spacing.lg)
         .background(AppTheme.Colors.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .themeShadow(.light)
     }
 
     private func calculateWeeklyStats(for date: Date) -> WeeklyStats {
@@ -145,9 +145,9 @@ struct PerformanceMetricCard: View {
     let icon: String
 
     private var changeColor: Color {
-        if change > 5 { return .green }
-        if change < -5 { return .red }
-        return .blue
+        if change > 5 { return AppTheme.Colors.success }
+        if change < -5 { return AppTheme.Colors.error }
+        return AppTheme.Colors.info
     }
 
     private var changeIcon: String {
@@ -175,13 +175,13 @@ struct PerformanceMetricCard: View {
             Text(thisWeek)
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.primaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(title)
                 .font(.caption)
-                .foregroundColor(AppTheme.Colors.secondaryText)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .lineLimit(1)
 
             HStack {
@@ -193,7 +193,7 @@ struct PerformanceMetricCard: View {
             }
         }
         .padding(AppTheme.Spacing.sm)
-        .frame(minHeight: 100) // Ensure consistent height
+        .frame(minHeight: AppTheme.Layout.metricCardMinHeight)
         .background(AppTheme.Colors.background)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .overlay(
@@ -239,11 +239,11 @@ struct ActivityHeatmapCard: View {
                     Text("Activity Heatmap")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     Text("Last 50 days of activity intensity")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -262,7 +262,7 @@ struct ActivityHeatmapCard: View {
                         .frame(height: 16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 2)
-                                .stroke(AppTheme.Colors.mutedText.opacity(0.2), lineWidth: 0.5)
+                                .stroke(AppTheme.Colors.textTertiary.opacity(0.2), lineWidth: 0.5)
                         )
                 }
             }
@@ -271,7 +271,7 @@ struct ActivityHeatmapCard: View {
             HStack {
                 Text("Less")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 HStack(spacing: 2) {
                     ForEach(0..<5, id: \.self) { intensity in
@@ -283,7 +283,7 @@ struct ActivityHeatmapCard: View {
 
                 Text("More")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 Spacer()
             }
@@ -291,11 +291,11 @@ struct ActivityHeatmapCard: View {
         .padding(AppTheme.Spacing.lg)
         .background(AppTheme.Colors.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .themeShadow(.light)
     }
 
     private func heatmapColor(for intensity: Double) -> Color {
-        if intensity == 0 { return AppTheme.Colors.mutedText.opacity(0.1) }
+        if intensity == 0 { return AppTheme.Colors.textTertiary.opacity(0.1) }
         if intensity <= 0.25 { return AppTheme.Colors.accent.opacity(0.3) }
         if intensity <= 0.5 { return AppTheme.Colors.accent.opacity(0.5) }
         if intensity <= 0.75 { return AppTheme.Colors.accent.opacity(0.7) }
@@ -341,11 +341,11 @@ struct PaceTrendsChart: View {
                     Text("Pace Trends")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     Text("Last 20 runs - lower is better")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -391,11 +391,11 @@ struct PaceTrendsChart: View {
                 VStack {
                     Image(systemName: "chart.line.uptrend.xyaxis")
                         .font(.system(size: 40))
-                        .foregroundColor(AppTheme.Colors.mutedText)
+                        .foregroundColor(AppTheme.Colors.textTertiary)
 
                     Text("Need at least 2 runs to show pace trends")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 200)
@@ -405,7 +405,7 @@ struct PaceTrendsChart: View {
         .padding(AppTheme.Spacing.lg)
         .background(AppTheme.Colors.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .themeShadow(.light)
     }
 }
 
@@ -448,12 +448,12 @@ struct MonthlyProgressRing: View {
             Text("Monthly Goal")
                 .font(AppTheme.Typography.title)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             ZStack {
                 // Background ring
                 Circle()
-                    .stroke(AppTheme.Colors.mutedText.opacity(0.2), lineWidth: 20)
+                    .stroke(AppTheme.Colors.textTertiary.opacity(0.2), lineWidth: 20)
                     .frame(width: 180, height: 180)
 
                 // Progress ring
@@ -475,22 +475,22 @@ struct MonthlyProgressRing: View {
                 VStack(spacing: 4) {
                     Text("\(Int(monthlyStats.progress * 100))%")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     Text("\(String(format: "%.1f", monthlyStats.distance)) / \(Int(monthlyStats.goal)) mi")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
 
                     Text("\(monthlyStats.runs) runs")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.cardMutedText)
+                        .foregroundColor(AppTheme.Colors.textTertiary)
                 }
             }
         }
         .padding(AppTheme.Spacing.lg)
         .background(AppTheme.Colors.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .themeShadow(.light)
         .onAppear {
             withAnimation(.easeInOut(duration: 1.5).delay(0.3)) {
                 animateProgress = true

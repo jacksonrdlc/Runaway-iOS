@@ -23,11 +23,11 @@ struct ActivityCommitmentCard: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                     Text("Activity Tracker")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     Text(dataManager.daysSinceLastActivityText)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -35,17 +35,17 @@ struct ActivityCommitmentCard: View {
                 // Activity streak icon
                 if dataManager.daysSinceLastActivity == 0 {
                     Image(systemName: "flame.fill")
-                        .foregroundColor(.orange)
-                        .font(.title2)
+                        .foregroundColor(AppTheme.Colors.warning)
+                        .font(AppTheme.Typography.title2)
                 } else if dataManager.daysSinceLastActivity > 0 {
                     Image(systemName: "clock.fill")
-                        .foregroundColor(.orange)
-                        .font(.title2)
+                        .foregroundColor(AppTheme.Colors.warning)
+                        .font(AppTheme.Typography.title2)
                 }
             }
 
             Divider()
-                .background(AppTheme.Colors.mutedText.opacity(0.3))
+                .background(AppTheme.Colors.textTertiary.opacity(0.3))
 
             // Commitment section
             if let commitment = dataManager.todaysCommitment {
@@ -80,14 +80,14 @@ struct ActivityCommitmentCard: View {
             if showingSuccess {
                 HStack(spacing: AppTheme.Spacing.xs) {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundColor(AppTheme.Colors.success)
                     Text("Commitment created!")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(AppTheme.Colors.success)
                 }
                 .padding(.horizontal, AppTheme.Spacing.sm)
                 .padding(.vertical, AppTheme.Spacing.xs)
-                .background(Color.green.opacity(0.1))
+                .background(AppTheme.Colors.success.opacity(AppTheme.Opacity.light))
                 .cornerRadius(AppTheme.CornerRadius.small)
             }
 
@@ -95,7 +95,12 @@ struct ActivityCommitmentCard: View {
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.Colors.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .shadow(
+            color: AppTheme.Shadows.light.color,
+            radius: AppTheme.Shadows.light.radius,
+            x: AppTheme.Shadows.light.x,
+            y: AppTheme.Shadows.light.y
+        )
     }
 
     private func createCommitment() {
@@ -134,12 +139,12 @@ struct NoCommitmentView: View {
             Text("Today's Commitment")
                 .font(AppTheme.Typography.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                .foregroundColor(AppTheme.Colors.textPrimary)
 
             HStack {
                 Text("I commit to:")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 Spacer()
 
@@ -153,7 +158,7 @@ struct NoCommitmentView: View {
                     }
                 }
                 .pickerStyle(MenuPickerStyle())
-                .accentColor(AppTheme.Colors.primary)
+                .accentColor(AppTheme.Colors.accent)
             }
 
             Button(action: onCommitmentCreated) {
@@ -162,11 +167,11 @@ struct NoCommitmentView: View {
                     Text("Set Commitment")
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
                     Spacer()
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
-                .background(AppTheme.Colors.primary)
+                .background(AppTheme.Colors.accent)
                 .cornerRadius(AppTheme.CornerRadius.small)
             }
         }
@@ -187,17 +192,17 @@ struct ActiveCommitmentView: View {
                 Text("Today's Commitment")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                 Spacer()
 
                 Text("Active")
                     .font(AppTheme.Typography.caption)
                     .fontWeight(.semibold)
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.horizontal, AppTheme.Spacing.sm)
                     .padding(.vertical, 2)
-                    .background(Color.orange)
+                    .background(AppTheme.Colors.warning)
                     .cornerRadius(AppTheme.CornerRadius.small)
             }
 
@@ -210,12 +215,12 @@ struct ActiveCommitmentView: View {
                     Text(commitment.activityType.displayName)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     if commitment.timeRemainingToday > 0 {
                         Text(commitment.timeRemainingText)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     } else {
                         Text("Commitment expired")
                             .font(AppTheme.Typography.caption)
@@ -247,13 +252,13 @@ struct FulfilledCommitmentView: View {
                 Text("Commitment Completed")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.bold)
-                    .foregroundColor(.green)
+                    .foregroundColor(AppTheme.Colors.success)
 
                 Spacer()
 
                 Image(systemName: "party.popper.fill")
-                    .foregroundColor(.orange)
-                    .font(.title2)
+                    .foregroundColor(AppTheme.Colors.warning)
+                    .font(AppTheme.Typography.title2)
             }
 
             // Main celebration message
@@ -261,39 +266,39 @@ struct FulfilledCommitmentView: View {
                 Text("LET'S FUCKING GO! 🔥")
                     .font(.title2)
                     .fontWeight(.heavy)
-                    .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
 
                 Text("You crushed your \(commitment.activityType.displayName.lowercased()) commitment today!")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
 
             // Activity details
             HStack(spacing: AppTheme.Spacing.md) {
                 ZStack {
                     Circle()
-                        .fill(Color.green.opacity(0.2))
+                        .fill(AppTheme.Colors.success.opacity(AppTheme.Opacity.medium))
                         .frame(width: 50, height: 50)
 
                     Image(systemName: commitment.activityType.icon)
-                        .foregroundColor(.green)
-                        .font(.title2)
+                        .foregroundColor(AppTheme.Colors.success)
+                        .font(AppTheme.Typography.title2)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(commitment.activityType.displayName)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.cardPrimaryText)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
 
                     if let fulfilledTime = commitment.fulfilledAtAsDate {
                         Text("Completed at \(fulfilledTime, formatter: timeFormatter)")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     } else {
                         Text("Completed today")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.cardSecondaryText)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                 }
 
@@ -302,12 +307,12 @@ struct FulfilledCommitmentView: View {
                 // Big checkmark with animation effect
                 ZStack {
                     Circle()
-                        .fill(Color.green)
+                        .fill(AppTheme.Colors.success)
                         .frame(width: 40, height: 40)
 
                     Image(systemName: "checkmark")
-                        .foregroundColor(.white)
-                        .font(.title3)
+                        .foregroundColor(.black)
+                        .font(AppTheme.Typography.title3)
                         .fontWeight(.bold)
                 }
             }
@@ -325,14 +330,14 @@ struct FulfilledCommitmentView: View {
         .padding(AppTheme.Spacing.md)
         .background(
             LinearGradient(
-                colors: [Color.green.opacity(0.1), Color.green.opacity(0.05)],
+                colors: [AppTheme.Colors.success.opacity(AppTheme.Opacity.light), AppTheme.Colors.success.opacity(AppTheme.Opacity.veryLight)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                .stroke(AppTheme.Colors.success.opacity(AppTheme.Opacity.strong), lineWidth: 1)
         )
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
@@ -359,14 +364,14 @@ struct CommitmentProgressRing: View {
         ZStack {
             // Background ring
             Circle()
-                .stroke(Color.gray.opacity(0.2), lineWidth: 3)
+                .stroke(AppTheme.Colors.textTertiary.opacity(AppTheme.Opacity.medium), lineWidth: 3)
                 .frame(width: 32, height: 32)
 
             // Progress ring
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    timeRemaining > 0 ? Color.orange : Color.red,
+                    timeRemaining > 0 ? AppTheme.Colors.warning : AppTheme.Colors.error,
                     style: StrokeStyle(lineWidth: 3, lineCap: .round)
                 )
                 .frame(width: 32, height: 32)
@@ -375,7 +380,7 @@ struct CommitmentProgressRing: View {
 
             // Center indicator
             Circle()
-                .fill(timeRemaining > 0 ? Color.orange : Color.red)
+                .fill(timeRemaining > 0 ? AppTheme.Colors.warning : AppTheme.Colors.error)
                 .frame(width: 8, height: 8)
         }
     }
@@ -397,19 +402,19 @@ struct ActivityTypePickerSheet: View {
                     }) {
                         HStack(spacing: AppTheme.Spacing.md) {
                             Image(systemName: activityType.icon)
-                                .foregroundColor(AppTheme.Colors.primaryLight)
-                                .font(.title2)
+                                .foregroundColor(AppTheme.Colors.accent)
+                                .font(AppTheme.Typography.title2)
                                 .frame(width: 30)
 
                             Text(activityType.displayName)
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.primaryText)
+                                .foregroundColor(AppTheme.Colors.textPrimary)
 
                             Spacer()
 
                             if selectedType == activityType {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(AppTheme.Colors.primaryLight)
+                                    .foregroundColor(AppTheme.Colors.accent)
                             }
                         }
                         .padding(.vertical, AppTheme.Spacing.xs)

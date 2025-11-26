@@ -178,13 +178,13 @@ class RunawayCoachAPIService: ObservableObject {
         }
 
         // Debug: Print request details for auth troubleshooting
+        #if DEBUG
         print("🌐 API Request Debug:")
         print("   URL: \(url)")
         print("   Method: \(method)")
         print("   Headers: \(authHeaders.keys.joined(separator: ", "))")
-        if let authHeader = authHeaders["Authorization"] {
-            print("   Auth Header: Bearer \(String(authHeader.dropFirst(7).prefix(10)))...")
-        }
+        print("   Auth: Configured")
+        #endif
         
         
         if let body = body {
