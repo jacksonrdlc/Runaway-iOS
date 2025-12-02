@@ -17,11 +17,15 @@
       "path": "/Users/jack.rudelic/projects/labs/strava-webhooks"
     },
     {
+      "name": "Strava Data",
+      "path": "/Users/jack.rudelic/projects/labs/strava-data"
+    },
+    {
       "name": "Runaway Coach",
       "path": "/Users/jack.rudelic/projects/labs/runaway/runaway-coach"
     }
   ],
   "settings": {
-    "description": "Full Runaway ecosystem workspace - all 5 projects"
+    "description": "Full Runaway ecosystem workspace - all 6 projects"
   }
 }

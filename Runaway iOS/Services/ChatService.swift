@@ -10,70 +10,58 @@ import Foundation
 class ChatService {
     // MARK: - Endpoints
 
-    private static let chatMessageEndpoint = "/chat/message"
-    private static let conversationEndpoint = "/chat/conversation"
-    private static let conversationsListEndpoint = "/chat/conversations"
+    // New strava-data chat API endpoint
+    #if DEBUG
+    private static let stravaDataBaseURL = "http://192.168.68.55:8080"  // Local development (Mac IP for simulator)
+    #else
+    private static let stravaDataBaseURL = "https://strava-sync-a2xd4ppmsq-uc.a.run.app"  // Production
+    #endif
+    private static let chatEndpoint = "/api/chat"
 
     // MARK: - Public Methods
 
-    /// Send a message to the AI running coach
+    /// Send a message to the AI running coach (New Backend)
     static func sendMessage(
         message: String,
         conversationId: String? = nil,
         context: ChatContext? = nil
     ) async throws -> ChatResponse {
-        let url = URL(string: APIConfiguration.RunawayCoach.currentBaseURL + chatMessageEndpoint)!
+        // Use new strava-data chat API
+        let url = URL(string: stravaDataBaseURL + chatEndpoint)!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
+        request.timeoutInterval = 30.0
 
-        // Add auth headers
+        // Add auth headers (kept for compatibility)
         let authHeaders = await APIConfiguration.RunawayCoach.getAuthHeaders()
         for (key, value) in authHeaders {
             request.setValue(value, forHTTPHeaderField: key)
         }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        #if DEBUG
-        if let authHeader = authHeaders["Authorization"] {
-            let token = authHeader.replacingOccurrences(of: "Bearer ", with: "")
-            let segments = token.components(separatedBy: ".")
-            print("🔐 Chat Auth Token Info:")
-            print("   Token length: \(token.count)")
-            print("   Segments: \(segments.count) (should be 3 for JWT)")
-            print("   First 20 chars: \(String(token.prefix(20)))...")
-        } else {
-            print("❌ No Authorization header found!")
+        // Get athlete ID from DataManager
+        let athleteId = await MainActor.run {
+            DataManager.shared.athlete?.id ?? 94451852 // Fallback to known ID
         }
-        #endif
 
-        // Get current user ID from auth session
-        let userId = await APIConfiguration.RunawayCoach.getCurrentAuthUserId()
+        // Create request body for new API (simplified format)
+        var requestBody: [String: Any] = [
+            "athlete_id": athleteId,
+            "message": message
+        ]
 
-        // Create request body
-        let chatRequest = ChatRequest(
-            message: message,
-            userId: userId,
-            conversationId: conversationId,
-            context: context
-        )
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        request.httpBody = try encoder.encode(chatRequest)
-
-        #if DEBUG
-        print("💬 Chat API Request:")
-        print("   URL: \(url)")
-        print("   Message: \(message)")
-        print("   User ID: \(userId ?? "nil")")
+        // Include conversation_id if provided (for multi-turn conversations)
         if let conversationId = conversationId {
-            print("   Conversation ID: \(conversationId)")
+            requestBody["conversation_id"] = conversationId
         }
-        if let bodyData = request.httpBody,
-           let bodyString = String(data: bodyData, encoding: .utf8) {
-            print("   Request Body:\n\(bodyString)")
-        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        #if DEBUG
+        print("💬 Chat API Request (New Backend):")
+        print("   URL: \(url)")
+        print("   Athlete ID: \(athleteId)")
+        print("   Message: \(message)")
         #endif
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -89,10 +77,31 @@ class ChatService {
         switch httpResponse.statusCode {
         case 200:
             do {
-                let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
+                // New API response format
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let answer = json?["answer"] as? String else {
+                    throw ChatError.decodingError(NSError(domain: "ChatService", code: -1))
+                }
+
+                // Extract conversation_id from response (returned by backend for threading)
+                let returnedConversationId = json?["conversation_id"] as? String ?? UUID().uuidString
+
+                // Convert to existing ChatResponse format
+                let chatResponse = ChatResponse(
+                    success: true,
+                    message: answer,
+                    conversationId: returnedConversationId,
+                    triggeredAnalysis: nil,
+                    errorMessage: nil,
+                    processingTime: 0.0
+                )
+
                 #if DEBUG
-                print("   ✅ Chat response received")
-                print("   Processing time: \(chatResponse.processingTime)s")
+
+
+                print("   ✅ Chat response received from new backend")
+                print("   Answer length: \(answer.count) characters")
+                print("   Conversation ID: \(returnedConversationId)")
                 #endif
                 return chatResponse
             } catch {
@@ -112,11 +121,6 @@ class ChatService {
             throw ChatError.notFound
 
         case 500:
-            // Try to decode error message
-            if let errorResponse = try? JSONDecoder().decode(ChatResponse.self, from: data),
-               let errorMessage = errorResponse.errorMessage {
-                throw ChatError.serverError(errorMessage)
-            }
             throw ChatError.serverError("Internal server error")
 
         default:
@@ -124,126 +128,33 @@ class ChatService {
         }
     }
 
-    /// Get full conversation by ID
+    /// Get full conversation by ID (Not yet implemented in new backend)
     static func getConversation(id: String) async throws -> Conversation {
-        let url = URL(string: APIConfiguration.RunawayCoach.currentBaseURL + conversationEndpoint + "/\(id)")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
-
-        // Add auth headers
-        let authHeaders = await APIConfiguration.RunawayCoach.getAuthHeaders()
-        for (key, value) in authHeaders {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-
-        #if DEBUG
-        print("💬 Get Conversation Request:")
-        print("   URL: \(url)")
-        print("   ID: \(id)")
-        #endif
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ChatError.invalidResponse
-        }
-
-        switch httpResponse.statusCode {
-        case 200:
-            let conversationResponse = try JSONDecoder().decode(ConversationResponse.self, from: data)
-            return conversationResponse.conversation
-
-        case 401:
-            throw ChatError.unauthorized
-
-        case 404:
-            throw ChatError.notFound
-
-        default:
-            throw ChatError.invalidResponse
-        }
+        // TODO: Implement conversation storage in new backend
+        // For now, return empty conversation
+        let now = ISO8601DateFormatter().string(from: Date())
+        return Conversation(
+            id: id,
+            userId: "",
+            messages: [],
+            context: nil,
+            createdAt: now,
+            updatedAt: now
+        )
     }
 
-    /// List recent conversations
+    /// List recent conversations (Not yet implemented in new backend)
     static func listConversations(limit: Int = 10) async throws -> [ConversationSummary] {
-        let url = URL(string: APIConfiguration.RunawayCoach.currentBaseURL + conversationsListEndpoint + "?limit=\(limit)")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
-
-        // Add auth headers
-        let authHeaders = await APIConfiguration.RunawayCoach.getAuthHeaders()
-        for (key, value) in authHeaders {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-
-        #if DEBUG
-        print("💬 List Conversations Request:")
-        print("   URL: \(url)")
-        print("   Limit: \(limit)")
-        #endif
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ChatError.invalidResponse
-        }
-
-        switch httpResponse.statusCode {
-        case 200:
-            let listResponse = try JSONDecoder().decode(ConversationsListResponse.self, from: data)
-            return listResponse.conversations
-
-        case 401:
-            throw ChatError.unauthorized
-
-        default:
-            throw ChatError.invalidResponse
-        }
+        // TODO: Implement conversation list in new backend
+        // For now, return empty list
+        return []
     }
 
-    /// Delete a conversation
+    /// Delete a conversation (Not yet implemented in new backend)
     static func deleteConversation(id: String) async throws {
-        let url = URL(string: APIConfiguration.RunawayCoach.currentBaseURL + conversationEndpoint + "/\(id)")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-        request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
-
-        // Add auth headers
-        let authHeaders = await APIConfiguration.RunawayCoach.getAuthHeaders()
-        for (key, value) in authHeaders {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-
-        #if DEBUG
-        print("💬 Delete Conversation Request:")
-        print("   URL: \(url)")
-        print("   ID: \(id)")
-        #endif
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ChatError.invalidResponse
-        }
-
-        switch httpResponse.statusCode {
-        case 200:
-            _ = try JSONDecoder().decode(DeleteConversationResponse.self, from: data)
-            #if DEBUG
-            print("   ✅ Conversation deleted")
-            #endif
-
-        case 401:
-            throw ChatError.unauthorized
-
-        case 404:
-            throw ChatError.notFound
-
-        default:
-            throw ChatError.invalidResponse
-        }
+        // TODO: Implement conversation deletion in new backend
+        // For now, do nothing
+        return
     }
 
     // MARK: - Context Builders

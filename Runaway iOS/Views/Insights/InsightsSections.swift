@@ -332,3 +332,191 @@ struct GoalReadinessSection: View {
         }
     }
 }
+
+// MARK: - Training Journal Section
+
+struct TrainingJournalSection: View {
+    let journal: TrainingJournal?
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            // Header
+            HStack {
+                Image(systemName: "book.fill")
+                    .foregroundColor(AppTheme.Colors.accent)
+                Text("Training Journal")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+                Spacer()
+                if let journal = journal {
+                    Text(journal.weekRangeString)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                }
+            }
+            .padding(.horizontal)
+
+            if let journal = journal {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                    // Week Stats Summary
+                    WeekStatsGrid(stats: journal.weekStats)
+                        .padding(.horizontal)
+
+                    // Narrative
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                        HStack {
+                            Image(systemName: "quote.bubble.fill")
+                                .foregroundColor(AppTheme.Colors.accent.opacity(0.6))
+                                .font(.caption)
+                            Text("Coach's Summary")
+                                .font(AppTheme.Typography.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
+                        }
+                        .padding(.horizontal)
+
+                        Text(journal.narrative)
+                            .font(AppTheme.Typography.body)
+                            .foregroundColor(AppTheme.Colors.textPrimary)
+                            .lineSpacing(4)
+                            .padding()
+                            .background(AppTheme.Colors.cardBackground.opacity(0.5))
+                            .cornerRadius(AppTheme.CornerRadius.medium)
+                            .padding(.horizontal)
+                    }
+
+                    // Insights
+                    if !journal.insights.isEmpty {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                            HStack {
+                                Image(systemName: "lightbulb.fill")
+                                    .foregroundColor(.yellow)
+                                Text("Key Insights")
+                                    .font(AppTheme.Typography.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                                Spacer()
+                                Button(action: { isExpanded.toggle() }) {
+                                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                        .foregroundColor(AppTheme.Colors.textSecondary)
+                                }
+                            }
+                            .padding(.horizontal)
+
+                            ForEach(Array(journal.insights.prefix(isExpanded ? journal.insights.count : 3)), id: \.id) { insight in
+                                InsightRow(insight: insight)
+                                    .padding(.horizontal)
+                            }
+
+                            if !isExpanded && journal.insights.count > 3 {
+                                Button(action: { isExpanded = true }) {
+                                    Text("See \(journal.insights.count - 3) more")
+                                        .font(AppTheme.Typography.caption)
+                                        .foregroundColor(AppTheme.Colors.accent)
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+            } else {
+                // Empty State
+                VStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "book.closed")
+                        .font(.system(size: 48))
+                        .foregroundColor(AppTheme.Colors.textTertiary)
+
+                    Text("No journal entry yet")
+                        .font(AppTheme.Typography.headline)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+
+                    Text("Your weekly training summary will appear here")
+                        .font(AppTheme.Typography.body)
+                        .foregroundColor(AppTheme.Colors.textTertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            }
+        }
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(AppTheme.Colors.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+    }
+}
+
+// MARK: - Supporting Components
+
+struct WeekStatsGrid: View {
+    let stats: WeekStats
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.Spacing.md) {
+            JournalStatBox(icon: "figure.run", title: "Distance", value: String(format: "%.1f mi", stats.totalDistance))
+            JournalStatBox(icon: "timer", title: "Time", value: String(format: "%.1f hrs", stats.totalTime))
+            JournalStatBox(icon: "speedometer", title: "Avg Pace", value: stats.avgPace)
+            JournalStatBox(icon: "flame.fill", title: "Runs", value: "\(stats.activitiesCount)")
+        }
+    }
+}
+
+struct JournalStatBox: View {
+    let icon: String
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: icon)
+                .foregroundColor(AppTheme.Colors.accent)
+                .font(.title3)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
+                Text(value)
+                    .font(AppTheme.Typography.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+            }
+            Spacer()
+        }
+        .padding(AppTheme.Spacing.sm)
+        .background(AppTheme.Colors.background.opacity(0.5))
+        .cornerRadius(AppTheme.CornerRadius.small)
+    }
+}
+
+struct InsightRow: View {
+    let insight: JournalInsight
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            Image(systemName: insight.type.icon)
+                .foregroundColor(insightColor)
+                .font(.caption)
+                .frame(width: 24)
+
+            Text(insight.text)
+                .font(AppTheme.Typography.body)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .padding(.vertical, AppTheme.Spacing.xs)
+    }
+
+    private var insightColor: Color {
+        switch insight.type.color {
+        case "yellow": return .yellow
+        case "blue": return .blue
+        case "green": return .green
+        case "purple": return .purple
+        default: return .gray
+        }
+    }
+}

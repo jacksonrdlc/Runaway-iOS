@@ -21,6 +21,10 @@ class UnifiedInsightsViewModel: ObservableObject {
     @Published var localAnalysis: AnalysisResults?
     @Published var isLoadingLocal = false
 
+    // Training Journal Data
+    @Published var currentJournal: TrainingJournal?
+    @Published var isLoadingJournal = false
+
     // Combined/Unified Data
     @Published var unifiedRecommendations: [String] = []
     @Published var lastUpdated: Date?
@@ -53,11 +57,12 @@ class UnifiedInsightsViewModel: ObservableObject {
         print("🔄 UnifiedInsights: Loading all data sources")
         #endif
 
-        // Load both in parallel
+        // Load all data sources in parallel
         async let quickWinsTask = loadQuickWins()
         async let localTask = loadLocalAnalysis(activities: activities)
+        async let journalTask = loadCurrentJournal()
 
-        _ = await (quickWinsTask, localTask)
+        _ = await (quickWinsTask, localTask, journalTask)
 
         // Merge recommendations after both complete
         mergeRecommendations()
@@ -112,6 +117,35 @@ class UnifiedInsightsViewModel: ObservableObject {
         #if DEBUG
         print("✅ UnifiedInsights: Local analysis completed")
         #endif
+    }
+
+    private func loadCurrentJournal() async {
+        isLoadingJournal = true
+
+        guard let athleteId = await DataManager.shared.athlete?.id else {
+            #if DEBUG
+            print("⚠️ UnifiedInsights: No athlete ID available for journal")
+            #endif
+            isLoadingJournal = false
+            return
+        }
+
+        do {
+            let journals = try await JournalService.getJournalEntries(athleteId: athleteId, limit: 1)
+            self.currentJournal = journals.first
+
+            #if DEBUG
+            print("✅ UnifiedInsights: Journal loaded")
+            #endif
+        } catch {
+            #if DEBUG
+            print("⚠️ UnifiedInsights: Journal loading failed: \(error.localizedDescription)")
+            #endif
+            // Don't show error to user - journal is optional
+            self.currentJournal = nil
+        }
+
+        isLoadingJournal = false
     }
 
     /// Merge recommendations from both sources

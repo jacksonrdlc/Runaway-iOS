@@ -54,7 +54,7 @@ struct MainView: View {
                         }
                 }
                 .tabItem {
-                    Label("Insights", systemImage: "chart.bar.fill")
+                    Label("Training", systemImage: "chart.bar.fill")
                 }
                 .tag(1)
 
@@ -63,7 +63,7 @@ struct MainView: View {
                         .environmentObject(dataManager)
                 }
                 .tabItem {
-                    Label("AI Coach", systemImage: "message.fill")
+                    Label("Coach", systemImage: "apple.intelligence")
                 }
                 .tag(2)
 

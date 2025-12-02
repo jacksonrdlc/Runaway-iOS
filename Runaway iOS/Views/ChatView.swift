@@ -38,6 +38,11 @@ struct ChatView: View {
                     }
                     .padding()
                 }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    // Dismiss keyboard when tapping messages area
+                    isMessageFieldFocused = false
+                }
                 .onChange(of: viewModel.messages.count) { _ in
                     // Scroll to bottom when new message arrives
                     if let lastMessage = viewModel.messages.last {
@@ -53,6 +58,7 @@ struct ChatView: View {
                 SuggestedPromptsView(
                     prompts: viewModel.suggestedPrompts,
                     onSelect: { prompt in
+                        isMessageFieldFocused = false
                         Task {
                             await viewModel.sendMessage(prompt)
                         }
@@ -67,6 +73,7 @@ struct ChatView: View {
                 onSend: {
                     let message = messageText
                     messageText = ""  // Clear immediately for better UX
+                    isMessageFieldFocused = false  // Dismiss keyboard after sending
                     Task {
                         await viewModel.sendMessage(message)
                     }

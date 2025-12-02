@@ -36,6 +36,10 @@ struct UnifiedInsightsView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: AppTheme.Spacing.lg) {
+                        // Section 0: Training Journal (Featured)
+                        TrainingJournalSection(journal: viewModel.currentJournal)
+                            .padding(.horizontal)
+
                         // Section 1: Hero Stats Carousel
                         if viewModel.hasQuickWinsData {
                             HeroStatsSection(quickWinsData: viewModel.quickWinsData)
@@ -83,7 +87,7 @@ struct UnifiedInsightsView: View {
                 }
             }
         }
-        .navigationTitle("Insights")
+        .navigationTitle("Training")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             #if DEBUG

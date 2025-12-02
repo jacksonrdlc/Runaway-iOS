@@ -20,158 +20,16 @@ struct SettingsView: View {
         NavigationView {
             ZStack {
                 AppTheme.Colors.background.ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.lg) {
-                        // Profile Section
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                            Text("Profile")
-                                .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
-                            
-                            SettingsRow(
-                                icon: "person.circle",
-                                title: "Account Information",
-                                subtitle: "Manage your profile details",
-                                color: AppTheme.Colors.primary
-                            ) {
-                                // TODO: Navigate to account settings
-                            }
-                        }
-                        
-                        // App Settings
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                            Text("App Settings")
-                                .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
-                            
-                            SettingsRow(
-                                icon: "bell",
-                                title: "Notifications",
-                                subtitle: "Manage push notifications",
-                                color: AppTheme.Colors.accent
-                            ) {
-                                // TODO: Navigate to notification settings
-                            }
-                            
-                            SettingsRow(
-                                icon: "location",
-                                title: "Location Services",
-                                subtitle: "Privacy and location settings",
-                                color: AppTheme.Colors.warning
-                            ) {
-                                // TODO: Navigate to location settings
-                            }
-                            
-                            SettingsRow(
-                                icon: "cloud",
-                                title: "Data Sync",
-                                subtitle: "Sync activities and preferences",
-                                color: AppTheme.Colors.success
-                            ) {
-                                // TODO: Navigate to sync settings
-                            }
-                        }
-
-                        // Integrations Section
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                            Text("Integrations")
-                                .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
-
-                            // Strava Integration Row
-                            StravaIntegrationRow(
-                                isConnected: stravaService.isConnected,
-                                onConnect: { showingStravaSheet = true },
-                                onDisconnect: { showingDisconnectAlert = true }
-                            )
-
-                            // Show error if any
-                            if let error = stravaError {
-                                Text(error)
-                                    .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.error)
-                                    .padding(.horizontal, AppTheme.Spacing.md)
-                            }
-                        }
-
-                        // Support Section
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                            Text("Support")
-                                .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
-                            
-                            SettingsRow(
-                                icon: "questionmark.circle",
-                                title: "Help & FAQ",
-                                subtitle: "Get help and find answers",
-                                color: AppTheme.Colors.primary
-                            ) {
-                                // TODO: Navigate to help
-                            }
-                            
-                            SettingsRow(
-                                icon: "envelope",
-                                title: "Contact Support",
-                                subtitle: "Get in touch with our team",
-                                color: AppTheme.Colors.accent
-                            ) {
-                                // TODO: Open email or contact form
-                            }
-                        }
-                        
-                        // Debug Section (only show in debug builds)
-                        #if DEBUG
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                            Text("Debug")
-                                .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
-                            
-                            NavigationLink(destination: DebugMenuView()) {
-                                SettingsRow(
-                                    icon: "wrench.and.screwdriver",
-                                    title: "Background Task Monitor",
-                                    subtitle: "Monitor realtime connections and background tasks",
-                                    color: .purple
-                                ) {
-                                    // Navigation handled by NavigationLink
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        #endif
-                        
-                        // Danger Zone
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                            Text("Account")
-                                .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
-                            
-                            SettingsRow(
-                                icon: "rectangle.portrait.and.arrow.right",
-                                title: "Sign Out",
-                                subtitle: "Sign out of your account",
-                                color: AppTheme.Colors.error,
-                                isDestructive: true
-                            ) {
-                                Task {
-                                    try? await userSession.signOut()
-                                    dismiss()
-                                }
-                            }
-                        }
-                        
-                        // App Info
-                        VStack(spacing: AppTheme.Spacing.sm) {
-                            Text("Runaway iOS")
-                                .font(AppTheme.Typography.caption)
-                                .foregroundColor(AppTheme.Colors.textTertiary)
-                            
-                            Text("Version 1.0.0")
-                                .font(AppTheme.Typography.caption)
-                                .foregroundColor(AppTheme.Colors.textTertiary)
-                        }
-                        .padding(.top, AppTheme.Spacing.xl)
+                        profileSection
+                        appSettingsSection
+                        integrationsSection
+                        supportSection
+                        debugSection
+                        accountSection
+                        appInfoSection
                     }
                     .padding(AppTheme.Spacing.md)
                 }
@@ -211,6 +69,178 @@ struct SettingsView: View {
                 await stravaService.checkConnectionStatus()
             }
         }
+    }
+
+    // MARK: - View Components
+
+    private var profileSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Profile")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
+            SettingsRow(
+                icon: "person.circle",
+                title: "Account Information",
+                subtitle: "Manage your profile details",
+                color: AppTheme.Colors.primary
+            ) {
+                // TODO: Navigate to account settings
+            }
+        }
+    }
+
+    private var appSettingsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("App Settings")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
+            SettingsRow(
+                icon: "bell",
+                title: "Notifications",
+                subtitle: "Manage push notifications",
+                color: AppTheme.Colors.accent
+            ) {
+                // TODO: Navigate to notification settings
+            }
+
+            SettingsRow(
+                icon: "location",
+                title: "Location Services",
+                subtitle: "Privacy and location settings",
+                color: AppTheme.Colors.warning
+            ) {
+                // TODO: Navigate to location settings
+            }
+
+            SettingsRow(
+                icon: "cloud",
+                title: "Data Sync",
+                subtitle: "Sync activities and preferences",
+                color: AppTheme.Colors.success
+            ) {
+                // TODO: Navigate to sync settings
+            }
+        }
+    }
+
+    private var integrationsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Integrations")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
+            StravaIntegrationRow(
+                stravaService: stravaService,
+                onConnect: { showingStravaSheet = true },
+                onDisconnect: { showingDisconnectAlert = true },
+                onSync: {
+                    Task {
+                        guard let userId = dataManager.athlete?.id else {
+                            stravaError = "No Strava athlete ID found"
+                            return
+                        }
+                        do {
+                            _ = try await stravaService.syncStravaData(userId: String(userId), syncType: .incremental)
+                            stravaError = nil
+                        } catch {
+                            stravaError = error.localizedDescription
+                        }
+                    }
+                }
+            )
+
+            if let error = stravaError {
+                Text(error)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+            }
+        }
+    }
+
+    private var supportSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Support")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
+            SettingsRow(
+                icon: "questionmark.circle",
+                title: "Help & FAQ",
+                subtitle: "Get help and find answers",
+                color: AppTheme.Colors.primary
+            ) {
+                // TODO: Navigate to help
+            }
+
+            SettingsRow(
+                icon: "envelope",
+                title: "Contact Support",
+                subtitle: "Get in touch with our team",
+                color: AppTheme.Colors.accent
+            ) {
+                // TODO: Open email or contact form
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var debugSection: some View {
+        #if DEBUG
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Debug")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
+            NavigationLink(destination: DebugMenuView()) {
+                SettingsRow(
+                    icon: "wrench.and.screwdriver",
+                    title: "Background Task Monitor",
+                    subtitle: "Monitor realtime connections and background tasks",
+                    color: .purple
+                ) {
+                    // Navigation handled by NavigationLink
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        #endif
+    }
+
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Account")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
+            SettingsRow(
+                icon: "rectangle.portrait.and.arrow.right",
+                title: "Sign Out",
+                subtitle: "Sign out of your account",
+                color: AppTheme.Colors.error,
+                isDestructive: true
+            ) {
+                Task {
+                    try? await userSession.signOut()
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private var appInfoSection: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            Text("Runaway iOS")
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textTertiary)
+
+            Text("Version 1.0.0")
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textTertiary)
+        }
+        .padding(.top, AppTheme.Spacing.xl)
     }
 
     // MARK: - Helper Methods
@@ -418,22 +448,33 @@ struct BenefitRow: View {
 
 // MARK: - Strava Integration Row
 struct StravaIntegrationRow: View {
-    let isConnected: Bool
+    @ObservedObject var stravaService: StravaService
     let onConnect: () -> Void
     let onDisconnect: () -> Void
+    let onSync: () -> Void
 
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
-            // Icon
-            stravaIcon
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            // Main connection row
+            HStack(spacing: AppTheme.Spacing.md) {
+                // Icon
+                stravaIcon
 
-            // Content
-            stravaContent
+                // Content
+                stravaContent
 
-            Spacer()
+                Spacer()
 
-            // Action Button
-            actionButton
+                // Action Button
+                actionButton
+            }
+
+            // Sync section (only show if connected)
+            if stravaService.isConnected {
+                Divider()
+
+                syncSection
+            }
         }
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.Colors.surfaceBackground)
@@ -459,15 +500,66 @@ struct StravaIntegrationRow: View {
                 .font(AppTheme.Typography.body.weight(.medium))
                 .foregroundColor(AppTheme.Colors.textPrimary)
 
-            Text(isConnected ? "Connected" : "Not connected")
+            Text(stravaService.isConnected ? "Connected" : "Not connected")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(isConnected ? AppTheme.Colors.success : AppTheme.Colors.textSecondary)
+                .foregroundColor(stravaService.isConnected ? AppTheme.Colors.success : AppTheme.Colors.textSecondary)
+        }
+    }
+
+    private var syncSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            // Sync status
+            HStack {
+                Image(systemName: stravaService.isSyncing ? "arrow.triangle.2.circlepath" : "checkmark.circle.fill")
+                    .foregroundColor(stravaService.isSyncing ? AppTheme.Colors.warning : AppTheme.Colors.success)
+                    .imageScale(.small)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(stravaService.isSyncing ? "Syncing..." : "Data Sync")
+                        .font(AppTheme.Typography.caption.weight(.medium))
+                        .foregroundColor(AppTheme.Colors.textPrimary)
+
+                    if let progress = stravaService.syncProgress {
+                        Text(progress)
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+                    } else if let lastSync = stravaService.lastSyncDate {
+                        Text("Last synced: \(lastSync, style: .relative) ago")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+                    } else {
+                        Text("Never synced")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+                    }
+                }
+
+                Spacer()
+
+                // Sync button
+                Button(action: onSync) {
+                    if stravaService.isSyncing {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(0.8)
+                    } else {
+                        Text("Sync Beta")
+                            .font(AppTheme.Typography.caption.weight(.medium))
+                            .foregroundColor(AppTheme.Colors.primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(AppTheme.Colors.primary.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                }
+                .disabled(stravaService.isSyncing)
+            }
         }
     }
 
     private var actionButton: some View {
         Group {
-            if isConnected {
+            if stravaService.isConnected {
                 disconnectButton
             } else {
                 connectButton
