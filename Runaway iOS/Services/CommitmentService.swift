@@ -307,6 +307,8 @@ struct CommitmentFulfillmentUpdate: Codable {
     }
 }
 
+/// Update model for changing the activity type of an existing commitment
+/// Used when a user wants to modify their daily commitment choice before it's fulfilled
 struct CommitmentActivityTypeUpdate: Codable {
     let activityType: CommitmentActivityType
     let updatedAt: String

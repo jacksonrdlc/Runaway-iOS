@@ -354,7 +354,10 @@ struct ActiveCommitmentView: View {
     }
 
     private func updateCommitment() {
-        guard let commitmentId = commitment.id else { return }
+        guard let commitmentId = commitment.id else {
+            errorMessage = "Unable to update commitment: Missing commitment ID"
+            return
+        }
         
         Task {
             do {
@@ -370,7 +373,10 @@ struct ActiveCommitmentView: View {
     }
 
     private func deleteCommitment() {
-        guard let commitmentId = commitment.id else { return }
+        guard let commitmentId = commitment.id else {
+            errorMessage = "Unable to delete commitment: Missing commitment ID"
+            return
+        }
         
         Task {
             do {
