@@ -55,6 +55,7 @@ struct ActivityCommitmentCard: View {
                 } else {
                     // Active commitment with countdown
                     ActiveCommitmentView(commitment: commitment)
+                        .environmentObject(dataManager)
                 }
             } else {
                 // No commitment - show commitment picker
@@ -182,7 +183,17 @@ struct NoCommitmentView: View {
 
 struct ActiveCommitmentView: View {
     let commitment: DailyCommitment
+    @EnvironmentObject var dataManager: DataManager
     @State private var currentTime = Date()
+    @State private var showingEditOptions = false
+    @State private var selectedActivityType: CommitmentActivityType
+    @State private var showingDeleteConfirmation = false
+    @State private var errorMessage: String?
+
+    init(commitment: DailyCommitment) {
+        self.commitment = commitment
+        self._selectedActivityType = State(initialValue: commitment.activityType)
+    }
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -233,9 +244,143 @@ struct ActiveCommitmentView: View {
                 // Progress ring
                 CommitmentProgressRing(timeRemaining: commitment.timeRemainingToday)
             }
+
+            // Edit options
+            if showingEditOptions {
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    Divider()
+                        .background(AppTheme.Colors.textTertiary.opacity(0.3))
+
+                    Text("Change commitment to:")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+
+                    Picker("Activity Type", selection: $selectedActivityType) {
+                        ForEach(CommitmentActivityType.allCases, id: \.self) { activityType in
+                            HStack {
+                                Image(systemName: activityType.icon)
+                                Text(activityType.displayName)
+                            }
+                            .tag(activityType)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    .accentColor(AppTheme.Colors.accent)
+
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Button(action: {
+                            showingEditOptions = false
+                        }) {
+                            Text("Cancel")
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.xs)
+                                .background(AppTheme.Colors.textTertiary.opacity(0.2))
+                                .cornerRadius(AppTheme.CornerRadius.small)
+                        }
+
+                        Button(action: updateCommitment) {
+                            Text("Update")
+                                .font(AppTheme.Typography.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.xs)
+                                .background(AppTheme.Colors.accent)
+                                .cornerRadius(AppTheme.CornerRadius.small)
+                        }
+                    }
+                }
+            }
+
+            // Action buttons
+            if !showingEditOptions {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Button(action: {
+                        showingEditOptions = true
+                    }) {
+                        HStack {
+                            Image(systemName: "pencil")
+                            Text("Change")
+                        }
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.accent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.xs)
+                        .background(AppTheme.Colors.accent.opacity(0.1))
+                        .cornerRadius(AppTheme.CornerRadius.small)
+                    }
+
+                    Button(action: {
+                        showingDeleteConfirmation = true
+                    }) {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Remove")
+                        }
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.error)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.xs)
+                        .background(AppTheme.Colors.error.opacity(0.1))
+                        .cornerRadius(AppTheme.CornerRadius.small)
+                    }
+                }
+            }
+
+            // Error message
+            if let error = errorMessage {
+                Text(error)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .padding(.horizontal, AppTheme.Spacing.sm)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .background(AppTheme.Colors.error.opacity(0.1))
+                    .cornerRadius(AppTheme.CornerRadius.small)
+            }
         }
         .onReceive(timer) { _ in
             currentTime = Date()
+        }
+        .alert("Remove Commitment", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                deleteCommitment()
+            }
+        } message: {
+            Text("Are you sure you want to remove today's commitment? You can set a new one afterwards.")
+        }
+    }
+
+    private func updateCommitment() {
+        guard let commitmentId = commitment.id else { return }
+        
+        Task {
+            do {
+                errorMessage = nil
+                try await dataManager.updateCommitmentActivityType(commitmentId, newActivityType: selectedActivityType)
+                showingEditOptions = false
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to update commitment: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func deleteCommitment() {
+        guard let commitmentId = commitment.id else { return }
+        
+        Task {
+            do {
+                errorMessage = nil
+                try await dataManager.deleteCommitment(commitmentId)
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to delete commitment: \(error.localizedDescription)"
+                }
+            }
         }
     }
 }

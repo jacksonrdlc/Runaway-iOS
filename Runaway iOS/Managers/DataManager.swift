@@ -255,6 +255,39 @@ class DataManager: ObservableObject {
         }
     }
 
+    /// Update an existing commitment's activity type
+    func updateCommitmentActivityType(_ commitmentId: Int, newActivityType: CommitmentActivityType) async throws {
+        isLoadingCommitment = true
+        defer { isLoadingCommitment = false }
+
+        do {
+            let updatedCommitment = try await CommitmentService.updateCommitmentActivityType(
+                commitmentId: commitmentId,
+                newActivityType: newActivityType
+            )
+            self.todaysCommitment = updatedCommitment
+            print("✅ DataManager: Updated commitment activity type to: \(newActivityType.rawValue)")
+        } catch {
+            print("❌ DataManager: Failed to update commitment: \(error)")
+            throw error
+        }
+    }
+
+    /// Delete a commitment
+    func deleteCommitment(_ commitmentId: Int) async throws {
+        isLoadingCommitment = true
+        defer { isLoadingCommitment = false }
+
+        do {
+            try await CommitmentService.deleteCommitment(id: commitmentId)
+            self.todaysCommitment = nil
+            print("✅ DataManager: Deleted commitment with id: \(commitmentId)")
+        } catch {
+            print("❌ DataManager: Failed to delete commitment: \(error)")
+            throw error
+        }
+    }
+
     /// Check if a new activity fulfills today's commitment
     func checkActivityFulfillsCommitment(_ activity: Activity) async {
         guard let userId = UserSession.shared.userId else {

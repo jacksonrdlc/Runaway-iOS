@@ -172,6 +172,34 @@ class CommitmentService {
         return commitments
     }
 
+    // MARK: - Update Commitment Activity Type
+    
+    static func updateCommitmentActivityType(commitmentId: Int, newActivityType: CommitmentActivityType) async throws -> DailyCommitment {
+        let now = DateFormatter.iso8601.string(from: Date())
+        
+        let updateData = CommitmentActivityTypeUpdate(
+            activityType: newActivityType,
+            updatedAt: now
+        )
+        
+        let response = try await supabase
+            .from("daily_commitments")
+            .update(updateData)
+            .eq("id", value: commitmentId)
+            .select()
+            .execute()
+        
+        let data = response.data
+        let updatedCommitment = try JSONDecoder().decode([DailyCommitment].self, from: data).first
+        
+        guard let result = updatedCommitment else {
+            throw SupabaseError.decodingError("Failed to decode updated commitment")
+        }
+        
+        print("✅ CommitmentService: Updated commitment activity type to: \(newActivityType.rawValue)")
+        return result
+    }
+
     // MARK: - Delete Commitment
 
     static func deleteCommitment(id: Int) async throws {
@@ -275,6 +303,16 @@ struct CommitmentFulfillmentUpdate: Codable {
     enum CodingKeys: String, CodingKey {
         case isFulfilled = "is_fulfilled"
         case fulfilledAt = "fulfilled_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+struct CommitmentActivityTypeUpdate: Codable {
+    let activityType: CommitmentActivityType
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case activityType = "activity_type"
         case updatedAt = "updated_at"
     }
 }
