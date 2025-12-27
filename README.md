@@ -1,5 +1,7 @@
 # Runaway iOS
 
+[![iOS CI/CD](https://github.com/jacksonrdlc/Runaway-iOS/actions/workflows/ios-build.yml/badge.svg)](https://github.com/jacksonrdlc/Runaway-iOS/actions/workflows/ios-build.yml)
+
 A modern fitness tracking application that helps users monitor and visualize their athletic activities. The app provides real-time activity tracking, detailed statistics, and a widget for quick access to your fitness data.
 
 ## Features
@@ -83,6 +85,18 @@ To enable the widget, long press on your home screen and add the "Runaway" widge
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+All pull requests are automatically built and tested using our CI/CD pipeline. See [.github/CI_CD_DOCUMENTATION.md](.github/CI_CD_DOCUMENTATION.md) for more details.
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration. The pipeline:
+- ✅ Builds the iOS app with Xcode 15.2
+- ✅ Runs unit tests
+- ✅ Performs code quality checks with SwiftLint
+- ✅ Builds the widget extension
+
+See the [CI/CD Documentation](.github/CI_CD_DOCUMENTATION.md) for configuration details and troubleshooting.
 
 ## License
 
