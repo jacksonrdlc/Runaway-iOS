@@ -169,7 +169,7 @@ jobs:
       
       - name: Resolve Swift Package Manager dependencies
         run: |
-          if [ -d "$WORKSPACE" ]; then
+          if [ -e "$WORKSPACE" ]; then
             echo "Resolving SPM dependencies for workspace..."
             xcodebuild -resolvePackageDependencies -workspace "$WORKSPACE" -scheme "$SCHEME"
           else
@@ -191,7 +191,7 @@ jobs:
           fi
           
           # Try workspace first, fall back to project
-          if [ -d "$WORKSPACE" ]; then
+          if [ -e "$WORKSPACE" ]; then
             echo "Building with workspace: $WORKSPACE"
             eval "xcodebuild clean build \
               -workspace '$WORKSPACE' \
@@ -233,7 +233,7 @@ jobs:
           fi
           
           # Try workspace first, fall back to project
-          if [ -d "$WORKSPACE" ]; then
+          if [ -e "$WORKSPACE" ]; then
             eval "xcodebuild test \
               -workspace '$WORKSPACE' \
               -scheme '$SCHEME' \
@@ -266,7 +266,7 @@ jobs:
           fi
           
           # Try workspace first, fall back to project
-          if [ -d "$WORKSPACE" ]; then
+          if [ -e "$WORKSPACE" ]; then
             eval "xcodebuild build \
               -workspace '$WORKSPACE' \
               -scheme 'RunawayWidgetExtension' \

@@ -2,7 +2,7 @@
 
 # Disabled Rules - Rules that are too strict or not applicable
 disabled_rules:
-  - trailing_whitespace  # Allow trailing whitespace (common in markdown and comments)
+  - trailing_whitespace  # Allow trailing whitespace in Swift code
   - line_length          # Configured below instead of disabled completely
 
 # Opt-In Rules - Additional rules to enable for better code quality
