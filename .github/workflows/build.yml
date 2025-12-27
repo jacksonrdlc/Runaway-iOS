@@ -17,15 +17,26 @@ jobs:
       env:
         MAPBOX_SECRET_TOKEN: ${{ secrets.MAPBOX_SECRET_TOKEN }}
       run: |
+        echo "=== Mapbox Auth Debug ==="
         if [ -z "$MAPBOX_SECRET_TOKEN" ]; then
-          echo "::error::MAPBOX_SECRET_TOKEN is not set"
+          echo "::error::MAPBOX_SECRET_TOKEN secret is NOT set or empty!"
           exit 1
         fi
+        echo "✓ MAPBOX_SECRET_TOKEN is set (length: ${#MAPBOX_SECRET_TOKEN} chars)"
+        echo "✓ Token starts with: ${MAPBOX_SECRET_TOKEN:0:10}..."
+
         echo "machine api.mapbox.com" > ~/.netrc
         echo "login mapbox" >> ~/.netrc
         echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
         chmod 600 ~/.netrc
-        echo "Mapbox authentication configured"
+
+        echo "=== Verifying .netrc ==="
+        echo "✓ .netrc created at ~/.netrc"
+        echo "✓ .netrc permissions: $(ls -la ~/.netrc)"
+        echo "✓ .netrc contents (masked password):"
+        head -2 ~/.netrc
+        echo "password sk.***masked***"
+        echo "=== Mapbox Auth Complete ==="
 
     - name: Select Xcode 16.2
       run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
