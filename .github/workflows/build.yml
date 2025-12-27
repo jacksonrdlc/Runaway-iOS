@@ -19,10 +19,13 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
 
+    - name: List available simulators
+      run: xcrun simctl list devices available
+
     - name: Build
       run: |
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
-          -destination "platform=iOS Simulator,name=iPhone 16" \
+          -destination "generic/platform=iOS Simulator" \
           -skipPackagePluginValidation \
           build
