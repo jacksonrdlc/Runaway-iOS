@@ -16,18 +16,19 @@ struct MetricPill: View {
             HStack(alignment: .bottom, spacing: 1) {
                 Text(value)
                     .font(AppTheme.Typography.caption.weight(.semibold))
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.caption2)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
             }
         }
         .padding(.horizontal, AppTheme.Spacing.sm)
-        .padding(.vertical, AppTheme.Spacing.xs)
-        .background(AppTheme.Colors.cardBackground)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .frame(minHeight: 44)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
         .cornerRadius(AppTheme.CornerRadius.large)
     }
 }

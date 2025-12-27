@@ -18,9 +18,9 @@ public final class RealtimeService: ObservableObject {
     }
     
     public static let shared = RealtimeService()
-    
+
     private var subscription: RealtimeSubscription?
-    
+
     private var channel: RealtimeChannelV2?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     private let backgroundTaskIdentifier = "com.jackrudelic.runawayios.realtime-background"
@@ -28,6 +28,9 @@ public final class RealtimeService: ObservableObject {
     private let maxReconnectionAttempts = 3
     private var lastHeartbeat: Date?
     private var heartbeatTimer: Timer?
+
+    // MARK: - Task Management (Memory Leak Fix)
+    private var subscriptionTasks: [Task<Void, Never>] = []
     
     private init() {
         print("RealtimeService initialized")
@@ -134,34 +137,51 @@ public final class RealtimeService: ObservableObject {
         
         // Start connection monitoring
         startConnectionMonitoring()
-        
-        // Listen for insertions
-        Task {
+
+        // Cancel any existing subscription tasks (memory leak fix)
+        cancelSubscriptionTasks()
+
+        // Listen for insertions - store task reference for cleanup
+        let insertionTask = Task {
             for await insertion in insertions {
+                guard !Task.isCancelled else { break }
                 print("🆕 Activity inserted via Realtime - refreshing data")
                 print("   Insertion data: \(insertion)")
                 await handleRealtimeUpdate()
                 await updateConnectionHealth(.healthy)
             }
         }
-        
-        // Listen for updates
-        Task {
+        subscriptionTasks.append(insertionTask)
+
+        // Listen for updates - store task reference for cleanup
+        let updateTask = Task {
             for await _ in updates {
+                guard !Task.isCancelled else { break }
                 print("Activity updated - refreshing data")
                 await handleRealtimeUpdate()
                 await updateConnectionHealth(.healthy)
             }
         }
-        
-        // Listen for deletions
-        Task {
+        subscriptionTasks.append(updateTask)
+
+        // Listen for deletions - store task reference for cleanup
+        let deletionTask = Task {
             for await _ in deletions {
+                guard !Task.isCancelled else { break }
                 print("Activity deleted - refreshing data")
                 await handleRealtimeUpdate()
                 await updateConnectionHealth(.healthy)
             }
         }
+        subscriptionTasks.append(deletionTask)
+    }
+
+    /// Cancel all subscription tasks to prevent memory leaks
+    private func cancelSubscriptionTasks() {
+        for task in subscriptionTasks {
+            task.cancel()
+        }
+        subscriptionTasks.removeAll()
     }
     
     private func handleRealtimeUpdate() async {
@@ -206,17 +226,20 @@ public final class RealtimeService: ObservableObject {
     private func cleanupSubscription() async {
         // Stop connection monitoring
         stopConnectionMonitoring()
-        
+
+        // Cancel all subscription tasks (memory leak fix)
+        cancelSubscriptionTasks()
+
         if let channel = self.channel {
             await supabase.removeChannel(channel)
             self.channel = nil
         }
-        
+
         await MainActor.run {
             self.isConnected = false
             self.connectionHealth = .disconnected
         }
-        
+
         print("Realtime subscription cleaned up")
     }
     

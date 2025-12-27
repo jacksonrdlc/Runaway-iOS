@@ -61,7 +61,9 @@ struct LoginView: View {
             .padding()
             .navigationTitle("Welcome")
             .navigationBarTitleDisplayMode(.large)
-            .background(AppTheme.Colors.background.ignoresSafeArea())
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .background(AppTheme.Colors.LightMode.background.ignoresSafeArea())
         }
         .alert("Error", isPresented: $showError) {
             Button("OK", role: .cancel) {}

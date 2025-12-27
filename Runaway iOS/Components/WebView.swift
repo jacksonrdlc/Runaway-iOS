@@ -210,6 +210,8 @@ struct ArticleWebView: View {
             }
             .navigationTitle(article.source)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .onDisappear {
                 cancelTimeout()
             }
@@ -218,23 +220,27 @@ struct ArticleWebView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
-                
+
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     HStack {
                         Button(action: goBack) {
                             Image(systemName: "chevron.left")
                         }
                         .disabled(!canGoBack)
-                        
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+
                         Button(action: goForward) {
                             Image(systemName: "chevron.right")
                         }
                         .disabled(!canGoForward)
-                        
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+
                         Button(action: openInSafari) {
                             Image(systemName: "safari")
                         }
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                     }
                 }
             }

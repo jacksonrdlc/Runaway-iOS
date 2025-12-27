@@ -29,7 +29,7 @@ struct ActivitiesView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.background.ignoresSafeArea()
+            AppTheme.Colors.LightMode.background.ignoresSafeArea()
             
             VStack {
                 if dataManager.activities.isEmpty {
@@ -37,10 +37,10 @@ struct ActivitiesView: View {
                         VStack(spacing: AppTheme.Spacing.md) {
                             ProgressView()
                                 .scaleEffect(1.2)
-                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.primary))
+                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.LightMode.accent))
                             Text("Loading activities...")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                         }
                     } else {
                         ScrollView {
@@ -98,18 +98,14 @@ struct ActivitiesView: View {
                         Image(systemName: "plus")
                             .font(.title2)
                             .fontWeight(.semibold)
-                            .foregroundColor(.white)
+                            .foregroundColor(.black)
                             .frame(width: AppTheme.Layout.fabSize, height: AppTheme.Layout.fabSize)
-                            .background(
-                                LinearGradient(
-                                    colors: [AppTheme.Colors.primary, AppTheme.Colors.primaryDark],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                            .background(AppTheme.Colors.accentGradient)
                             .clipShape(Circle())
-                            .themeShadow(.heavy)
+                            .themeShadow(.accentGlow)
                     }
+                    .accessibilityLabel("Start new activity")
+                    .accessibilityHint("Double tap to begin recording a workout")
                     .padding(.trailing, AppTheme.Layout.fabOffset)
                     .padding(.bottom, AppTheme.Layout.fabOffset)
                 }
@@ -133,7 +129,7 @@ struct ActivitiesView: View {
                         }
                     }) {
                         Image(systemName: AppIcons.refresh)
-                            .foregroundColor(AppTheme.Colors.primary)
+                            .foregroundColor(AppTheme.Colors.LightMode.accent)
                     }
                     .disabled(dataManager.isLoadingActivities)
                 }
@@ -150,16 +146,16 @@ struct EmptyActivitiesView: View {
         VStack(spacing: AppTheme.Spacing.lg) {
             Image(systemName: "figure.run.circle")
                 .font(.system(size: 80))
-                .foregroundColor(AppTheme.Colors.primary)
-            
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
+
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Activities Yet")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
-                
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
                 Text("Your running activities will appear here once you start tracking your workouts.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }

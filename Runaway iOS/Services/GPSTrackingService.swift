@@ -109,7 +109,25 @@ class GPSTrackingService: NSObject, ObservableObject {
     // MARK: - Public Methods
     func requestLocationPermission() {
         print("🔐 Requesting location permission. Current status: \(authorizationStatus.rawValue)")
-        locationManager.requestWhenInUseAuthorization()
+
+        switch authorizationStatus {
+        case .notDetermined:
+            // First, request "When In Use"
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse:
+            // Upgrade to "Always" for background tracking
+            locationManager.requestAlwaysAuthorization()
+        default:
+            break
+        }
+    }
+
+    /// Request background location permission (call after user starts a recording)
+    func requestAlwaysPermissionIfNeeded() {
+        if authorizationStatus == .authorizedWhenInUse {
+            print("🔐 Requesting Always location permission for background tracking")
+            locationManager.requestAlwaysAuthorization()
+        }
     }
     
     func startLocationUpdates() {
@@ -143,27 +161,32 @@ class GPSTrackingService: NSObject, ObservableObject {
         isTracking = true
         locationManager.startUpdatingLocation()
 
-        // Request background location if authorized
-        if authorizationStatus == .authorizedAlways {
-            locationManager.allowsBackgroundLocationUpdates = true
-            locationManager.pausesLocationUpdatesAutomatically = false
+        // Enable background location updates (works with both When In Use and Always)
+        // Note: With "When In Use", the blue status bar indicator will show
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.showsBackgroundLocationIndicator = true
+
+        // Request Always permission for better background support
+        if authorizationStatus == .authorizedWhenInUse {
+            print("📍 Requesting Always permission for seamless background tracking")
+            locationManager.requestAlwaysAuthorization()
         }
     }
     
     func stopTracking() {
         guard isTracking else { return }
-        
+
         print("⏹️ Stopping GPS tracking")
-        
+
         isTracking = false
         locationManager.stopUpdatingLocation()
-        
+
         // Disable background updates
-        if authorizationStatus == .authorizedAlways {
-            locationManager.allowsBackgroundLocationUpdates = false
-            locationManager.pausesLocationUpdatesAutomatically = true
-        }
-        
+        locationManager.allowsBackgroundLocationUpdates = false
+        locationManager.pausesLocationUpdatesAutomatically = true
+        locationManager.showsBackgroundLocationIndicator = false
+
         print("📊 Final tracking stats:")
         print("   - Total distance: \(String(format: "%.2f", totalDistanceMiles)) miles")
         print("   - Total points: \(routePoints.count)")

@@ -24,6 +24,7 @@ class UnifiedInsightsViewModel: ObservableObject {
     // Training Journal Data
     @Published var currentJournal: TrainingJournal?
     @Published var isLoadingJournal = false
+    @Published var journalError: JournalError?
 
     // Combined/Unified Data
     @Published var unifiedRecommendations: [String] = []
@@ -121,6 +122,7 @@ class UnifiedInsightsViewModel: ObservableObject {
 
     private func loadCurrentJournal() async {
         isLoadingJournal = true
+        journalError = nil
 
         guard let athleteId = await DataManager.shared.athlete?.id else {
             #if DEBUG
@@ -137,12 +139,18 @@ class UnifiedInsightsViewModel: ObservableObject {
             #if DEBUG
             print("✅ UnifiedInsights: Journal loaded")
             #endif
-        } catch {
-            #if DEBUG
-            print("⚠️ UnifiedInsights: Journal loading failed: \(error.localizedDescription)")
-            #endif
-            // Don't show error to user - journal is optional
+        } catch let error as JournalError {
+            self.journalError = error
             self.currentJournal = nil
+            #if DEBUG
+            print("❌ UnifiedInsights: Journal error: \(error.localizedDescription)")
+            #endif
+        } catch {
+            self.journalError = .decodingFailed(error)
+            self.currentJournal = nil
+            #if DEBUG
+            print("❌ UnifiedInsights: Journal error: \(error.localizedDescription)")
+            #endif
         }
 
         isLoadingJournal = false
@@ -194,5 +202,19 @@ class UnifiedInsightsViewModel: ObservableObject {
             return trainingLoad.totalVolumeKm
         }
         return nil
+    }
+
+    var journalErrorMessage: String? {
+        guard let error = journalError else { return nil }
+        switch error {
+        case .noEntriesFound:
+            return nil // Not really an error, just no data
+        case .invalidResponse, .httpError:
+            return "Unable to connect to journal service. Please try again."
+        case .apiError(_, let message):
+            return "Journal error: \(message)"
+        default:
+            return "Failed to load training journal."
+        }
     }
 }

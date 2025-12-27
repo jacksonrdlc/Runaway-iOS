@@ -6,9 +6,10 @@
 //
 
 import SwiftUI
-import MapKit
+import MapboxMaps
 import CoreLocation
 import UIKit
+import Combine
 
 // Create simplified card view
 struct CardView: View {
@@ -42,11 +43,11 @@ struct CardView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(activity.name ?? "Unknown Activity")
                                     .font(AppTheme.Typography.headline)
-                                    .foregroundColor(AppTheme.Colors.textPrimary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                                 Text(activity.type ?? "Unknown Type")
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                             }
                         }
 
@@ -56,15 +57,15 @@ struct CardView: View {
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(startDate, style: .date)
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
 
                                 Text(startDate, style: .time)
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.textTertiary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
 
                                 Text(timeAgoString(from: startDate))
                                     .font(.caption2)
-                                    .foregroundColor(AppTheme.Colors.textTertiary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
                             }
                         }
                     }
@@ -84,7 +85,7 @@ struct CardView: View {
                                 icon: AppIcons.distance,
                                 value: String(format: "%.2f", distance * 0.000621371),
                                 unit: "mi",
-                                color: .purple
+                                color: AppTheme.Colors.LightMode.accent
                             )
                         }
 
@@ -93,7 +94,7 @@ struct CardView: View {
                                 icon: AppIcons.time,
                                 value: formatTime(seconds: time),
                                 unit: "",
-                                color: AppTheme.Colors.accent
+                                color: AppTheme.Colors.LightMode.accent
                             )
                         }
 
@@ -102,7 +103,7 @@ struct CardView: View {
                                 icon: AppIcons.pace,
                                 value: calculatePace(distance: distance * 0.000621371, time: time),
                                 unit: "/mi",
-                                color: AppTheme.Colors.warning
+                                color: AppTheme.Colors.LightMode.accent
                             )
                         }
 
@@ -118,9 +119,13 @@ struct CardView: View {
             }
         }
         .buttonStyle(PlainButtonStyle())
-        .background(AppTheme.Colors.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
-        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityCardLabel)
+        .accessibilityHint("Double tap to view activity details")
+        .accessibilityAddTraits(.isButton)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
@@ -131,10 +136,34 @@ struct CardView: View {
     private var activityIcon: String {
         switch (activity.type ?? "").lowercased() {
         case "run", "running": return "figure.run"
+        case "trail run", "trail_run", "trailrun": return "figure.run"
         case "walk", "walking": return "figure.walk"
         case "bike", "cycling": return "bicycle"
         default: return "figure.mixed.cardio"
         }
+    }
+
+    private var accessibilityCardLabel: String {
+        var label = "\(activity.name ?? "Activity"), \(activity.type ?? "unknown type")"
+
+        if let date = activity.start_date {
+            label += ", \(date.formatted(date: .abbreviated, time: .shortened))"
+        }
+
+        if let distance = activity.distance {
+            label += ", \(String(format: "%.2f", distance * 0.000621371)) miles"
+        }
+
+        if let time = activity.elapsed_time {
+            label += ", \(formatTime(seconds: time))"
+        }
+
+        if let distance = activity.distance, let time = activity.elapsed_time {
+            let pace = calculatePace(distance: distance * 0.000621371, time: time)
+            label += ", pace \(pace) per mile"
+        }
+
+        return label
     }
     
     private func calculatePace(distance: Double, time: Double) -> String {
@@ -174,14 +203,25 @@ struct CardView: View {
             return nil
         }
 
+        // Helper function to normalize activity type for comparison
+        func normalizeType(_ type: String?) -> String {
+            return type?
+                .lowercased()
+                .replacingOccurrences(of: " ", with: "")
+                .replacingOccurrences(of: "_", with: "")
+                .replacingOccurrences(of: "-", with: "")
+                ?? ""
+        }
+
         // Get similar activities from the last 30 days (same type)
         let calendar = Calendar.current
         let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        let currentTypeNormalized = normalizeType(activity.type)
 
         let recentSimilarActivities = previousActivities.filter { previous in
             guard let prevDate = previous.start_date,
                   prevDate > thirtyDaysAgo,
-                  previous.type?.lowercased() == activity.type?.lowercased(),
+                  normalizeType(previous.type) == currentTypeNormalized,
                   let prevDistance = previous.distance,
                   let prevTime = previous.elapsed_time,
                   prevDistance > 0, prevTime > 0 else {
@@ -259,19 +299,19 @@ struct AIInsightsBanner: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
-                    Text("AI Insights")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.8))
+                    Text("AI INSIGHTS")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                         .textCase(.uppercase)
                 }
 
                 if let firstInsight = insights.messages.first {
                     Text(firstInsight)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 }
             }
 
@@ -280,24 +320,22 @@ struct AIInsightsBanner: View {
             // Right section - Additional insights
             if insights.messages.count > 1 {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("Performance")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.8))
+                    Text("PERFORMANCE")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                         .textCase(.uppercase)
 
                     ForEach(insights.messages.dropFirst(), id: \.self) { message in
                         Text(message)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.black)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                     }
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            Color(red: 0.2, green: 0.85, blue: 0.4) // Neon green like walk bar
-        )
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .clipShape(
             UnevenRoundedRectangle(
                 topLeadingRadius: 0,
@@ -311,77 +349,99 @@ struct AIInsightsBanner: View {
 
 struct ActivityMapView: UIViewRepresentable {
     let summaryPolyline: String?
-    
-    func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
-        mapView.delegate = context.coordinator
-        mapView.isZoomEnabled = false
-        mapView.mapType = .mutedStandard
-        mapView.isScrollEnabled = false
+
+    func makeUIView(context: Context) -> MapView {
+        let mapInitOptions = MapInitOptions(styleURI: .standard)
+        let mapView = MapView(frame: .zero, mapInitOptions: mapInitOptions)
+
+        // Disable interactions using gestures options
+        mapView.gestures.options.panEnabled = false
+        mapView.gestures.options.pinchEnabled = false
+        mapView.gestures.options.rotateEnabled = false
+        mapView.gestures.options.pitchEnabled = false
+
+        // Configure camera
+        mapView.mapboxMap.setCamera(to: CameraOptions(zoom: 14))
+
+        // Add route when style loads
+        mapView.mapboxMap.onStyleLoaded.observe { _ in
+            self.addRouteToMap(mapView)
+        }.store(in: &context.coordinator.cancellables)
+
         return mapView
     }
-    
-    func updateUIView(_ mapView: MKMapView, context: Context) {
+
+    func updateUIView(_ mapView: MapView, context: Context) {
+        // Route is added via onStyleLoaded callback
+        addRouteToMap(mapView)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator {
+        var cancellables = Set<AnyCancelable>()
+    }
+
+    private func addRouteToMap(_ mapView: MapView) {
         guard let polyline = summaryPolyline else { return }
-        
+
         // Decode the polyline
         let coordinates = decodePolyline(polyline)
-        
-        print("🗺️ Decoded coordinates: \(coordinates.count) points")
-        
-        // Show first few coordinates for debugging
-        for (index, coord) in coordinates.prefix(5).enumerated() {
-            print("🗺️ Coordinate \(index): lat=\(coord.latitude), lng=\(coord.longitude)")
+
+        guard !coordinates.isEmpty else { return }
+
+        // Remove existing route source and layer if they exist
+        try? mapView.mapboxMap.removeLayer(withId: "route-layer")
+        try? mapView.mapboxMap.removeSource(withId: "route-source")
+
+        // Convert coordinates to LineString
+        let lineCoordinates = coordinates.map { coord in
+            CLLocationCoordinate2D(latitude: coord.latitude, longitude: coord.longitude)
         }
-        
-        // Create the polyline overlay
-        let routePolyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
-        mapView.addOverlay(routePolyline)
-        
-        // Set the region to show the entire route
+
+        let lineString = LineString(lineCoordinates)
+
+        // Create GeoJSON source
+        var source = GeoJSONSource(id: "route-source")
+        source.data = .geometry(.lineString(lineString))
+
+        // Add source to map
+        try? mapView.mapboxMap.addSource(source)
+
+        // Create line layer for the route
+        var lineLayer = LineLayer(id: "route-layer", source: "route-source")
+        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.LightMode.accent)))
+        lineLayer.lineWidth = .constant(4)
+        lineLayer.lineCap = .constant(.round)
+        lineLayer.lineJoin = .constant(.round)
+
+        // Add layer to map
+        try? mapView.mapboxMap.addLayer(lineLayer)
+
+        // Calculate bounds and fit camera
         if let firstCoordinate = coordinates.first {
             let minLat = coordinates.map { $0.latitude }.min() ?? firstCoordinate.latitude
             let maxLat = coordinates.map { $0.latitude }.max() ?? firstCoordinate.latitude
             let minLon = coordinates.map { $0.longitude }.min() ?? firstCoordinate.longitude
             let maxLon = coordinates.map { $0.longitude }.max() ?? firstCoordinate.longitude
-            
-            print("🗺️ Coordinate bounds:")
-            print("🗺️ Lat range: \(minLat) to \(maxLat)")
-            print("🗺️ Lng range: \(minLon) to \(maxLon)")
-            
+
             let center = CLLocationCoordinate2D(
                 latitude: (minLat + maxLat) / 2,
                 longitude: (minLon + maxLon) / 2
             )
-            
-            let span = MKCoordinateSpan(
-                latitudeDelta: (maxLat - minLat) * 1.5,
-                longitudeDelta: (maxLon - minLon) * 1.5
-            )
-            
-            print("🗺️ Map center: \(center.latitude), \(center.longitude)")
-            print("🗺️ Map span: \(span.latitudeDelta), \(span.longitudeDelta)")
-            
-            let region = MKCoordinateRegion(center: center, span: span)
-            mapView.setRegion(region, animated: true)
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-    
-    class Coordinator: NSObject, MKMapViewDelegate {
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let polyline = overlay as? MKPolyline {
-                let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = UIColor(.orange)
-                renderer.lineWidth = 4
-                renderer.lineCap = .round
-                renderer.lineJoin = .round
-                return renderer
-            }
-            return MKOverlayRenderer(overlay: overlay)
+
+            // Add padding to ensure the route is fully visible
+            let latDelta = (maxLat - minLat) * 1.5
+            let lonDelta = (maxLon - minLon) * 1.5
+
+            // Calculate zoom level from delta
+            let maxDelta = max(latDelta, lonDelta)
+            let zoom = log2(360 / maxDelta) - 1
+
+            let camera = CameraOptions(center: center, zoom: zoom)
+            mapView.mapboxMap.setCamera(to: camera)
         }
     }
     

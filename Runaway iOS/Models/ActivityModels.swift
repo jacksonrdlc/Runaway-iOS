@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 // MARK: - Activity Models
-public struct Activity: Identifiable, Codable, Equatable {
+public struct Activity: Identifiable, Codable, Equatable, Sendable {
     public let id: Int
     public let name: String?
     public let type: String?

@@ -228,15 +228,29 @@ class ActivityRecordingService: ObservableObject {
             let coordinates = session.routePoints.map { $0.coordinate }
             let encodedPolyline = polylineService.encode(coordinates: coordinates)
 
-            // Create activity for database
+            // Get activity type ID from database IDs
+            let activityTypeId: Int
+            switch session.activityType.lowercased() {
+            case "run": activityTypeId = 103
+            case "ride", "bike": activityTypeId = 104
+            case "walk": activityTypeId = 105
+            case "hike": activityTypeId = 106
+            case "swim": activityTypeId = 109
+            case "workout": activityTypeId = 110
+            case "weight training", "weighttraining": activityTypeId = 111
+            case "yoga": activityTypeId = 112
+            default: activityTypeId = 103 // Default to Run
+            }
+
+            // Create activity for database with correct field names
             return [
                 "athlete_id": AnyEncodable(userId),
                 "name": AnyEncodable(session.name),
-                "type": AnyEncodable(session.activityType),
+                "activity_type_id": AnyEncodable(activityTypeId),
                 "distance": AnyEncodable(session.totalDistance),
-                "elapsed_time": AnyEncodable(session.elapsedTime),
-                "start_date": AnyEncodable(session.startTime),
-                "summary_polyline": AnyEncodable(encodedPolyline)
+                "elapsed_time": AnyEncodable(Int(session.elapsedTime)),
+                "activity_date": AnyEncodable(session.startTime.timeIntervalSince1970),
+                "map_summary_polyline": AnyEncodable(encodedPolyline)
             ]
         }.value
 

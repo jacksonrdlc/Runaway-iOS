@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import MapKit
+import MapboxMaps
 import CoreLocation
 
 struct ActiveRecordingView: View {
@@ -17,19 +17,15 @@ struct ActiveRecordingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingStopConfirmation = false
     @State private var showingPostRecording = false
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-    )
 
     @StateObject private var timerManager = TimerUpdateManager()
     @StateObject private var mapThrottler = MapRegionThrottler()
+    @StateObject private var audioCoaching = AudioCoachingService()
     
     var body: some View {
         ZStack {
-            // Map with route tracking
-            ActiveRecordingMapView(
-                region: $region,
+            // MapBox map with route tracking and 3D buildings
+            ActiveRecordingMapBoxView(
                 currentLocation: recordingService.gpsService.currentLocation,
                 routePoints: recordingService.gpsService.routePoints
             )
@@ -123,9 +119,59 @@ struct ActiveRecordingView: View {
                         .padding(.vertical, 8)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                     }
+
+                    // Audio coaching indicator
+                    if let lastPrompt = audioCoaching.lastPromptMessage,
+                       let promptTime = audioCoaching.lastPromptTime,
+                       Date().timeIntervalSince(promptTime) < 5.0 {
+                        HStack {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .foregroundColor(.blue)
+                            Text(lastPrompt)
+                                .foregroundColor(.white)
+                                .font(.subheadline)
+                                .lineLimit(2)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .animation(.easeInOut, value: lastPrompt)
+                    }
                     
                     // Control buttons
-                    HStack(spacing: 20) {
+                    HStack(spacing: 16) {
+                        // Audio coaching toggle
+                        Button(action: {
+                            audioCoaching.isEnabled.toggle()
+                        }) {
+                            Image(systemName: audioCoaching.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(audioCoaching.isEnabled ? .blue : .gray, in: Circle())
+                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
+
+                        // Voice input button
+                        Button(action: {
+                            Task {
+                                await audioCoaching.toggleVoiceInput()
+                            }
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(audioCoaching.isListening ? .green : .purple)
+                                    .frame(width: 44, height: 44)
+                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                                Image(systemName: audioCoaching.isListening ? "waveform" : "mic.fill")
+                                    .font(.title3)
+                                    .foregroundColor(.white)
+                                    .symbolEffect(.variableColor.iterative, isActive: audioCoaching.isListening)
+                            }
+                        }
+
                         // Pause/Resume button
                         Button(action: togglePauseResume) {
                             Image(systemName: pauseResumeIcon)
@@ -136,7 +182,7 @@ struct ActiveRecordingView: View {
                                 .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
                         }
                         .disabled(recordingService.isAutopaused)
-                        
+
                         // Stop button
                         Button(action: {
                             showingStopConfirmation = true
@@ -157,16 +203,13 @@ struct ActiveRecordingView: View {
         .navigationBarHidden(true)
         .onAppear {
             timerManager.start()
-            centerMapOnCurrentLocation()
+            // Bind audio coaching to recording service
+            audioCoaching.bind(to: recordingService)
         }
         .onDisappear {
             timerManager.stop()
-        }
-        .onChange(of: mapThrottler.shouldUpdateRegion) { shouldUpdate in
-            if shouldUpdate {
-                updateMapRegion()
-                mapThrottler.resetUpdateFlag()
-            }
+            // Unbind audio coaching
+            audioCoaching.unbind()
         }
         .confirmationDialog("Stop Recording", isPresented: $showingStopConfirmation) {
             Button("Stop and Save", role: .destructive) {
@@ -210,36 +253,6 @@ struct ActiveRecordingView: View {
     
     // MARK: - Methods
 
-    private func updateMapRegion() {
-        // Follow user's current location with throttling
-        if let location = recordingService.gpsService.currentLocation {
-            let newRegion = MKCoordinateRegion(
-                center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            )
-
-            // Only update if the change is significant to avoid constant updates
-            let currentCenter = region.center
-            let latDiff = abs(currentCenter.latitude - newRegion.center.latitude)
-            let lonDiff = abs(currentCenter.longitude - newRegion.center.longitude)
-
-            if latDiff > 0.0001 || lonDiff > 0.0001 {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    region = newRegion
-                }
-            }
-        }
-    }
-    
-    private func centerMapOnCurrentLocation() {
-        if let location = recordingService.gpsService.currentLocation {
-            region = MKCoordinateRegion(
-                center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            )
-        }
-    }
-    
     private func togglePauseResume() {
         switch recordingService.state {
         case .recording:
@@ -301,78 +314,51 @@ struct MetricDisplay: View {
     }
 }
 
-// MARK: - Active Recording Map View
-struct ActiveRecordingMapView: UIViewRepresentable {
-    @Binding var region: MKCoordinateRegion
+// MARK: - Active Recording MapBox View
+struct ActiveRecordingMapBoxView: View {
     let currentLocation: CLLocation?
     let routePoints: [GPSRoutePoint]
-    
-    func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
-        mapView.delegate = context.coordinator
-        mapView.showsUserLocation = true
-        mapView.userTrackingMode = .follow
-        mapView.mapType = .standard
-        mapView.isZoomEnabled = true
-        mapView.isScrollEnabled = true
-        mapView.showsCompass = false
-        mapView.showsScale = false
-        
-        return mapView
-    }
-    
-    func updateUIView(_ mapView: MKMapView, context: Context) {
-        // Update region
-        if abs(mapView.region.center.latitude - region.center.latitude) > 0.001 ||
-           abs(mapView.region.center.longitude - region.center.longitude) > 0.001 {
-            mapView.setRegion(region, animated: true)
-        }
-        
-        // Update route polyline
-        updateRouteOverlay(mapView: mapView)
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    private func updateRouteOverlay(mapView: MKMapView) {
-        // Remove existing route overlays
-        let existingOverlays = mapView.overlays.filter { $0 is MKPolyline }
-        mapView.removeOverlays(existingOverlays)
-        
-        // Add new route if we have enough points
-        if routePoints.count > 1 {
-            let coordinates = routePoints.map { $0.coordinate }
-            let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
-            mapView.addOverlay(polyline)
-        }
-    }
-    
-    class Coordinator: NSObject, MKMapViewDelegate {
-        let parent: ActiveRecordingMapView
-        
-        init(_ parent: ActiveRecordingMapView) {
-            self.parent = parent
-        }
-        
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let polyline = overlay as? MKPolyline {
-                let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = UIColor.systemBlue
-                renderer.lineWidth = 6
-                renderer.lineCap = .round
-                renderer.lineJoin = .round
-                return renderer
+
+    @State private var mapView: MapboxMaps.MapView?
+    private let routeRenderer = MapBoxRouteRenderer()
+
+    var body: some View {
+        MapBoxBaseView(
+            config: .recording,
+            currentLocation: currentLocation,
+            onMapLoaded: {
+                // Map is ready, can add route if needed
+                updateRoute()
             }
-            return MKOverlayRenderer(overlay: overlay)
-        }
-        
-        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            DispatchQueue.main.async {
-                self.parent.region = mapView.region
+        )
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MapViewCreated"))) { notification in
+            if let mapView = notification.object as? MapboxMaps.MapView {
+                self.mapView = mapView
+                updateRoute()
             }
         }
+        .onChange(of: routePoints.count) { _ in
+            updateRoute()
+        }
+    }
+
+    private func updateRoute() {
+        guard let mapView = mapView, routePoints.count > 1 else { return }
+
+        // Convert GPSRoutePoints to coordinates
+        let coordinates = routePoints.map { $0.coordinate }
+
+        // Encode as polyline for route renderer
+        let polylineService = PolylineEncodingService()
+        let encodedPolyline = polylineService.encode(coordinates: coordinates)
+
+        // Add route to map
+        routeRenderer.addRoute(
+            to: mapView,
+            polyline: encodedPolyline,
+            style: .recording,
+            showMarkers: false
+        )
     }
 }
 

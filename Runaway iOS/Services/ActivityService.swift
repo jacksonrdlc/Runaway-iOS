@@ -46,11 +46,20 @@ class ActivityService {
         return activities
     }
     
-    // Function to get all activities for a user in a time range
-    static func getAllActivitiesByUser(userId: Int) async throws -> [Activity] {
+    // MARK: - Pagination Support
+
+    struct PaginatedResponse<T> {
+        let items: [T]
+        let hasMore: Bool
+        let totalCount: Int?
+    }
+
+    static let defaultPageSize = 50
+
+    // Function to get all activities for a user in a time range (with pagination)
+    static func getAllActivitiesByUser(userId: Int, limit: Int = defaultPageSize, offset: Int = 0) async throws -> [Activity] {
         let startOfThisYear = Date().startOfThisYear
-        print("🔍 ActivityService: Start of year: \(startOfThisYear)")
-        print("🔍 ActivityService: Fetching activities for user \(userId)")
+        print("🔍 ActivityService: Fetching activities for user \(userId) (limit: \(limit), offset: \(offset))")
 
         let activities: [Activity] = try await supabase
             .from("activities")
@@ -70,15 +79,43 @@ class ActivityService {
             .eq("athlete_id", value: userId)
             .gte("activity_date", value: startOfThisYear)
             .order("activity_date", ascending: false)
+            .range(from: offset, to: offset + limit - 1)
             .execute()
             .value
 
         print("🔍 ActivityService: Successfully fetched \(activities.count) activities")
-        if let firstActivity = activities.first {
-            print("🔍 ActivityService: First activity type: '\(firstActivity.type ?? "nil")'")
+        return activities
+    }
+
+    // Function to get paginated activities with hasMore indicator
+    static func getActivitiesPaginated(userId: Int, page: Int = 0, pageSize: Int = defaultPageSize) async throws -> PaginatedResponse<Activity> {
+        let offset = page * pageSize
+        let activities = try await getAllActivitiesByUser(userId: userId, limit: pageSize + 1, offset: offset)
+
+        let hasMore = activities.count > pageSize
+        let items = hasMore ? Array(activities.dropLast()) : activities
+
+        return PaginatedResponse(items: items, hasMore: hasMore, totalCount: nil)
+    }
+
+    // Function to load all activities (for backwards compatibility) - loads in batches
+    static func getAllActivitiesByUserComplete(userId: Int) async throws -> [Activity] {
+        var allActivities: [Activity] = []
+        var offset = 0
+        let batchSize = 100
+
+        while true {
+            let batch = try await getAllActivitiesByUser(userId: userId, limit: batchSize, offset: offset)
+            allActivities.append(contentsOf: batch)
+
+            if batch.count < batchSize {
+                break // No more activities
+            }
+            offset += batchSize
         }
 
-        return activities
+        print("🔍 ActivityService: Loaded \(allActivities.count) total activities")
+        return allActivities
     }
     
     // Function to get a single activity by ID
@@ -324,8 +361,99 @@ class ActivityService {
             .eq("id", value: id)
             .execute()
             .value
-        
+
         // Refresh widgets after deleting activity
         WidgetRefreshService.refreshForActivityUpdate()
+    }
+
+    // MARK: - Aggregated Stats (Database Functions)
+
+    /// Response from get_yearly_running_stats database function
+    struct YearlyRunningStats: Codable {
+        let year: Int
+        let total_runs: Int
+        let total_distance_meters: Double
+        let total_distance_miles: Double
+        let total_moving_time_seconds: Int64
+        let total_elapsed_time_seconds: Int64
+        let total_elevation_gain_meters: Double
+        let average_pace_per_mile_seconds: Double?
+        let longest_run_meters: Double
+        let fastest_pace_per_mile_seconds: Double?
+    }
+
+    /// Response from get_monthly_running_stats database function
+    struct MonthlyRunningStats: Codable {
+        let year: Int
+        let month: Int
+        let total_runs: Int
+        let total_distance_meters: Double
+        let total_distance_miles: Double
+        let total_moving_time_seconds: Int64
+        let total_elevation_gain_meters: Double
+        let average_pace_per_mile_seconds: Double?
+    }
+
+    /// Get yearly running stats from database (not affected by pagination)
+    static func getYearlyRunningStats(athleteId: Int, year: Int? = nil) async throws -> YearlyRunningStats {
+        let targetYear = year ?? Calendar.current.component(.year, from: Date())
+
+        let stats: [YearlyRunningStats] = try await supabase
+            .rpc("get_yearly_running_stats", params: [
+                "p_athlete_id": athleteId,
+                "p_year": targetYear
+            ])
+            .execute()
+            .value
+
+        guard let result = stats.first else {
+            // Return empty stats if no data
+            return YearlyRunningStats(
+                year: targetYear,
+                total_runs: 0,
+                total_distance_meters: 0,
+                total_distance_miles: 0,
+                total_moving_time_seconds: 0,
+                total_elapsed_time_seconds: 0,
+                total_elevation_gain_meters: 0,
+                average_pace_per_mile_seconds: nil,
+                longest_run_meters: 0,
+                fastest_pace_per_mile_seconds: nil
+            )
+        }
+
+        return result
+    }
+
+    /// Get monthly running stats from database
+    static func getMonthlyRunningStats(athleteId: Int, year: Int? = nil, month: Int? = nil) async throws -> MonthlyRunningStats {
+        let now = Date()
+        let targetYear = year ?? Calendar.current.component(.year, from: now)
+        let targetMonth = month ?? Calendar.current.component(.month, from: now)
+
+        let stats: [MonthlyRunningStats] = try await supabase
+            .rpc("get_monthly_running_stats", params: [
+                "p_athlete_id": athleteId,
+                "p_year": targetYear,
+                "p_month": targetMonth
+            ])
+            .execute()
+            .value
+
+        guard let result = stats.first else {
+            // Return empty stats if no data
+            return MonthlyRunningStats(
+                year: targetYear,
+                month: targetMonth,
+                total_runs: 0,
+                total_distance_meters: 0,
+                total_distance_miles: 0,
+                total_moving_time_seconds: 0,
+                total_elevation_gain_meters: 0,
+                average_pace_per_mile_seconds: nil
+            )
+        }
+
+        return result
     }
 }

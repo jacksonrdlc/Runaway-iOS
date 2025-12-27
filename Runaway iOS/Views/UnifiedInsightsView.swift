@@ -27,7 +27,7 @@ struct UnifiedInsightsView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.Colors.background.ignoresSafeArea()
+            Color.white.ignoresSafeArea()
 
             if dataManager.activities.isEmpty {
                 EmptyInsightsStateView()
@@ -98,7 +98,7 @@ struct UnifiedInsightsView: View {
                     }
                 }) {
                     Image(systemName: "arrow.clockwise")
-                        .foregroundColor(AppTheme.Colors.primary)
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
             #endif
@@ -142,16 +142,16 @@ struct EmptyInsightsStateView: View {
         VStack(spacing: AppTheme.Spacing.xl) {
             Image(systemName: "chart.bar.doc.horizontal")
                 .font(.system(size: 80))
-                .foregroundColor(AppTheme.Colors.primary)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
 
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Insights Available")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text("Start logging activities to see AI-powered insights and performance analytics.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -169,12 +169,12 @@ struct LoadingInsightsStateView: View {
         VStack(spacing: AppTheme.Spacing.lg) {
             ZStack {
                 Circle()
-                    .stroke(AppTheme.Colors.cardBackground, lineWidth: 8)
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 8)
                     .frame(width: 80, height: 80)
 
                 Circle()
                     .trim(from: 0, to: 0.7)
-                    .stroke(AppTheme.Colors.primary, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(AppTheme.Colors.LightMode.accent, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(animationPhase))
                     .animation(.linear(duration: 2).repeatForever(autoreverses: false), value: animationPhase)
@@ -183,11 +183,11 @@ struct LoadingInsightsStateView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("Loading Insights")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text("Analyzing your performance data...")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }

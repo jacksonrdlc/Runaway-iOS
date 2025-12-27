@@ -17,7 +17,7 @@ struct HeroStatsSection: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("At a Glance")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 .padding(.horizontal)
 
             if let data = quickWinsData {
@@ -64,7 +64,7 @@ struct PerformanceStatusBadge: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Performance Trend")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
 
                 Text(trend.description)
                     .font(AppTheme.Typography.headline)
@@ -75,7 +75,7 @@ struct PerformanceStatusBadge: View {
             Spacer()
 
             Image(systemName: "chevron.right")
-                .foregroundColor(AppTheme.Colors.textTertiary)
+                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
         }
         .padding()
         .background(trendColor.opacity(0.1))
@@ -111,14 +111,14 @@ struct UnifiedRecommendationsBanner: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
                 Image(systemName: "lightbulb.fill")
-                    .foregroundColor(.yellow)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 Text("Recommendations")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 Spacer()
                 Button(action: { isExpanded.toggle() }) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
             }
 
@@ -127,14 +127,14 @@ struct UnifiedRecommendationsBanner: View {
                     Text("\(index + 1)")
                         .font(AppTheme.Typography.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(.black)
+                        .foregroundColor(.white)
                         .frame(width: 20, height: 20)
-                        .background(AppTheme.Colors.accent)
+                        .background(AppTheme.Colors.LightMode.accent)
                         .clipShape(Circle())
 
                     Text(recommendation)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
@@ -145,14 +145,18 @@ struct UnifiedRecommendationsBanner: View {
                 Button(action: { isExpanded = true }) {
                     Text("See \(recommendations.count - 3) more")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.accent)
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
+                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -183,7 +187,7 @@ struct DeepDiveNavigationGrid: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Deep Dive Analysis")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.Spacing.md) {
                 if let weather = quickWinsData?.analyses.weatherContext {
@@ -267,11 +271,11 @@ struct DeepDiveCard: View {
 
                 Text(title)
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text(subtitle)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
             }
             .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
             .padding()
@@ -344,15 +348,15 @@ struct TrainingJournalSection: View {
             // Header
             HStack {
                 Image(systemName: "book.fill")
-                    .foregroundColor(AppTheme.Colors.accent)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 Text("Training Journal")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 Spacer()
                 if let journal = journal {
                     Text(journal.weekRangeString)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
             }
             .padding(.horizontal)
@@ -367,21 +371,21 @@ struct TrainingJournalSection: View {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
                         HStack {
                             Image(systemName: "quote.bubble.fill")
-                                .foregroundColor(AppTheme.Colors.accent.opacity(0.6))
+                                .foregroundColor(AppTheme.Colors.LightMode.accent.opacity(0.6))
                                 .font(.caption)
                             Text("Coach's Summary")
                                 .font(AppTheme.Typography.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                         }
                         .padding(.horizontal)
 
                         Text(journal.narrative)
                             .font(AppTheme.Typography.body)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                             .lineSpacing(4)
                             .padding()
-                            .background(AppTheme.Colors.cardBackground.opacity(0.5))
+                            .background(AppTheme.Colors.LightMode.surfaceBackground)
                             .cornerRadius(AppTheme.CornerRadius.medium)
                             .padding(.horizontal)
                     }
@@ -391,15 +395,15 @@ struct TrainingJournalSection: View {
                         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
                             HStack {
                                 Image(systemName: "lightbulb.fill")
-                                    .foregroundColor(.yellow)
+                                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                                 Text("Key Insights")
                                     .font(AppTheme.Typography.subheadline)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                                 Spacer()
                                 Button(action: { isExpanded.toggle() }) {
                                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                        .foregroundColor(AppTheme.Colors.textSecondary)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                                 }
                             }
                             .padding(.horizontal)
@@ -413,7 +417,7 @@ struct TrainingJournalSection: View {
                                 Button(action: { isExpanded = true }) {
                                     Text("See \(journal.insights.count - 3) more")
                                         .font(AppTheme.Typography.caption)
-                                        .foregroundColor(AppTheme.Colors.accent)
+                                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                                 }
                                 .padding(.horizontal)
                             }
@@ -426,15 +430,15 @@ struct TrainingJournalSection: View {
                 VStack(spacing: AppTheme.Spacing.md) {
                     Image(systemName: "book.closed")
                         .font(.system(size: 48))
-                        .foregroundColor(AppTheme.Colors.textTertiary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
 
                     Text("No journal entry yet")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
 
                     Text("Your weekly training summary will appear here")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.textTertiary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
@@ -442,8 +446,13 @@ struct TrainingJournalSection: View {
             }
         }
         .padding(.vertical, AppTheme.Spacing.sm)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
+                .stroke(Color.black.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -470,22 +479,22 @@ struct JournalStatBox: View {
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
             Image(systemName: icon)
-                .foregroundColor(AppTheme.Colors.accent)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
                 .font(.title3)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 Text(value)
                     .font(AppTheme.Typography.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
             }
             Spacer()
         }
         .padding(AppTheme.Spacing.sm)
-        .background(AppTheme.Colors.background.opacity(0.5))
+        .background(AppTheme.Colors.LightMode.surfaceBackground)
         .cornerRadius(AppTheme.CornerRadius.small)
     }
 }
@@ -502,7 +511,7 @@ struct InsightRow: View {
 
             Text(insight.text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer()

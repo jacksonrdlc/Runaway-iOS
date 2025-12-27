@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Daily Commitment Model
 
-struct DailyCommitment: Codable, Identifiable {
+struct DailyCommitment: Codable, Identifiable, Sendable {
     let id: Int?
     let athleteId: Int?  // Changed from userId to athleteId to match ERD pattern
     let commitmentDate: String // YYYY-MM-DD format

@@ -81,7 +81,7 @@ struct ChatView: View {
             )
             .focused($isMessageFieldFocused)
         }
-        .background(AppTheme.Colors.background)
+        .background(AppTheme.Colors.LightMode.background)
         .navigationTitle("AI Coach")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -104,7 +104,7 @@ struct ChatView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .foregroundColor(AppTheme.Colors.primary)
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
         }
@@ -118,16 +118,16 @@ struct WelcomeView: View {
         VStack(spacing: AppTheme.Spacing.lg) {
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 60))
-                .foregroundColor(AppTheme.Colors.primary)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
 
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("AI Running Coach")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text("Ask me anything about your training, get personalized advice, or request analysis of your performance.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -151,15 +151,15 @@ struct ChatMessageBubble: View {
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
                 Text(message.content)
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(isUser ? .white : AppTheme.Colors.textPrimary)
+                    .foregroundColor(isUser ? .white : AppTheme.Colors.LightMode.textPrimary)
                     .padding(AppTheme.Spacing.md)
-                    .background(isUser ? AppTheme.Colors.primary : AppTheme.Colors.cardBackground)
+                    .background(isUser ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.cardBackground)
                     .cornerRadius(AppTheme.CornerRadius.medium)
 
                 if let date = ISO8601DateFormatter().date(from: message.timestamp) {
                     Text(date, style: .time)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.textTertiary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
                         .padding(.horizontal, 4)
                 }
             }
@@ -179,7 +179,7 @@ struct TypingIndicator: View {
         HStack(spacing: 8) {
             ForEach(0..<3) { index in
                 Circle()
-                    .fill(AppTheme.Colors.primary)
+                    .fill(AppTheme.Colors.LightMode.accent)
                     .frame(width: 8, height: 8)
                     .opacity(animating ? 0.3 : 1.0)
                     .animation(
@@ -191,7 +191,7 @@ struct TypingIndicator: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .onAppear {
             animating = true
@@ -209,7 +209,7 @@ struct SuggestedPromptsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Suggestions")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 .padding(.horizontal)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -220,10 +220,10 @@ struct SuggestedPromptsView: View {
                         }) {
                             Text(prompt)
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.primary)
+                                .foregroundColor(AppTheme.Colors.LightMode.accent)
                                 .padding(.horizontal, AppTheme.Spacing.md)
                                 .padding(.vertical, AppTheme.Spacing.sm)
-                                .background(AppTheme.Colors.primary.opacity(0.1))
+                                .background(AppTheme.Colors.LightMode.accent.opacity(0.1))
                                 .cornerRadius(AppTheme.CornerRadius.medium)
                         }
                     }
@@ -257,14 +257,14 @@ struct MessageInputView: View {
             }) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 32))
-                    .foregroundColor(text.isEmpty || isLoading ? .gray : AppTheme.Colors.primary)
+                    .foregroundColor(text.isEmpty || isLoading ? .gray : AppTheme.Colors.LightMode.accent)
             }
             .buttonStyle(.plain)
             .disabled(text.isEmpty || isLoading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
     }
 }
 
@@ -364,11 +364,11 @@ struct AnalysisDetailSheet: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                     Text("Analysis Type: \(analysis.type.capitalized)")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                     Text("The coach has run an analysis for you. Check your Insights tab for detailed results.")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
 
                     Button(action: {
                         dismiss()
@@ -379,7 +379,7 @@ struct AnalysisDetailSheet: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(AppTheme.Colors.primary)
+                            .background(AppTheme.Colors.LightMode.accent)
                             .cornerRadius(AppTheme.CornerRadius.medium)
                     }
                 }
@@ -387,11 +387,14 @@ struct AnalysisDetailSheet: View {
             }
             .navigationTitle("Analysis Complete")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
         }

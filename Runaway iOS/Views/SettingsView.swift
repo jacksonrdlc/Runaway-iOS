@@ -19,7 +19,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.Colors.background.ignoresSafeArea()
+                AppTheme.Colors.LightMode.background.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.lg) {
@@ -36,12 +36,14 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.primary)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
             .sheet(isPresented: $showingStravaSheet) {
@@ -77,16 +79,19 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Profile")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
-            SettingsRow(
-                icon: "person.circle",
-                title: "Account Information",
-                subtitle: "Manage your profile details",
-                color: AppTheme.Colors.primary
-            ) {
-                // TODO: Navigate to account settings
+            NavigationLink(destination: AccountInformationView()) {
+                SettingsRow(
+                    icon: "person.circle",
+                    title: "Account Information",
+                    subtitle: "Manage your profile details",
+                    color: AppTheme.Colors.primary
+                ) {
+                    // Navigation handled by NavigationLink
+                }
             }
+            .buttonStyle(PlainButtonStyle())
         }
     }
 
@@ -94,7 +99,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("App Settings")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             SettingsRow(
                 icon: "bell",
@@ -129,7 +134,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Integrations")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             StravaIntegrationRow(
                 stravaService: stravaService,
@@ -164,7 +169,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Support")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             SettingsRow(
                 icon: "questionmark.circle",
@@ -192,7 +197,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Debug")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             NavigationLink(destination: DebugMenuView()) {
                 SettingsRow(
@@ -213,7 +218,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Account")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             SettingsRow(
                 icon: "rectangle.portrait.and.arrow.right",
@@ -234,11 +239,11 @@ struct SettingsView: View {
         VStack(spacing: AppTheme.Spacing.sm) {
             Text("Runaway iOS")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textTertiary)
+                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
 
             Text("Version 1.0.0")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textTertiary)
+                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
         }
         .padding(.top, AppTheme.Spacing.xl)
     }
@@ -287,11 +292,11 @@ struct SettingsRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(AppTheme.Typography.body.weight(.medium))
-                        .foregroundColor(isDestructive ? AppTheme.Colors.error : AppTheme.Colors.textPrimary)
+                        .foregroundColor(isDestructive ? AppTheme.Colors.error : AppTheme.Colors.LightMode.textPrimary)
 
                     Text(subtitle)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
                 
                 Spacer()
@@ -300,7 +305,7 @@ struct SettingsRow: View {
                 if !isDestructive {
                     Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundColor(AppTheme.Colors.textTertiary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
                 }
             }
             .padding(AppTheme.Spacing.md)
@@ -319,7 +324,7 @@ struct StravaConnectSheet: View {
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.Colors.background.ignoresSafeArea()
+                AppTheme.Colors.LightMode.background.ignoresSafeArea()
 
                 VStack(spacing: AppTheme.Spacing.xl) {
                     // Strava Logo/Icon
@@ -338,11 +343,11 @@ struct StravaConnectSheet: View {
                     VStack(spacing: AppTheme.Spacing.md) {
                         Text("Connect to Strava")
                             .font(AppTheme.Typography.title)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                         Text("Sync your Strava activities automatically. You can disconnect at any time.")
                             .font(AppTheme.Typography.body)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, AppTheme.Spacing.lg)
                     }
@@ -385,12 +390,14 @@ struct StravaConnectSheet: View {
             }
             .navigationTitle("Strava Integration")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.primary)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
         }
@@ -434,12 +441,12 @@ struct BenefitRow: View {
     var body: some View {
         HStack(spacing: AppTheme.Spacing.md) {
             Image(systemName: icon)
-                .foregroundColor(AppTheme.Colors.primary)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
                 .frame(width: 24)
 
             Text(text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Spacer()
         }
@@ -477,7 +484,7 @@ struct StravaIntegrationRow: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.surfaceBackground)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 1)
     }
@@ -498,11 +505,11 @@ struct StravaIntegrationRow: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Strava")
                 .font(AppTheme.Typography.body.weight(.medium))
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Text(stravaService.isConnected ? "Connected" : "Not connected")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(stravaService.isConnected ? AppTheme.Colors.success : AppTheme.Colors.textSecondary)
+                .foregroundColor(stravaService.isConnected ? AppTheme.Colors.success : AppTheme.Colors.LightMode.textSecondary)
         }
     }
 
@@ -517,20 +524,20 @@ struct StravaIntegrationRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(stravaService.isSyncing ? "Syncing..." : "Data Sync")
                         .font(AppTheme.Typography.caption.weight(.medium))
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                     if let progress = stravaService.syncProgress {
                         Text(progress)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     } else if let lastSync = stravaService.lastSyncDate {
                         Text("Last synced: \(lastSync, style: .relative) ago")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     } else {
                         Text("Never synced")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     }
                 }
 
@@ -545,10 +552,10 @@ struct StravaIntegrationRow: View {
                     } else {
                         Text("Sync Beta")
                             .font(AppTheme.Typography.caption.weight(.medium))
-                            .foregroundColor(AppTheme.Colors.primary)
+                            .foregroundColor(AppTheme.Colors.LightMode.accent)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(AppTheme.Colors.primary.opacity(0.1))
+                            .background(AppTheme.Colors.LightMode.accent.opacity(0.1))
                             .cornerRadius(8)
                     }
                 }
@@ -571,10 +578,10 @@ struct StravaIntegrationRow: View {
         Button(action: onConnect) {
             Text("Connect")
                 .font(AppTheme.Typography.caption.weight(.medium))
-                .foregroundColor(AppTheme.Colors.accent)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(AppTheme.Colors.accent.opacity(0.1))
+                .background(AppTheme.Colors.LightMode.accent.opacity(0.1))
                 .cornerRadius(8)
         }
     }

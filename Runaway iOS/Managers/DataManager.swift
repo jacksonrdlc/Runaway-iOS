@@ -3,6 +3,7 @@
 //  Runaway iOS
 //
 //  Created by Jack Rudelic on 9/14/25.
+//  Refactored to coordinate focused stores on 12/23/25.
 //
 
 import Foundation
@@ -10,11 +11,20 @@ import SwiftUI
 import WidgetKit
 
 // MARK: - Centralized Data Manager
+// Acts as a facade/coordinator for focused stores while maintaining backward compatibility
 
 @MainActor
 class DataManager: ObservableObject {
 
-    // MARK: - Published Properties (Single Source of Truth)
+    // MARK: - Focused Stores
+
+    private let activityStore: ActivityStore
+    private let athleteStore: AthleteStore
+    private let commitmentManager: CommitmentManager
+    private let goalManager: GoalManager
+    private let widgetSyncService: WidgetSyncService
+
+    // MARK: - Published Properties (Forwarded from stores for backward compatibility)
 
     @Published var activities: [Activity] = []
     @Published var athlete: Athlete?
@@ -26,163 +36,119 @@ class DataManager: ObservableObject {
     @Published var isLoadingCommitment = false
     @Published var lastDataRefresh: Date?
 
-    // MARK: - Private Properties
-
-    private let metricsCache = ActivityMetricsCache()
-    private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
-    private var widgetUpdateTask: Task<Void, Never>?
-    private let widgetUpdateDebounceInterval: TimeInterval = 0.5
-
     // MARK: - Singleton
 
     static let shared = DataManager()
 
-    private init() {
-        // Initialize with cached data if available
-        loadCachedData()
+    // MARK: - Initialization
+
+    private init(
+        activityStore: ActivityStore = .shared,
+        athleteStore: AthleteStore = .shared,
+        commitmentManager: CommitmentManager = .shared,
+        goalManager: GoalManager = .shared,
+        widgetSyncService: WidgetSyncService = .shared
+    ) {
+        self.activityStore = activityStore
+        self.athleteStore = athleteStore
+        self.commitmentManager = commitmentManager
+        self.goalManager = goalManager
+        self.widgetSyncService = widgetSyncService
+
+        setupStoreBindings()
+    }
+
+    // MARK: - Store Bindings
+
+    private func setupStoreBindings() {
+        // Bind ActivityStore changes
+        activityStore.onActivitiesChanged = { [weak self] activities in
+            Task { @MainActor in
+                self?.activities = activities
+                // Use database-based widget update for accurate yearly/monthly stats
+                self?.updateWidgetData()
+            }
+        }
+
+        activityStore.onNewActivityAdded = { [weak self] activity in
+            Task { @MainActor in
+                await self?.handleNewActivity(activity)
+            }
+        }
+    }
+
+    private func handleNewActivity(_ activity: Activity) async {
+        // Check if from today before checking commitment
+        let today = Calendar.current.startOfDay(for: Date())
+        let activityDate = activity.activity_date ?? activity.start_date
+        let isFromToday = activityDate.map {
+            Calendar.current.isDate(Date(timeIntervalSince1970: $0), inSameDayAs: today)
+        } ?? false
+
+        if isFromToday {
+            await commitmentManager.checkActivityFulfillsCommitment(activity)
+        }
+
+        // Auto-generate journal
+        await autoGenerateJournalForCurrentWeek()
     }
 
     // MARK: - Data Loading Methods
 
-    /// Load all user data for the given userId
     func loadAllData(for userId: Int) async {
         await withTaskGroup(of: Void.self) { group in
-            // Load activities
-            group.addTask {
-                await self.loadActivities(for: userId)
-            }
-
-            // Load athlete profile
-            group.addTask {
-                await self.loadAthlete(for: userId)
-            }
-
-            // Load stats
-            group.addTask {
-                await self.loadStats(for: userId)
-            }
-
-            // Load current goal
-            group.addTask {
-                await self.loadCurrentGoal(for: userId)
-            }
-
-            // Load today's commitment
-            group.addTask {
-                await self.loadTodaysCommitment(for: userId)
-            }
+            group.addTask { await self.loadActivities(for: userId) }
+            group.addTask { await self.loadAthlete(for: userId) }
+            group.addTask { await self.loadStats(for: userId) }
+            group.addTask { await self.loadCurrentGoal(for: userId) }
+            group.addTask { await self.loadTodaysCommitment(for: userId) }
         }
 
-        // Update widgets after all data is loaded
+        syncFromStores()
         updateWidgetData()
         lastDataRefresh = Date()
     }
 
-    /// Load activities for the user
     func loadActivities(for userId: Int) async {
         isLoadingActivities = true
         defer { isLoadingActivities = false }
 
-        // Start background task to prevent interruption
-        startBackgroundTask()
-        defer { endBackgroundTask() }
+        widgetSyncService.startBackgroundTask()
+        defer { widgetSyncService.endBackgroundTask() }
 
-        do {
-            let previousActivityCount = self.activities.count
-            let fetchedActivities = try await ActivityService.getAllActivitiesByUser(userId: userId)
-
-            print("🔍 DataManager: Loaded \(fetchedActivities.count) activities (previously had \(previousActivityCount))")
-
-            self.activities = fetchedActivities
-
-            // Check if we have new activities and check commitment fulfillment for the latest one
-            if fetchedActivities.count > previousActivityCount, let latestActivity = fetchedActivities.first {
-                print("🔍 DataManager: New activity detected during load - checking commitment fulfillment")
-
-                // Debug: Check if the latest activity is from today
-                let today = Calendar.current.startOfDay(for: Date())
-                let activityDate = latestActivity.activity_date ?? latestActivity.start_date
-                let isFromToday = activityDate.map {
-                    Calendar.current.isDate(Date(timeIntervalSince1970: $0), inSameDayAs: today)
-                } ?? false
-
-                print("🔍 DataManager: Latest activity '\(latestActivity.name ?? "Unknown")' type '\(latestActivity.type ?? "Unknown")' is from today: \(isFromToday)")
-
-                // Only check commitment if the activity is from today
-                if isFromToday {
-                    Task {
-                        await checkActivityFulfillsCommitment(latestActivity)
-                    }
-                } else {
-                    print("💡 DataManager: Skipping commitment check - activity is not from today")
-                }
-            }
-
-            // Update widget data after activities refresh
-            updateWidgetData()
-
-            // Invalidate related caches
-            metricsCache.invalidateActivityCaches()
-
-        } catch {
-            print("❌ DataManager: Failed to load activities: \(error)")
-        }
+        await activityStore.loadActivities(for: userId)
+        activities = activityStore.activities
+        updateWidgetData()
     }
 
-    /// Load athlete profile
     func loadAthlete(for userId: Int) async {
         isLoadingAthlete = true
         defer { isLoadingAthlete = false }
 
-        do {
-            print("🔍 DataManager: Loading athlete for user ID: \(userId)")
-            let fetchedAthlete = try await AthleteService.getAthleteByUserId(userId: userId)
-            print("✅ DataManager: Successfully loaded athlete: \(fetchedAthlete.firstname ?? "Unknown") \(fetchedAthlete.lastname ?? "Athlete")")
-            print("🔍 DataManager: Athlete details - ID: \(fetchedAthlete.id ?? -1), Email: \(fetchedAthlete.email ?? "No email")")
-            self.athlete = fetchedAthlete
-        } catch {
-            print("❌ DataManager: Failed to load athlete: \(error)")
-        }
+        await athleteStore.loadAthlete(for: userId)
+        athlete = athleteStore.athlete
     }
 
-    /// Load athlete statistics
     func loadStats(for userId: Int) async {
-        do {
-            let fetchedStats = try await AthleteService.getAthleteStats(userId: userId)
-            self.stats = fetchedStats
-            if fetchedStats == nil {
-                print("⚠️ DataManager: No athlete stats available (athlete_stats table doesn't exist)")
-            }
-        } catch {
-            print("❌ DataManager: Failed to load stats: \(error)")
-        }
+        await athleteStore.loadStats(for: userId)
+        stats = athleteStore.stats
     }
 
-    /// Load current running goal
     func loadCurrentGoal(for userId: Int) async {
-        do {
-            let goals = try await GoalService.getActiveGoals()
-            self.currentGoal = goals.first { !$0.isCompleted }
-        } catch {
-            print("❌ DataManager: Failed to load goals: \(error)")
-        }
+        await goalManager.loadCurrentGoal(for: userId)
+        currentGoal = goalManager.currentGoal
     }
 
-    /// Load today's commitment
     func loadTodaysCommitment(for userId: Int) async {
         isLoadingCommitment = true
         defer { isLoadingCommitment = false }
 
-        do {
-            self.todaysCommitment = try await CommitmentService.getTodaysCommitment(for: userId)
-        } catch {
-            print("❌ DataManager: Failed to load today's commitment: \(error)")
-        }
+        await commitmentManager.loadTodaysCommitment(for: userId)
+        todaysCommitment = commitmentManager.todaysCommitment
     }
 
     // MARK: - Data Refresh Methods
 
-    /// Refresh all data
     func refreshAllData() async {
         guard let userId = UserSession.shared.userId else {
             print("❌ DataManager: No user ID available for refresh")
@@ -192,404 +158,133 @@ class DataManager: ObservableObject {
         await loadAllData(for: userId)
     }
 
-    /// Refresh only activities
     func refreshActivities() async {
         guard let userId = UserSession.shared.userId else {
             print("❌ DataManager: No user ID available for activities refresh")
             return
         }
 
-        print("🔄 DataManager: Refreshing activities for user \(userId)...")
+        print("🔄 DataManager: Refreshing activities...")
         await loadActivities(for: userId)
-        print("✅ DataManager: Activities refreshed. Total count: \(activities.count)")
+        print("✅ DataManager: Activities refreshed. Total: \(activities.count)")
     }
 
     // MARK: - Data Modification Methods
 
-    /// Add a new activity to the data store
     func addActivity(_ activity: Activity) {
-        activities.insert(activity, at: 0) // Add at beginning for chronological order
-        updateWidgetData()
-        metricsCache.invalidateActivityCaches()
-
-        // Check if this activity fulfills today's commitment
-        Task {
-            await checkActivityFulfillsCommitment(activity)
-        }
+        activityStore.addActivity(activity)
+        activities = activityStore.activities
     }
 
-    /// Remove an activity from the data store
     func removeActivity(id: Int) {
-        activities.removeAll { $0.id == id }
-        updateWidgetData()
-        metricsCache.invalidateActivityCaches()
+        activityStore.removeActivity(id: id)
+        activities = activityStore.activities
     }
 
-    /// Update an existing activity
     func updateActivity(_ updatedActivity: Activity) {
-        if let index = activities.firstIndex(where: { $0.id == updatedActivity.id }) {
-            activities[index] = updatedActivity
-            updateWidgetData()
-            metricsCache.invalidateActivityCaches()
+        activityStore.updateActivity(updatedActivity)
+        activities = activityStore.activities
+    }
+
+    // MARK: - Journal Management
+
+    func autoGenerateJournalForCurrentWeek() async {
+        guard let athleteId = athlete?.id else {
+            print("⚠️ DataManager: No athlete ID for journal generation")
+            return
+        }
+
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.dateComponents([.calendar, .yearForWeekOfYear, .weekOfYear], from: now).date else {
+            return
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let weekStartString = formatter.string(from: weekStart)
+
+        let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) ?? now
+        let weekStartTimestamp = weekStart.timeIntervalSince1970
+        let weekEndTimestamp = weekEnd.timeIntervalSince1970
+
+        let activitiesThisWeek = activities.filter { activity in
+            guard let activityDate = activity.start_date else { return false }
+            return activityDate >= weekStartTimestamp && activityDate < weekEndTimestamp
+        }
+
+        guard !activitiesThisWeek.isEmpty else { return }
+
+        do {
+            _ = try await JournalService.generateJournalEntry(
+                athleteId: athleteId,
+                weekStartDate: weekStartString
+            )
+            #if DEBUG
+            print("✅ DataManager: Journal generated for week starting \(weekStartString)")
+            #endif
+        } catch let error as JournalError {
+            switch error {
+            case .noActivitiesFound:
+                break // Expected if week just started
+            case .httpError(let code):
+                print("❌ DataManager: Journal HTTP error: \(code)")
+            default:
+                print("❌ DataManager: Journal error: \(error)")
+            }
+        } catch {
+            print("❌ DataManager: Journal generation failed: \(error)")
         }
     }
 
     // MARK: - Commitment Management
 
-    /// Create a daily commitment
     func createCommitment(_ activityType: CommitmentActivityType) async throws {
-        guard let userId = UserSession.shared.userId else {
-            throw DataManagerError.noUserId
-        }
-
         isLoadingCommitment = true
         defer { isLoadingCommitment = false }
 
-        do {
-            let commitment = DailyCommitment(athleteId: userId, activityType: activityType)
-            let createdCommitment = try await CommitmentService.createCommitment(commitment)
-            self.todaysCommitment = createdCommitment
-        } catch {
-            print("❌ DataManager: Failed to create commitment: \(error)")
-            throw error
-        }
+        try await commitmentManager.createCommitment(activityType)
+        todaysCommitment = commitmentManager.todaysCommitment
     }
 
-    /// Check if a new activity fulfills today's commitment
     func checkActivityFulfillsCommitment(_ activity: Activity) async {
-        guard let userId = UserSession.shared.userId else {
-            print("❌ DataManager: No user ID available for commitment check")
-            return
-        }
-
-        print("🔍 DataManager: Checking if activity '\(activity.type ?? "unknown")' fulfills commitment for user \(userId)")
-
-        do {
-            let fulfilled = try await CommitmentService.checkAndFulfillCommitment(
-                for: userId,
-                activityType: activity.type
-            )
-
-            if fulfilled {
-                print("🎉 DataManager: Commitment fulfilled by activity type: \(activity.type ?? "unknown")!")
-                // Reload today's commitment to get updated data
-                await loadTodaysCommitment(for: userId)
-            } else {
-                print("💡 DataManager: Activity type '\(activity.type ?? "unknown")' did not fulfill commitment")
-            }
-        } catch {
-            print("❌ DataManager: Failed to check commitment fulfillment: \(error)")
-        }
+        await commitmentManager.checkActivityFulfillsCommitment(activity)
+        todaysCommitment = commitmentManager.todaysCommitment
     }
 
-    /// Refresh today's commitment
     func refreshTodaysCommitment() async {
-        guard let userId = UserSession.shared.userId else {
-            print("❌ DataManager: No user ID available for commitment refresh")
-            return
-        }
-
-        await loadTodaysCommitment(for: userId)
+        await commitmentManager.refresh()
+        todaysCommitment = commitmentManager.todaysCommitment
     }
 
     // MARK: - Widget Data Management
 
-    /// Single method for updating all widget data in UserDefaults
-    /// Optimized with debouncing and single-pass filtering to reduce processing overhead
     func updateWidgetData() {
-        // Cancel any pending widget update
-        widgetUpdateTask?.cancel()
-
-        // Capture activities on main thread
-        let activitiesCopy = self.activities
-
-        // Debounce widget updates to batch changes
-        widgetUpdateTask = Task.detached(priority: .utility) { [weak self] in
-            guard let self = self else { return }
-
-            // Add debounce delay
-            try? await Task.sleep(nanoseconds: UInt64(self.widgetUpdateDebounceInterval * 1_000_000_000))
-
-            // Check if task was cancelled during debounce
-            guard !Task.isCancelled else { return }
-
-            await self.performWidgetUpdate(with: activitiesCopy)
+        // Use database-based stats when athlete ID is available (accurate totals)
+        if let athleteId = athlete?.id {
+            widgetSyncService.updateWidgetDataFromDatabase(athleteId: athleteId, activities: activities)
+        } else if let userId = UserSession.shared.userId {
+            widgetSyncService.updateWidgetDataFromDatabase(athleteId: userId, activities: activities)
+        } else {
+            // Fallback to client-side calculation
+            widgetSyncService.updateWidgetData(with: activities)
         }
     }
 
-    /// Performs the actual widget update with optimized single-pass filtering
-    private func performWidgetUpdate(with activitiesCopy: [Activity]) async {
-        Task.detached(priority: .utility) {
-            guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
-                print("❌ DataManager: Failed to access shared UserDefaults")
-                return
-            }
+    // MARK: - Sync Helpers
 
-            // Use autoreleasepool for memory efficiency
-            autoreleasepool {
-                // Clear existing data
-                let arrayKeys = ["sunArray", "monArray", "tueArray", "wedArray", "thuArray", "friArray", "satArray"]
-                arrayKeys.forEach { userDefaults.removeObject(forKey: $0) }
-
-                // Calculate date ranges
-                let currentYear = Calendar.current.component(.year, from: Date())
-                let currentMonth = Calendar.current.component(.month, from: Date())
-                let weekStartDate = Date().startOfWeek()
-
-                let formatter = DateFormatter()
-                formatter.dateStyle = .medium
-                formatter.timeStyle = .short
-
-                #if DEBUG
-                // Debug all activity types
-                print("📊 DataManager: All activity types:")
-                for (index, activity) in activitiesCopy.prefix(5).enumerated() {
-                    print("📊 Activity \(index): \(activity.name ?? "Unknown") - Type: '\(activity.type ?? "nil")'")
-                }
-                #endif
-
-                // OPTIMIZED: Single-pass filtering using reduce to avoid multiple iterations
-                struct FilteredActivities {
-                    var widgetActivities: [Activity] = []
-                    var yearlyRunning: [Activity] = []
-                    var monthlyRunning: [Activity] = []
-                }
-
-                let filtered = activitiesCopy.reduce(into: FilteredActivities()) { result, activity in
-                    let normalizedType = (activity.type ?? "").lowercased()
-
-                    // Cache date calculation to avoid repeated parsing
-                    let dateInterval = activity.activity_date ?? activity.start_date
-                    let activityDate = dateInterval.map { Date(timeIntervalSince1970: $0) }
-                    let activityYear = activityDate.map { Calendar.current.component(.year, from: $0) }
-                    let activityMonth = activityDate.map { Calendar.current.component(.month, from: $0) }
-
-                    // Check for widget-relevant activities (Run, Walk, Weight Training)
-                    let isWidgetRelevant = normalizedType == "run" ||
-                                          normalizedType == "walk" ||
-                                          normalizedType == "weight training" ||
-                                          normalizedType == "weighttraining"
-
-                    if isWidgetRelevant {
-                        result.widgetActivities.append(activity)
-                    }
-
-                    // Check for running activities
-                    let isRunning = normalizedType.contains("run")
-
-                    if isRunning && activityYear == currentYear {
-                        result.yearlyRunning.append(activity)
-
-                        if activityMonth == currentMonth {
-                            result.monthlyRunning.append(activity)
-                        }
-                    }
-
-                    #if DEBUG
-                    if !isWidgetRelevant && !isRunning && !normalizedType.isEmpty {
-                        print("📊 DataManager: Excluding activity type: '\(normalizedType)'")
-                    }
-                    #endif
-                }
-
-                let widgetActivities = filtered.widgetActivities
-                let allRunningActivitiesThisYear = filtered.yearlyRunning
-                let monthlyRunningActivities = filtered.monthlyRunning
-
-                // Calculate totals - yearlyMiles from ALL running activities this year, monthlyMiles from monthly running activities
-                let yearlyMiles = allRunningActivitiesThisYear.reduce(0) { $0 + ($1.distance ?? 0.0) }
-                let monthlyMiles = monthlyRunningActivities.reduce(0) { $0 + ($1.distance ?? 0.0) }
-                let totalRuns = allRunningActivitiesThisYear.count
-
-                #if DEBUG
-                print("📊 DataManager: Total activities: \(activitiesCopy.count)")
-                print("📊 DataManager: Widget activities (Run/Walk/Weight): \(widgetActivities.count)")
-                print("📊 DataManager: Running activities this year: \(allRunningActivitiesThisYear.count)")
-                print("📊 DataManager: Monthly running activities: \(monthlyRunningActivities.count)")
-                print("📊 DataManager: Current month: \(currentMonth), year: \(currentYear)")
-
-                // Debug first few monthly running activities
-                for (index, activity) in monthlyRunningActivities.prefix(3).enumerated() {
-                    let dateInterval = activity.activity_date ?? activity.start_date
-                    if let dateInterval = dateInterval {
-                        let activityDate = Date(timeIntervalSince1970: dateInterval)
-                        let activityMonth = Calendar.current.component(.month, from: activityDate)
-                        let activityYear = Calendar.current.component(.year, from: activityDate)
-                        print("📊 Monthly Running Activity \(index): \(activity.name ?? "Unknown") - Type: \(activity.type ?? "Unknown") - Date: \(activityDate) - Month: \(activityMonth), Year: \(activityYear) - Distance: \(activity.distance ?? 0) meters")
-                    } else {
-                        print("📊 Monthly Running Activity \(index): \(activity.name ?? "Unknown") - Type: \(activity.type ?? "Unknown") - NO DATE AVAILABLE - Distance: \(activity.distance ?? 0) meters")
-                    }
-                }
-
-                print("📊 DataManager: Yearly Running Miles: \(yearlyMiles * 0.000621371), Monthly Running Miles: \(monthlyMiles * 0.000621371), Total Runs: \(totalRuns)")
-                #endif
-
-                // Store totals
-                userDefaults.set(yearlyMiles * 0.000621371, forKey: "miles")
-                print(yearlyMiles * 0.000621371)
-                userDefaults.set(monthlyMiles * 0.000621371, forKey: "monthlyMiles")
-                userDefaults.set(totalRuns, forKey: "runs")
-
-                // Process weekly activities for widget display
-                var weeklyArrays: [String: [String]] = [
-                    "Sunday": [],
-                    "Monday": [],
-                    "Tuesday": [],
-                    "Wednesday": [],
-                    "Thursday": [],
-                    "Friday": [],
-                    "Saturday": []
-                ]
-
-                let encoder = JSONEncoder()
-
-                #if DEBUG
-                print("📊 DataManager: Processing \(widgetActivities.count) activities for widget...")
-                print("📊 DataManager: Week start date: \(weekStartDate)")
-                #endif
-
-                for activity in widgetActivities {
-                    #if DEBUG
-                    print("📊 DataManager: Processing activity '\(activity.name ?? "Unknown")' - Type: '\(activity.type ?? "nil")'")
-                    #endif
-
-                    // Use activity_date first, fall back to start_date
-                    let activityDateInterval = activity.activity_date ?? activity.start_date
-
-                    #if DEBUG
-                    // Enhanced debugging for date comparison
-                    if let dateInterval = activityDateInterval {
-                        let activityDate = Date(timeIntervalSince1970: dateInterval)
-                        let weekStartDateFormatted = Date(timeIntervalSince1970: weekStartDate)
-                        print("📊 DataManager: Activity date: \(activityDate)")
-                        print("📊 DataManager: Week start: \(weekStartDateFormatted)")
-                        print("📊 DataManager: Activity is after week start: \(dateInterval > weekStartDate)")
-                    } else {
-                        print("📊 DataManager: Activity has no date!")
-                    }
-                    #endif
-
-                    guard let dateInterval = activityDateInterval,
-                          let distance = activity.distance,
-                          let elapsedTime = activity.elapsed_time,
-                          dateInterval > weekStartDate else {
-                        #if DEBUG
-                        print("📊 DataManager: Skipping activity '\(activity.name ?? "Unknown")' - missing data or too old")
-                        #endif
-                        continue
-                    }
-
-                    let dayOfWeek = Date(timeIntervalSince1970: dateInterval).dayOfTheWeek
-
-                    #if DEBUG
-                    print("📊 DataManager: Activity '\(activity.name ?? "Unknown")' is on \(dayOfWeek)")
-                    #endif
-
-                    // Normalize WeightTraining to "Weight Training" for widget
-                    var normalizedType = activity.type ?? "Run"
-                    if normalizedType.lowercased() == "weighttraining" {
-                        normalizedType = "Weight Training"
-                    }
-
-                    let raActivity = RAActivity(
-                        day: String(dayOfWeek.prefix(2)),
-                        type: normalizedType, // Use normalized type for widget compatibility
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60
-                    )
-
-                    #if DEBUG
-                    print("📊 DataManager: Adding activity '\(activity.name ?? "Unknown")' to \(dayOfWeek) - Distance: \(distance * 0.000621371) mi, Time: \(elapsedTime / 60) min")
-                    #endif
-
-                    do {
-                        let jsonData = try encoder.encode(raActivity)
-                        if let jsonString = String(data: jsonData, encoding: .utf8) {
-                            weeklyArrays[dayOfWeek]?.append(jsonString)
-                            #if DEBUG
-                            print("📊 DataManager: Successfully encoded activity for \(dayOfWeek)")
-                            #endif
-                        }
-                    } catch {
-                        print("❌ DataManager: Failed to encode activity for widget: \(error)")
-                    }
-                }
-
-                #if DEBUG
-                // Debug weekly arrays before storing
-                print("📊 DataManager: Widget data summary:")
-                for (day, activities) in weeklyArrays {
-                    print("📊   \(day): \(activities.count) activities")
-                    if !activities.isEmpty {
-                        print("📊     First activity: \(activities.first ?? "nil")")
-                    }
-                }
-                #endif
-
-                // Store weekly arrays
-                userDefaults.set(weeklyArrays["Sunday"], forKey: "sunArray")
-                userDefaults.set(weeklyArrays["Monday"], forKey: "monArray")
-                userDefaults.set(weeklyArrays["Tuesday"], forKey: "tueArray")
-                userDefaults.set(weeklyArrays["Wednesday"], forKey: "wedArray")
-                userDefaults.set(weeklyArrays["Thursday"], forKey: "thuArray")
-                userDefaults.set(weeklyArrays["Friday"], forKey: "friArray")
-                userDefaults.set(weeklyArrays["Saturday"], forKey: "satArray")
-
-                #if DEBUG
-                // Log what was actually stored in UserDefaults
-                print("📊 DataManager: Activities stored in UserDefaults:")
-                print("📊   sunArray: \(userDefaults.stringArray(forKey: "sunArray")?.count ?? 0) activities")
-                print("📊   monArray: \(userDefaults.stringArray(forKey: "monArray")?.count ?? 0) activities")
-                print("📊   tueArray: \(userDefaults.stringArray(forKey: "tueArray")?.count ?? 0) activities")
-                print("📊   wedArray: \(userDefaults.stringArray(forKey: "wedArray")?.count ?? 0) activities")
-                print("📊   thuArray: \(userDefaults.stringArray(forKey: "thuArray")?.count ?? 0) activities")
-                print("📊   friArray: \(userDefaults.stringArray(forKey: "friArray")?.count ?? 0) activities")
-                print("📊   satArray: \(userDefaults.stringArray(forKey: "satArray")?.count ?? 0) activities")
-
-                // Log sample activity data for debugging
-                if let sundayActivities = userDefaults.stringArray(forKey: "sunArray"), !sundayActivities.isEmpty {
-                    print("📊   Sample Sunday activity: \(sundayActivities.first!)")
-                }
-                if let mondayActivities = userDefaults.stringArray(forKey: "monArray"), !mondayActivities.isEmpty {
-                    print("📊   Sample Monday activity: \(mondayActivities.first!)")
-                }
-
-                print("📊 DataManager: Widget data updated successfully. Triggering widget refresh...")
-                #endif
-            }
-
-            // Trigger widget refresh on main thread
-            await MainActor.run {
-                WidgetCenter.shared.reloadAllTimelines()
-            }
-        }
-    }
-
-    // MARK: - Background Task Management
-
-    private func startBackgroundTask() {
-        backgroundTaskId = UIApplication.shared.beginBackgroundTask { [weak self] in
-            self?.endBackgroundTask()
-        }
-    }
-
-    private func endBackgroundTask() {
-        if backgroundTaskId != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTaskId)
-            backgroundTaskId = .invalid
-        }
+    private func syncFromStores() {
+        activities = activityStore.activities
+        athlete = athleteStore.athlete
+        stats = athleteStore.stats
+        currentGoal = goalManager.currentGoal
+        todaysCommitment = commitmentManager.todaysCommitment
     }
 
     // MARK: - Cache Management
 
-    private func loadCachedData() {
-        // Load any cached data from UserDefaults or other persistence layer
-        // This can be implemented based on your caching strategy
-    }
-
-    /// Clear all cached data
     func clearCache() {
-        metricsCache.invalidateActivityCaches()
+        activityStore.clearCache()
         PerformanceCache.shared.clearAll()
     }
 }
@@ -598,66 +293,33 @@ class DataManager: ObservableObject {
 
 extension DataManager {
 
-    /// Handle realtime updates from RealtimeService
     func handleRealtimeUpdate(activities: [Activity]) {
-        let previousActivityCount = self.activities.count
-
-        // Update activities with new data
-        self.activities = activities
-
-        // Update widget data
-        updateWidgetData()
-
-        // Update last refresh time
+        activityStore.handleRealtimeUpdate(activities: activities)
+        self.activities = activityStore.activities
         lastDataRefresh = Date()
-
-        // Check if new activities fulfill commitment (only if we have more activities now)
-        if activities.count > previousActivityCount, let latestActivity = activities.first {
-            Task {
-                await checkActivityFulfillsCommitment(latestActivity)
-            }
-        }
     }
 
-    /// Force refresh widget data (called from RealtimeService)
     func forceRefreshWidget(with activities: [Activity]) {
-        self.activities = activities
-        updateWidgetData()
+        activityStore.handleRealtimeUpdate(activities: activities)
+        self.activities = activityStore.activities
+        // Use database-based widget update for accurate yearly/monthly stats
+        if let athleteId = athlete?.id {
+            widgetSyncService.forceUpdateFromDatabase(athleteId: athleteId, activities: activities)
+        } else if let userId = UserSession.shared.userId {
+            widgetSyncService.forceUpdateFromDatabase(athleteId: userId, activities: activities)
+        } else {
+            widgetSyncService.forceUpdate(with: activities)
+        }
     }
 
     // MARK: - Computed Properties
 
-    /// Days since last activity
     var daysSinceLastActivity: Int {
-        guard let lastActivity = activities.first?.start_date else {
-            return -1 // Indicates no activities
-        }
-
-        let lastActivityDate = Date(timeIntervalSince1970: lastActivity)
-        let today = Date()
-
-        // Get the start of today and the start of the activity day
-        let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: today)
-        let startOfActivityDay = calendar.startOfDay(for: lastActivityDate)
-
-        let components = calendar.dateComponents([.day], from: startOfActivityDay, to: startOfToday)
-        return components.day ?? 0
+        activityStore.daysSinceLastActivity
     }
 
-    /// Text for days since last activity
     var daysSinceLastActivityText: String {
-        let days = daysSinceLastActivity
-
-        if days == -1 {
-            return "Let's log your first activity."
-        } else if days == 0 {
-            return "0 days since last activity"
-        } else if days == 1 {
-            return "1 day since last activity"
-        } else {
-            return "\(days) days since last activity"
-        }
+        activityStore.daysSinceLastActivityText
     }
 }
 

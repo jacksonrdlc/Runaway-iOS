@@ -10,13 +10,13 @@ import Foundation
 class ChatService {
     // MARK: - Endpoints
 
-    // New strava-data chat API endpoint
+    // Supabase Edge Functions (Migrated from Cloud Run)
     #if DEBUG
-    private static let stravaDataBaseURL = "http://192.168.68.55:8080"  // Local development (Mac IP for simulator)
+    private static let stravaDataBaseURL = "http://localhost:54321"  // Local Supabase development
     #else
-    private static let stravaDataBaseURL = "https://strava-sync-a2xd4ppmsq-uc.a.run.app"  // Production
+    private static let stravaDataBaseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co"  // Production Supabase
     #endif
-    private static let chatEndpoint = "/api/chat"
+    private static let chatEndpoint = "/functions/v1/chat"
 
     // MARK: - Public Methods
 

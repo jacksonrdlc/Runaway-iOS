@@ -6,18 +6,9 @@
 //
 
 import Foundation
+import Supabase
 
 class JournalService {
-    // MARK: - Endpoints
-
-    #if DEBUG
-    private static let baseURL = "http://192.168.68.55:8080"  // Local development
-    #else
-    private static let baseURL = "https://strava-sync-203308554831.us-central1.run.app"  // Production
-    #endif
-
-    private static let journalEndpoint = "/api/journal"
-
     // MARK: - Public Methods
 
     /// Get journal entries for an athlete
@@ -25,18 +16,35 @@ class JournalService {
         athleteId: Int,
         limit: Int = 10
     ) async throws -> [TrainingJournal] {
-        let url = URL(string: "\(baseURL)\(journalEndpoint)/\(athleteId)?limit=\(limit)")!
+
+        #if DEBUG
+        print("📔 Journal API Request:")
+        print("   Athlete ID: \(athleteId)")
+        print("   Limit: \(limit)")
+        #endif
+
+        // Get Supabase base URL and construct Edge Function URL
+        guard let baseURL = SupabaseConfiguration.supabaseURL else {
+            throw JournalError.invalidResponse
+        }
+
+        let url = URL(string: "\(baseURL)/functions/v1/journal?athlete_id=\(athleteId)&limit=\(limit)")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = 15.0
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        #if DEBUG
-        print("📔 Journal API Request:")
-        print("   URL: \(url)")
-        print("   Athlete ID: \(athleteId)")
-        print("   Limit: \(limit)")
-        #endif
+        // Add JWT authentication from Supabase session
+        if let session = try? await supabase.auth.session {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            #if DEBUG
+            print("   🔐 JWT token added to request")
+            #endif
+        } else {
+            #if DEBUG
+            print("   ⚠️ No active Supabase session - request may fail")
+            #endif
+        }
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -88,11 +96,35 @@ class JournalService {
         athleteId: Int,
         weekStartDate: String
     ) async throws -> TrainingJournal {
-        let url = URL(string: "\(baseURL)\(journalEndpoint)/generate")!
+
+        #if DEBUG
+        print("📔 Journal Generation Request:")
+        print("   Athlete ID: \(athleteId)")
+        print("   Week Start: \(weekStartDate)")
+        #endif
+
+        // Get Supabase base URL and construct Edge Function URL
+        guard let baseURL = SupabaseConfiguration.supabaseURL else {
+            throw JournalError.invalidResponse
+        }
+
+        let url = URL(string: "\(baseURL)/functions/v1/journal/generate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 120.0  // Longer timeout for AI generation
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add JWT authentication from Supabase session
+        if let session = try? await supabase.auth.session {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            #if DEBUG
+            print("   🔐 JWT token added to request")
+            #endif
+        } else {
+            #if DEBUG
+            print("   ⚠️ No active Supabase session - request may fail")
+            #endif
+        }
 
         let requestBody: [String: Any] = [
             "athlete_id": athleteId,
@@ -100,13 +132,6 @@ class JournalService {
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        #if DEBUG
-        print("📔 Journal Generation Request:")
-        print("   URL: \(url)")
-        print("   Athlete ID: \(athleteId)")
-        print("   Week Start: \(weekStartDate)")
-        #endif
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
@@ -158,11 +183,35 @@ class JournalService {
         athleteId: Int,
         weeks: Int = 4
     ) async throws -> [TrainingJournal] {
-        let url = URL(string: "\(baseURL)\(journalEndpoint)/generate-recent")!
+
+        #if DEBUG
+        print("📔 Batch Journal Generation Request:")
+        print("   Athlete ID: \(athleteId)")
+        print("   Weeks: \(weeks)")
+        #endif
+
+        // Get Supabase base URL and construct Edge Function URL
+        guard let baseURL = SupabaseConfiguration.supabaseURL else {
+            throw JournalError.invalidResponse
+        }
+
+        let url = URL(string: "\(baseURL)/functions/v1/journal/generate-recent")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 180.0  // Longer timeout for batch generation
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add JWT authentication from Supabase session
+        if let session = try? await supabase.auth.session {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+            #if DEBUG
+            print("   🔐 JWT token added to request")
+            #endif
+        } else {
+            #if DEBUG
+            print("   ⚠️ No active Supabase session - request may fail")
+            #endif
+        }
 
         let requestBody: [String: Any] = [
             "athlete_id": athleteId,
@@ -170,13 +219,6 @@ class JournalService {
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        #if DEBUG
-        print("📔 Batch Journal Generation Request:")
-        print("   URL: \(url)")
-        print("   Athlete ID: \(athleteId)")
-        print("   Weeks: \(weeks)")
-        #endif
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

@@ -45,7 +45,7 @@ struct ResearchView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.background.ignoresSafeArea()
+            AppTheme.Colors.LightMode.background.ignoresSafeArea()
             
             ScrollView {
             LazyVStack(spacing: 0) {
@@ -108,7 +108,7 @@ struct ResearchView: View {
                 if let lastUpdated = researchService.lastUpdated {
                     Text("Last updated: \(lastUpdated, formatter: RelativeDateTimeFormatter())")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                         .padding(.vertical)
                 }
             }
@@ -189,21 +189,21 @@ struct CategoryPill: View {
                     Text("\(count)")
                         .font(AppTheme.Typography.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(isSelected ? .black : AppTheme.Colors.textSecondary)
+                        .foregroundColor(isSelected ? .white : AppTheme.Colors.LightMode.textSecondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(isSelected ? AppTheme.Colors.accent : AppTheme.Colors.textSecondary.opacity(AppTheme.Opacity.medium))
+                                .fill(isSelected ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.textSecondary.opacity(AppTheme.Opacity.medium))
                         )
                 }
             }
-            .foregroundColor(isSelected ? .black : AppTheme.Colors.textPrimary)
+            .foregroundColor(isSelected ? .white : AppTheme.Colors.LightMode.textPrimary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? AppTheme.Colors.accent : AppTheme.Colors.cardBackground)
+                    .fill(isSelected ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.cardBackground)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -221,12 +221,12 @@ struct ArticleCard: View {
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: article.category.iconName)
-                        .foregroundColor(AppTheme.Colors.accent)
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                         .font(AppTheme.Typography.caption)
                     Text(article.category.displayName)
                         .font(AppTheme.Typography.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(AppTheme.Colors.accent)
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
 
 
@@ -234,7 +234,7 @@ struct ArticleCard: View {
 
                 Text(article.timeAgo)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
             }
             
             // Main content
@@ -243,13 +243,13 @@ struct ArticleCard: View {
                     Text(article.title)
                         .font(AppTheme.Typography.headline)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
 
                     Text(article.summary)
                         .font(AppTheme.Typography.subheadline)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
 
@@ -258,12 +258,12 @@ struct ArticleCard: View {
                         Text(article.source)
                             .font(AppTheme.Typography.caption)
                             .fontWeight(.medium)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                         if let location = article.location, article.isLocalEvent {
                             Text("• \(location.displayLocation)")
                                 .font(AppTheme.Typography.caption)
-                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                         }
 
                         Spacer()
@@ -278,10 +278,10 @@ struct ArticleCard: View {
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
                         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
-                            .fill(AppTheme.Colors.background)
+                            .fill(AppTheme.Colors.LightMode.surfaceBackground)
                             .overlay(
                                 Image(systemName: "photo")
-                                    .foregroundColor(AppTheme.Colors.textTertiary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
                             )
                     }
                     .frame(width: 80, height: 80)
@@ -296,10 +296,10 @@ struct ArticleCard: View {
                         ForEach(article.tags.prefix(3), id: \.self) { tag in
                             Text(tag)
                                 .font(AppTheme.Typography.caption2)
-                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(AppTheme.Colors.background)
+                                .background(AppTheme.Colors.LightMode.surfaceBackground)
                                 .clipShape(Capsule())
                         }
                     }
@@ -307,7 +307,7 @@ struct ArticleCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
         .shadow(
             color: AppTheme.Shadows.light.color,
@@ -327,10 +327,10 @@ struct LoadingView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.2)
-                .tint(AppTheme.Colors.accent)
+                .tint(AppTheme.Colors.LightMode.accent)
             Text("Loading articles...")
                 .font(AppTheme.Typography.subheadline)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
         }
     }
 }
@@ -348,19 +348,19 @@ struct ErrorView: View {
 
             Text("Unable to load articles")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Text(message)
                 .font(AppTheme.Typography.subheadline)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
 
             Button("Try Again", action: retryAction)
                 .font(AppTheme.Typography.bodyBold)
-                .foregroundColor(.black)
+                .foregroundColor(.white)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.sm)
-                .background(AppTheme.Colors.accent)
+                .background(AppTheme.Colors.LightMode.accent)
                 .cornerRadius(AppTheme.CornerRadius.medium)
         }
         .padding()
@@ -373,15 +373,15 @@ struct EmptyStateView: View {
         VStack(spacing: 16) {
             Image(systemName: "newspaper")
                 .font(AppTheme.Typography.largeTitle)
-                .foregroundColor(AppTheme.Colors.textTertiary)
+                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
 
             Text("No articles found")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Text("Try adjusting your filters or check back later for new content.")
                 .font(AppTheme.Typography.subheadline)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding()

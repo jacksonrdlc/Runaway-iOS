@@ -6,19 +6,17 @@
 //
 
 import SwiftUI
-import MapKit
+import MapboxMaps
+import CoreLocation
 
 struct MapSnapshotView: View {
     let location: CLLocationCoordinate2D
     let span: CLLocationDegrees
     let coordinates: [CLLocationCoordinate2D]?
-    
-//    @EnvironmentObject var preferences: PreferencesStorage
-    
+
     @State private var snapshotImage: UIImage? = nil
-    
+
     var body: some View {
-        
         GeometryReader { geometry in
             Group {
                 if let image = snapshotImage {
@@ -51,54 +49,56 @@ struct MapSnapshotView: View {
             }
         }
     }
-    
+
     func generateSnapshot(width: CGFloat, height: CGFloat) {
-        
-        let region = MKCoordinateRegion(
-            center: self.location,
-            span: MKCoordinateSpan(
-                latitudeDelta: self.span,
-                longitudeDelta: self.span
-            )
+        // Create a temporary MapView for rendering
+        let mapInitOptions = MapInitOptions(styleURI: .standard)
+        let mapView = MapView(frame: CGRect(x: 0, y: 0, width: width, height: height), mapInitOptions: mapInitOptions)
+
+        // Calculate zoom from span (approximate conversion)
+        let zoom = log2(360 / span) - 1
+
+        // Set camera to center on location
+        let cameraOptions = CameraOptions(
+            center: location,
+            zoom: zoom
         )
-        
-        // Map options
-        let mapOptions = MKMapSnapshotter.Options()
-        mapOptions.region = region
-        mapOptions.size = CGSize(width: width, height: height)
-        mapOptions.showsBuildings = true
-        
-        // Create the snapshotter and run it
-        let snapshotter = MKMapSnapshotter(options: mapOptions)
-        snapshotter.start { (snapshotOrNil, errorOrNil) in
-            if let error = errorOrNil {
-                print(error)
-                return
+        mapView.mapboxMap.setCamera(to: cameraOptions)
+
+        // Wait for style to load before adding route and capturing snapshot
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // Add route if coordinates are provided
+            if let coordinates = self.coordinates, coordinates.count > 1 {
+                // Create LineString from coordinates
+                let lineString = LineString(coordinates)
+
+                // Create GeoJSON source for route
+                var routeSource = GeoJSONSource(id: "snapshot-route-source")
+                routeSource.data = .geometry(.lineString(lineString))
+
+                // Add route source to map
+                try? mapView.mapboxMap.addSource(routeSource)
+
+                // Create line layer for the route
+                var lineLayer = LineLayer(id: "snapshot-route-layer", source: "snapshot-route-source")
+                lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.LightMode.accent)))
+                lineLayer.lineWidth = .constant(6)
+                lineLayer.lineCap = .constant(.round)
+                lineLayer.lineJoin = .constant(.round)
+
+                // Add route layer to map
+                try? mapView.mapboxMap.addLayer(lineLayer)
             }
-            if let snapshot = snapshotOrNil {
-                let finalImage = UIGraphicsImageRenderer(size: snapshot.image.size).image { _ in
-                    
-                    snapshot.image.draw(at: .zero)
-                    
-                    guard let coordinates = self.coordinates, coordinates.count > 1 else { return }
-                    
-                    // Convert the [CLLocationCoordinate2D] into a [CGPoint]
-                    let points = coordinates.map { coordinate in
-                        snapshot.point(for: coordinate)
-                    }
-                    
-                    let path = UIBezierPath()
-                    path.move(to: points[0])
-                    
-                    for point in points.dropFirst() {
-                        path.addLine(to: point)
-                    }
-                    
-                    path.lineWidth = 6
-//                    UserPreferences.convertColourChoiceToUIColor(colour: preferences.storedPreferences[0].colourChoiceConverted).setStroke()
-                    path.stroke()
+
+            // Wait a bit more for route to render
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // Capture the map as an image
+                let renderer = UIGraphicsImageRenderer(size: mapView.bounds.size)
+                let snapshot = renderer.image { context in
+                    mapView.drawHierarchy(in: mapView.bounds, afterScreenUpdates: true)
                 }
-                self.snapshotImage = finalImage
+
+                self.snapshotImage = snapshot
             }
         }
     }

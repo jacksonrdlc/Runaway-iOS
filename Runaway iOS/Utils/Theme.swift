@@ -1,72 +1,92 @@
 import SwiftUI
 
 // MARK: - App Theme
-// Updated design system based on modern dark UI with vibrant lime/chartreuse accents
-// Inspiration: High-contrast dark theme with neon green highlights
-// All colors tested for WCAG AAA accessibility compliance
+// FitSync-inspired dark fitness dashboard design
+// Inspiration: RonDesignLab FitSync SaaS Dashboard - Dark purple-blue theme with teal accents
+// Modern glassmorphic cards with vibrant gradient highlights
+// All colors tested for WCAG AA/AAA accessibility compliance
 
 struct AppTheme {
     // MARK: - Colors
     struct Colors {
         // MARK: - Primary Brand Colors
-        // Vibrant lime/chartreuse green - signature color
-        static let accent = Color(red: 0.77, green: 1.0, blue: 0.0) // #C5FF00 - Lime Green
+        // Electric lime/chartreuse green - signature color (BACK!)
+        static let accent = Color(red: 0.77, green: 1.0, blue: 0.0) // #C5FF00 - Electric Lime
         static let accentLight = Color(red: 0.85, green: 1.0, blue: 0.40) // Lighter lime
-        static let accentDark = Color(red: 0.60, green: 0.80, blue: 0.0) // Darker lime
+        static let accentDark = Color(red: 0.55, green: 0.75, blue: 0.0) // Darker lime for light backgrounds
 
-        // Primary brand - Now secondary to accent
-        static let primary = Color(red: 0.20, green: 0.20, blue: 0.22) // #333338 - Dark Gray
-        static let primaryLight = Color(red: 0.28, green: 0.28, blue: 0.30) // Lighter gray
-        static let primaryDark = Color(red: 0.12, green: 0.12, blue: 0.14) // Darker gray
+        // Purple accent for secondary elements - LIGHTENED
+        static let purple = Color(red: 0.45, green: 0.30, blue: 0.70) // #734DB3 - Medium purple
+        static let purpleLight = Color(red: 0.60, green: 0.45, blue: 0.80) // Lighter purple
+        static let purpleDark = Color(red: 0.35, green: 0.20, blue: 0.55) // Darker purple
+
+        // Blue accent - LIGHTENED
+        static let blue = Color(red: 0.25, green: 0.50, blue: 0.85) // #4080D9 - Brighter blue
+
+        // Primary foreground - Used for icons and interactive elements on dark backgrounds
+        static let primary = Color.white // #FFFFFF - Bright white for visibility on dark backgrounds
+        static let primaryLight = Color(red: 0.95, green: 0.95, blue: 0.95) // Very light gray
+        static let primaryDark = Color(red: 0.85, green: 0.85, blue: 0.85) // Light gray
 
         // MARK: - Background Colors
-        // Dark theme backgrounds
-        static let background = Color(red: 0.10, green: 0.10, blue: 0.10) // #1A1A1A - Almost black
-        static let backgroundElevated = Color(red: 0.14, green: 0.14, blue: 0.14) // #242424 - Slightly elevated
+        // Dark navy-purple theme backgrounds
+        static let background = Color(red: 0.06, green: 0.06, blue: 0.10) // #0F0F1A - Deep navy
+        static let backgroundElevated = Color(red: 0.08, green: 0.08, blue: 0.14) // #141424 - Slightly elevated
 
-        // Card backgrounds - slightly lighter than main background
-        static let cardBackground = Color(red: 0.15, green: 0.15, blue: 0.16) // #262628 - Card surface
-        static let cardBackgroundElevated = Color(red: 0.18, green: 0.18, blue: 0.19) // Elevated card
+        // Card backgrounds - dark with purple tint
+        static let cardBackground = Color(red: 0.10, green: 0.10, blue: 0.18) // #1A1A2E - Card surface
+        static let cardBackgroundElevated = Color(red: 0.12, green: 0.12, blue: 0.22) // #1F1F38 - Elevated card
 
         // Surface backgrounds for nested content
-        static let surfaceBackground = Color(red: 0.20, green: 0.20, blue: 0.21) // #333335 - Surface
-        static let surfaceElevated = Color(red: 0.24, green: 0.24, blue: 0.25) // Elevated surface
+        static let surfaceBackground = Color(red: 0.14, green: 0.14, blue: 0.24) // #24243D - Surface
+        static let surfaceElevated = Color(red: 0.16, green: 0.16, blue: 0.28) // #292948 - Elevated surface
 
         // MARK: - Text Colors
         // For dark backgrounds (primary use case)
         static let textPrimary = Color.white // #FFFFFF - WCAG AAA (21:1)
-        static let textSecondary = Color(red: 0.70, green: 0.70, blue: 0.72) // #B3B3B8 - WCAG AAA (10.2:1)
-        static let textTertiary = Color(red: 0.55, green: 0.55, blue: 0.57) // #8C8C91 - WCAG AA (4.8:1)
-        static let textQuaternary = Color(red: 0.40, green: 0.40, blue: 0.42) // Disabled/placeholder text
+        static let textSecondary = Color(red: 0.75, green: 0.75, blue: 0.82) // #C0C0D1 - Muted lavender
+        static let textTertiary = Color(red: 0.55, green: 0.55, blue: 0.65) // #8C8CA6 - WCAG AA compliant
+        static let textQuaternary = Color(red: 0.40, green: 0.40, blue: 0.50) // #666680 - Disabled/placeholder
 
         // For light backgrounds (legacy support - minimal use)
         static let textOnLight = Color(red: 0.12, green: 0.12, blue: 0.15) // Almost Black
         static let textSecondaryOnLight = Color(red: 0.40, green: 0.40, blue: 0.45) // Medium Gray
 
         // MARK: - Accent Colors for Specific Use Cases
-        // Orange accent for carbon/energy metrics
-        static let orange = Color(red: 1.0, green: 0.62, blue: 0.25) // #FF9F40 - Warm orange
-        static let orangeLight = Color(red: 1.0, green: 0.70, blue: 0.40) // Lighter orange
-        static let orangeDark = Color(red: 0.90, green: 0.50, blue: 0.15) // Darker orange
+        // Orange accent for energy/calorie metrics
+        static let orange = Color(red: 1.0, green: 0.55, blue: 0.30) // #FF8C4D - Warm orange
+        static let orangeLight = Color(red: 1.0, green: 0.70, blue: 0.50) // Lighter orange
+        static let orangeDark = Color(red: 0.90, green: 0.45, blue: 0.20) // Darker orange
 
         // MARK: - Status Colors
-        static let success = Color(red: 0.20, green: 0.85, blue: 0.40) // #33D966 - Green
-        static let successBackground = Color(red: 0.20, green: 0.85, blue: 0.40).opacity(0.15)
+        static let success = Color(red: 0.30, green: 0.90, blue: 0.55) // #4DE68C - Bright green
+        static let successBackground = Color(red: 0.30, green: 0.90, blue: 0.55).opacity(0.15)
 
-        static let warning = Color(red: 1.0, green: 0.62, blue: 0.25) // Same as orange
-        static let warningBackground = Color(red: 1.0, green: 0.62, blue: 0.25).opacity(0.15)
+        static let warning = Color(red: 1.0, green: 0.75, blue: 0.30) // #FFBF4D - Gold
+        static let warningBackground = Color(red: 1.0, green: 0.75, blue: 0.30).opacity(0.15)
 
-        static let error = Color(red: 1.0, green: 0.27, blue: 0.23) // #FF4538 - Red
-        static let errorBackground = Color(red: 1.0, green: 0.27, blue: 0.23).opacity(0.15)
+        static let error = Color(red: 1.0, green: 0.35, blue: 0.40) // #FF5966 - Coral red
+        static let errorBackground = Color(red: 1.0, green: 0.35, blue: 0.40).opacity(0.15)
 
-        static let info = Color(red: 0.35, green: 0.68, blue: 1.0) // #59ADFF - Blue
-        static let infoBackground = Color(red: 0.35, green: 0.68, blue: 1.0).opacity(0.15)
+        static let info = Color(red: 0.40, green: 0.70, blue: 1.0) // #66B3FF - Sky blue
+        static let infoBackground = Color(red: 0.40, green: 0.70, blue: 1.0).opacity(0.15)
 
         // MARK: - Gradients
+        // Electric lime gradient (primary accent gradient)
         static let accentGradient = LinearGradient(
             colors: [
-                Color(red: 0.77, green: 1.0, blue: 0.0),
-                Color(red: 0.60, green: 0.80, blue: 0.0)
+                Color(red: 0.77, green: 1.0, blue: 0.0),  // #C5FF00 - Electric Lime
+                Color(red: 0.55, green: 0.80, blue: 0.0)  // #8CCC00 - Darker lime
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+
+        // Purple-blue gradient for secondary elements
+        static let purpleBlueGradient = LinearGradient(
+            colors: [
+                Color(red: 0.45, green: 0.30, blue: 0.70), // #734DB3 - Purple
+                Color(red: 0.25, green: 0.50, blue: 0.85)  // #4080D9 - Blue
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -74,8 +94,8 @@ struct AppTheme {
 
         static let primaryGradient = LinearGradient(
             colors: [
-                Color(red: 0.20, green: 0.20, blue: 0.22),
-                Color(red: 0.12, green: 0.12, blue: 0.14)
+                Color(red: 0.10, green: 0.10, blue: 0.18),
+                Color(red: 0.06, green: 0.06, blue: 0.12)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -83,8 +103,8 @@ struct AppTheme {
 
         static let orangeGradient = LinearGradient(
             colors: [
-                Color(red: 1.0, green: 0.62, blue: 0.25),
-                Color(red: 0.90, green: 0.50, blue: 0.15)
+                Color(red: 1.0, green: 0.55, blue: 0.30),
+                Color(red: 0.90, green: 0.45, blue: 0.20)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -111,8 +131,8 @@ struct AppTheme {
         // Subtle background gradients
         static let backgroundGradient = LinearGradient(
             colors: [
-                Color(red: 0.10, green: 0.10, blue: 0.10),
-                Color(red: 0.08, green: 0.08, blue: 0.08)
+                Color(red: 0.06, green: 0.06, blue: 0.10),
+                Color(red: 0.04, green: 0.04, blue: 0.08)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -125,18 +145,44 @@ struct AppTheme {
 
             switch normalizedType {
             case "run", "trail run", "trailrun", "virtual run", "virtualrun":
-                return success
+                return accent // Teal for running
             case "walk", "hike":
-                return info
+                return success // Green for walking
             case "weight training", "weighttraining", "workout":
-                return orange
+                return orange // Orange for strength
             case "bike", "ride", "cycling":
-                return accent
+                return purple // Purple for cycling
             case "swim", "swimming":
-                return Color(red: 0.35, green: 0.68, blue: 1.0) // Blue
+                return info // Blue for swimming
             default:
                 return primary
             }
+        }
+
+        // MARK: - Light Mode Colors (Clean Light Theme)
+        // Modern light theme with electric lime accents
+        struct LightMode {
+            // Light backgrounds - soft off-white
+            static let background = Color(red: 0.95, green: 0.95, blue: 0.96) // #F2F2F5 - Soft gray
+            static let backgroundElevated = Color(red: 0.97, green: 0.97, blue: 0.98) // #F8F8FA
+
+            // Light cards - pure white cards for contrast
+            static let cardBackground = Color(red: 1.0, green: 1.0, blue: 1.0) // #FFFFFF
+            static let cardBackgroundElevated = Color(red: 0.99, green: 0.99, blue: 1.0)
+
+            // Light surface - subtle gray for nested content
+            static let surfaceBackground = Color(red: 0.94, green: 0.94, blue: 0.95) // #F0F0F2
+            static let surfaceElevated = Color(red: 0.92, green: 0.92, blue: 0.93)
+
+            // Light text - DARK for readability on light backgrounds
+            static let textPrimary = Color(red: 0.12, green: 0.12, blue: 0.14) // #1F1F24 - Near black
+            static let textSecondary = Color(red: 0.35, green: 0.35, blue: 0.40) // #595966
+            static let textTertiary = Color(red: 0.50, green: 0.50, blue: 0.55) // #80808C
+            static let textQuaternary = Color(red: 0.65, green: 0.65, blue: 0.70) // #A6A6B3
+
+            // Accent - Electric blue for light mode (vibrant + WCAG AA contrast)
+            static let accent = Color(red: 0.0, green: 0.45, blue: 0.90) // #0073E6 - Electric Blue
+            static let accentBright = Colors.accent // Electric lime for dark backgrounds
         }
     }
 
@@ -182,6 +228,23 @@ struct AppTheme {
         static let numberLarge = Font.system(size: 40, weight: .bold, design: .rounded)
         static let numberMedium = Font.system(size: 28, weight: .bold, design: .rounded)
         static let numberSmall = Font.system(size: 20, weight: .bold, design: .rounded)
+
+        // MARK: - Hero Typography (2025 Refresh)
+        // Extra large, impactful numbers for key metrics
+        static let heroExtraLarge = Font.system(size: 80, weight: .bold, design: .rounded)
+        static let heroLarge = Font.system(size: 64, weight: .bold, design: .rounded)
+        static let heroMedium = Font.system(size: 56, weight: .bold, design: .rounded)
+
+        // MARK: - Typography with Tracking (Nike-style)
+        // All-caps headers with letter spacing for visual impact
+        static func allCapsHeader(size: CGFloat = 17, weight: Font.Weight = .semibold, tracking: CGFloat = 2.0) -> Font {
+            return Font.system(size: size, weight: weight, design: .rounded)
+        }
+
+        // Predefined tracked headers
+        static let easyRunHeader = Font.system(size: 17, weight: .light, design: .rounded) // +2% tracking in view
+        static let tempoRunHeader = Font.system(size: 17, weight: .bold, design: .rounded) // -1% tracking in view
+        static let speedWorkHeader = Font.system(size: 17, weight: .heavy, design: .rounded) // 0% tracking in view
     }
 
     // MARK: - Spacing
@@ -326,17 +389,17 @@ extension View {
             )
     }
 
-    /// Surface card for nested content
+    /// Surface card for nested content (Light mode)
     func surfaceCard() -> some View {
         self
             .padding(AppTheme.Spacing.md)
-            .background(AppTheme.Colors.surfaceBackground)
+            .background(AppTheme.Colors.LightMode.cardBackground)
             .cornerRadius(AppTheme.CornerRadius.medium)
             .shadow(
-                color: AppTheme.Shadows.light.color,
-                radius: AppTheme.Shadows.light.radius,
-                x: AppTheme.Shadows.light.x,
-                y: AppTheme.Shadows.light.y
+                color: Color.black.opacity(0.08),
+                radius: 4,
+                x: 0,
+                y: 2
             )
     }
 
@@ -351,6 +414,61 @@ extension View {
                 radius: AppTheme.Shadows.orangeGlow.radius,
                 x: AppTheme.Shadows.orangeGlow.x,
                 y: AppTheme.Shadows.orangeGlow.y
+            )
+    }
+
+    // MARK: - Glassmorphism Cards (2025 Refresh)
+    // Apple Liquid Glass inspired translucent cards with blur
+
+    /// Glass card with dark translucent background
+    func glassCard() -> some View {
+        self
+            .padding(AppTheme.Spacing.lg)
+            .background(.ultraThinMaterial)
+            .background(Color.black.opacity(0.3))
+            .cornerRadius(AppTheme.CornerRadius.large)
+            .shadow(
+                color: AppTheme.Shadows.medium.color,
+                radius: AppTheme.Shadows.medium.radius,
+                x: AppTheme.Shadows.medium.x,
+                y: AppTheme.Shadows.medium.y
+            )
+    }
+
+    /// Glass card with accent glow (for featured content)
+    func glassCardAccent() -> some View {
+        self
+            .padding(AppTheme.Spacing.lg)
+            .background(.ultraThinMaterial)
+            .background(AppTheme.Colors.accent.opacity(0.2))
+            .cornerRadius(AppTheme.CornerRadius.large)
+            .shadow(
+                color: AppTheme.Shadows.accentGlow.color,
+                radius: AppTheme.Shadows.accentGlow.radius,
+                x: AppTheme.Shadows.accentGlow.x,
+                y: AppTheme.Shadows.accentGlow.y
+            )
+    }
+
+    /// Frosted glass effect for overlays and modals
+    func frostedGlass() -> some View {
+        self
+            .background(.regularMaterial)
+            .cornerRadius(AppTheme.CornerRadius.large)
+    }
+
+    /// Light mode glass card (for Daylight Mode)
+    func glassCardLight() -> some View {
+        self
+            .padding(AppTheme.Spacing.lg)
+            .background(.ultraThinMaterial)
+            .background(Color.white.opacity(0.7))
+            .cornerRadius(AppTheme.CornerRadius.large)
+            .shadow(
+                color: Color.black.opacity(0.05),
+                radius: 8,
+                x: 0,
+                y: 4
             )
     }
 
@@ -373,7 +491,7 @@ extension View {
             )
     }
 
-    /// Secondary button (outlined)
+    /// Secondary button (subtle background)
     func secondaryButton() -> some View {
         self
             .font(AppTheme.Typography.bodyBold)
@@ -382,10 +500,6 @@ extension View {
             .padding(.vertical, AppTheme.Spacing.md)
             .background(AppTheme.Colors.cardBackground)
             .cornerRadius(AppTheme.CornerRadius.large)
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
-                    .stroke(AppTheme.Colors.accent, lineWidth: AppTheme.BorderWidth.regular)
-            )
     }
 
     /// Tertiary button (ghost/text only)

@@ -10,7 +10,7 @@ import Foundation
 /**
   Athletes are Strava users, Strava users are athletes. The object is returned in detailed, summary or meta representations.
  **/
-public final class Athlete: Identifiable, Decodable, Equatable {
+public final class Athlete: Identifiable, Decodable, Equatable, @unchecked Sendable {
     public static func == (lhs: Athlete, rhs: Athlete) -> Bool {
         return lhs.id == rhs.id &&
                lhs.userId == rhs.userId &&

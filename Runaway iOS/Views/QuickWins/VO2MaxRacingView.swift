@@ -40,11 +40,14 @@ struct VO2MaxRacingView: View {
             }
             .navigationTitle("VO2 Max & Racing")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
         }

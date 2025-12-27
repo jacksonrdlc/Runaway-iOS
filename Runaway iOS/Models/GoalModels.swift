@@ -31,7 +31,7 @@ enum GoalType: String, CaseIterable, Codable {
 }
 
 // MARK: - Running Goal
-struct RunningGoal: Codable, Identifiable {
+struct RunningGoal: Codable, Identifiable, Sendable {
     let id: Int?
     let athleteId: Int?  // Changed from userId to athleteId to match ERD
     let type: GoalType

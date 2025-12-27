@@ -16,7 +16,7 @@ struct AnalysisView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.Colors.background.ignoresSafeArea()
+            AppTheme.Colors.LightMode.background.ignoresSafeArea()
 
             if dataManager.activities.isEmpty {
                 EmptyAnalysisStateView()
@@ -85,16 +85,16 @@ struct EmptyAnalysisStateView: View {
         VStack(spacing: AppTheme.Spacing.xl) {
             Image(systemName: "chart.bar.doc.horizontal")
                 .font(.system(size: 80))
-                .foregroundColor(AppTheme.Colors.primary)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
 
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Data to Analyze")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text("Start logging activities to see detailed analytics and insights about your performance.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -112,12 +112,12 @@ struct AnalysisLoadingCard: View {
         VStack(spacing: AppTheme.Spacing.md) {
             ZStack {
                 Circle()
-                    .stroke(AppTheme.Colors.cardBackground, lineWidth: 4)
+                    .stroke(AppTheme.Colors.LightMode.cardBackground, lineWidth: 4)
                     .frame(width: 40, height: 40)
 
                 Circle()
                     .trim(from: 0, to: 0.7)
-                    .stroke(AppTheme.Colors.primary, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .stroke(AppTheme.Colors.LightMode.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                     .frame(width: 40, height: 40)
                     .rotationEffect(.degrees(animationPhase))
                     .animation(.linear(duration: 2).repeatForever(autoreverses: false), value: animationPhase)
@@ -126,15 +126,15 @@ struct AnalysisLoadingCard: View {
             Text("Analyzing...")
                 .font(AppTheme.Typography.body)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Text("Generating AI insights")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
         }
         .frame(maxWidth: .infinity, minHeight: 120)
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         .onAppear {
@@ -157,11 +157,11 @@ struct AnalysisPromptCard: View {
             Text("AI Analysis")
                 .font(AppTheme.Typography.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Text("Get personalized insights about your training")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
 
             Button(action: onAnalyze) {
@@ -174,13 +174,13 @@ struct AnalysisPromptCard: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.sm)
-                .background(AppTheme.Colors.primary)
+                .background(AppTheme.Colors.LightMode.accent)
                 .cornerRadius(AppTheme.CornerRadius.medium)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 120)
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
@@ -199,7 +199,7 @@ struct QuickInsightsCard: View {
                 Text("AI Insights")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
             }
 
             if !results.insights.recommendations.isEmpty {
@@ -213,7 +213,7 @@ struct QuickInsightsCard: View {
 
                             Text(recommendation)
                                 .font(AppTheme.Typography.caption)
-                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                                 .lineLimit(2)
                         }
                     }
@@ -222,11 +222,11 @@ struct QuickInsightsCard: View {
 
             Text("Updated \(results.lastUpdated, style: .relative) ago")
                 .font(.caption2)
-                .foregroundColor(AppTheme.Colors.textTertiary)
+                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
         }
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
@@ -243,7 +243,7 @@ struct DetailedAnalysisResultsView: View {
             Text("Detailed Analysis")
                 .font(AppTheme.Typography.title)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             LazyVStack(spacing: AppTheme.Spacing.md) {
                 // Recommendations
@@ -265,7 +265,7 @@ struct DetailedAnalysisResultsView: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
     }
@@ -278,29 +278,29 @@ struct EnhancedAnalysisLoadingView: View {
         VStack(spacing: AppTheme.Spacing.lg) {
             ZStack {
                 Circle()
-                    .stroke(AppTheme.Colors.cardBackground, lineWidth: 8)
+                    .stroke(AppTheme.Colors.LightMode.cardBackground, lineWidth: 8)
                     .frame(width: 80, height: 80)
                 
                 Circle()
                     .trim(from: 0, to: 0.7)
-                    .stroke(AppTheme.Colors.primaryGradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(AppTheme.Colors.accentGradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(animationPhase))
                     .animation(.linear(duration: 2).repeatForever(autoreverses: false), value: animationPhase)
                 
                 Image(systemName: AppIcons.analyze)
                     .font(.title2)
-                    .foregroundColor(AppTheme.Colors.primary)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
             }
             
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("Analyzing Performance")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 
                 Text("Training ML models and generating insights from your running data")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -317,9 +317,9 @@ struct EnhancedEmptyAnalysisView: View {
         VStack(spacing: AppTheme.Spacing.lg) {
             ZStack {
                 Circle()
-                    .fill(AppTheme.Colors.primaryGradient)
+                    .fill(AppTheme.Colors.accentGradient)
                     .frame(width: 120, height: 120)
-                    .shadow(color: AppTheme.Colors.primary.opacity(0.3), radius: 20, x: 0, y: 10)
+                    .shadow(color: AppTheme.Colors.LightMode.accent.opacity(0.3), radius: 20, x: 0, y: 10)
                 
                 Image(systemName: AppIcons.analysis)
                     .font(.system(size: 40))
@@ -329,11 +329,11 @@ struct EnhancedEmptyAnalysisView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("Ready to Analyze")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 
                 Text("Tap 'Analyze' to generate AI insights and discover patterns in your running performance")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     .multilineTextAlignment(.center)
             }
             
@@ -362,7 +362,7 @@ struct FeatureItem: View {
             
             Text(text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
         }
     }
 }
@@ -440,7 +440,7 @@ struct PerformanceOverviewCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -467,7 +467,7 @@ struct MetricBox: View {
                 .foregroundColor(.secondary)
         }
         .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.small)
     }
 }
@@ -516,7 +516,7 @@ struct WeeklyVolumeChart: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -549,7 +549,7 @@ struct PerformanceTrendCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
     
@@ -612,7 +612,7 @@ struct NextRunPredictionCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -673,7 +673,7 @@ struct RecommendationsCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -797,7 +797,7 @@ struct GoalReadinessCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
     
@@ -1014,7 +1014,7 @@ struct ProgressOverviewCard: View {
             .padding(.horizontal, 4)
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
         .onAppear {
             // Calculate monthly miles when view appears

@@ -44,11 +44,14 @@ struct TrainingLoadView: View {
             }
             .navigationTitle("Training Load")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
         }

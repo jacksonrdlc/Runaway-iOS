@@ -1,6 +1,6 @@
 import Foundation
 
-public struct User: Codable, Identifiable {
+public struct User: Codable, Identifiable, Sendable {
     public let id: UUID
     public let authId: UUID?  // Make optional since it might not exist in athletes table
     public let userId: Int    // This maps to athletes.id (bigint)

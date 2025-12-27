@@ -13,12 +13,12 @@ class StravaService: ObservableObject {
     // Strava OAuth configuration
     private let clientID = "118220" // Must match STRAVA_CLIENT_ID in data sync service
 
-//    // Toggle between production and local testing
-//    #if DEBUG
-//    private let dataSyncServiceBaseURL = "http://localhost:8080" // Change to production URL for production
-//    #else
-    private let dataSyncServiceBaseURL = "https://strava-sync-a2xd4ppmsq-uc.a.run.app" // TODO: Replace with production Cloud Run URL
-//    #endif
+    // Supabase Edge Functions (Migrated from Cloud Run)
+    #if DEBUG
+    private let dataSyncServiceBaseURL = "http://localhost:54321" // Local Supabase development
+    #else
+    private let dataSyncServiceBaseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co" // Production Supabase
+    #endif
 
     @Published var isConnected = false
     @Published var isLoading = false
@@ -34,7 +34,7 @@ class StravaService: ObservableObject {
         // Build URL components for proper encoding
         var components = URLComponents(string: "https://www.strava.com/oauth/authorize")!
 
-        let redirectUri = "\(dataSyncServiceBaseURL)/api/oauth/callback"
+        let redirectUri = "\(dataSyncServiceBaseURL)/functions/v1/oauth-callback"
 
         components.queryItems = [
             URLQueryItem(name: "client_id", value: clientID),
@@ -61,7 +61,7 @@ class StravaService: ObservableObject {
         error = nil
         defer { isLoading = false }
 
-        guard let url = URL(string: "\(dataSyncServiceBaseURL)/api/disconnect") else {
+        guard let url = URL(string: "\(dataSyncServiceBaseURL)/functions/v1/disconnect") else {
             throw StravaError.invalidURL
         }
 
@@ -203,7 +203,7 @@ class StravaService: ObservableObject {
         error = nil
         defer { isSyncing = false }
 
-        guard let url = URL(string: "\(dataSyncServiceBaseURL)/api/sync-beta") else {
+        guard let url = URL(string: "\(dataSyncServiceBaseURL)/functions/v1/sync-beta") else {
             throw StravaError.invalidURL
         }
 
@@ -277,7 +277,7 @@ class StravaService: ObservableObject {
         var attempts = 0
 
         while attempts < maxAttempts {
-            guard let url = URL(string: "\(dataSyncServiceBaseURL)/api/jobs/\(jobId)") else {
+            guard let url = URL(string: "\(dataSyncServiceBaseURL)/functions/v1/job-status/\(jobId)") else {
                 throw StravaError.invalidURL
             }
 
@@ -332,7 +332,7 @@ class StravaService: ObservableObject {
     /// Check the status of a sync job
     @MainActor
     func checkSyncStatus(jobId: String) async throws -> StravaJobStatus {
-        guard let url = URL(string: "\(dataSyncServiceBaseURL)/api/jobs/\(jobId)") else {
+        guard let url = URL(string: "\(dataSyncServiceBaseURL)/functions/v1/job-status/\(jobId)") else {
             throw StravaError.invalidURL
         }
 

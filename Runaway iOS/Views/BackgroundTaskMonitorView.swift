@@ -18,11 +18,11 @@ struct BackgroundTaskMonitorView: View {
                 Text("Background Task Status")
                     .font(AppTheme.Typography.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text("Monitor your app's realtime background tasks")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
             }
             
             // Connection Status Card
@@ -52,7 +52,7 @@ struct BackgroundTaskMonitorView: View {
                 VStack(alignment: .leading) {
                     Text("Realtime Connection")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                     Text(connectionStatusText)
                         .font(AppTheme.Typography.caption)
                         .foregroundColor(connectionColor)
@@ -70,7 +70,7 @@ struct BackgroundTaskMonitorView: View {
             HStack {
                 Text("Health:")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
 
                 Text(healthStatusText)
                     .font(AppTheme.Typography.caption)
@@ -82,12 +82,12 @@ struct BackgroundTaskMonitorView: View {
                 if let lastUpdate = realtimeService.lastUpdateTime {
                     Text("Updated \(timeAgoString(from: lastUpdate))")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: AppTheme.Shadows.light.color,
@@ -101,7 +101,7 @@ struct BackgroundTaskMonitorView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Background Task Performance")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
             
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -138,7 +138,7 @@ struct BackgroundTaskMonitorView: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: AppTheme.Shadows.light.color,
@@ -170,8 +170,8 @@ struct BackgroundTaskMonitorView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(AppTheme.Colors.cardBackground)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .background(AppTheme.Colors.LightMode.cardBackground)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 .cornerRadius(AppTheme.CornerRadius.medium)
 
                 Button("View Details") {
@@ -179,8 +179,8 @@ struct BackgroundTaskMonitorView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(AppTheme.Colors.cardBackground)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .background(AppTheme.Colors.LightMode.cardBackground)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 .cornerRadius(AppTheme.CornerRadius.medium)
             }
         }
@@ -301,10 +301,10 @@ struct MetricView: View {
 
             Text(title)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
         }
         .padding(12)
-        .background(AppTheme.Colors.background)
+        .background(AppTheme.Colors.LightMode.background)
         .cornerRadius(AppTheme.CornerRadius.small)
     }
 }
@@ -350,9 +350,16 @@ struct BackgroundTaskDetailsView: View {
                 .padding()
             }
             .navigationTitle("Background Task Details")
-            .navigationBarItems(trailing: Button("Done") {
-                presentationMode.wrappedValue.dismiss()
-            })
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                }
+            }
         }
     }
     
@@ -405,7 +412,7 @@ struct DetailCard: View {
             HStack {
                 Text(title)
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
 
@@ -420,13 +427,13 @@ struct DetailCard: View {
 
             Text(description)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
             
             if !recommendations.isEmpty {
                 Text("Recommendations:")
                     .font(AppTheme.Typography.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 ForEach(recommendations, id: \.self) { recommendation in
                     HStack(alignment: .top) {
@@ -434,13 +441,13 @@ struct DetailCard: View {
                             .foregroundColor(AppTheme.Colors.accent)
                         Text(recommendation)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     }
                 }
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: AppTheme.Shadows.light.color,

@@ -23,11 +23,11 @@ struct ActivityCommitmentCard: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                     Text("Activity Tracker")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                     Text(dataManager.daysSinceLastActivityText)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.textSecondary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 Spacer()
@@ -35,11 +35,11 @@ struct ActivityCommitmentCard: View {
                 // Activity streak icon
                 if dataManager.daysSinceLastActivity == 0 {
                     Image(systemName: "flame.fill")
-                        .foregroundColor(AppTheme.Colors.warning)
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                         .font(AppTheme.Typography.title2)
                 } else if dataManager.daysSinceLastActivity > 0 {
                     Image(systemName: "clock.fill")
-                        .foregroundColor(AppTheme.Colors.warning)
+                        .foregroundColor(AppTheme.Colors.LightMode.accent)
                         .font(AppTheme.Typography.title2)
                 }
             }
@@ -93,14 +93,9 @@ struct ActivityCommitmentCard: View {
 
         }
         .padding(AppTheme.Spacing.md)
-        .background(AppTheme.Colors.cardBackground)
+        .background(Color.white)
         .cornerRadius(AppTheme.CornerRadius.medium)
-        .shadow(
-            color: AppTheme.Shadows.light.color,
-            radius: AppTheme.Shadows.light.radius,
-            x: AppTheme.Shadows.light.x,
-            y: AppTheme.Shadows.light.y
-        )
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 
     private func createCommitment() {
@@ -139,12 +134,12 @@ struct NoCommitmentView: View {
             Text("Today's Commitment")
                 .font(AppTheme.Typography.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             HStack {
                 Text("I commit to:")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
 
                 Spacer()
 
@@ -192,17 +187,17 @@ struct ActiveCommitmentView: View {
                 Text("Today's Commitment")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
 
                 Text("Active")
                     .font(AppTheme.Typography.caption)
                     .fontWeight(.semibold)
-                    .foregroundColor(.black)
+                    .foregroundColor(.white)
                     .padding(.horizontal, AppTheme.Spacing.sm)
                     .padding(.vertical, 2)
-                    .background(AppTheme.Colors.warning)
+                    .background(AppTheme.Colors.LightMode.accent)
                     .cornerRadius(AppTheme.CornerRadius.small)
             }
 
@@ -215,12 +210,12 @@ struct ActiveCommitmentView: View {
                     Text(commitment.activityType.displayName)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                     if commitment.timeRemainingToday > 0 {
                         Text(commitment.timeRemainingText)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     } else {
                         Text("Commitment expired")
                             .font(AppTheme.Typography.caption)
@@ -257,7 +252,7 @@ struct FulfilledCommitmentView: View {
                 Spacer()
 
                 Image(systemName: "party.popper.fill")
-                    .foregroundColor(AppTheme.Colors.warning)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                     .font(AppTheme.Typography.title2)
             }
 
@@ -266,11 +261,11 @@ struct FulfilledCommitmentView: View {
                 Text("LET'S FUCKING GO! 🔥")
                     .font(.title2)
                     .fontWeight(.heavy)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text("You crushed your \(commitment.activityType.displayName.lowercased()) commitment today!")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
             }
 
             // Activity details
@@ -289,16 +284,16 @@ struct FulfilledCommitmentView: View {
                     Text(commitment.activityType.displayName)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                     if let fulfilledTime = commitment.fulfilledAtAsDate {
                         Text("Completed at \(fulfilledTime, formatter: timeFormatter)")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     } else {
                         Text("Completed today")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                     }
                 }
 
@@ -371,7 +366,7 @@ struct CommitmentProgressRing: View {
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    timeRemaining > 0 ? AppTheme.Colors.warning : AppTheme.Colors.error,
+                    timeRemaining > 0 ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.error,
                     style: StrokeStyle(lineWidth: 3, lineCap: .round)
                 )
                 .frame(width: 32, height: 32)
@@ -380,7 +375,7 @@ struct CommitmentProgressRing: View {
 
             // Center indicator
             Circle()
-                .fill(timeRemaining > 0 ? AppTheme.Colors.warning : AppTheme.Colors.error)
+                .fill(timeRemaining > 0 ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.error)
                 .frame(width: 8, height: 8)
         }
     }
@@ -408,7 +403,7 @@ struct ActivityTypePickerSheet: View {
 
                             Text(activityType.displayName)
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                             Spacer()
 
@@ -423,11 +418,14 @@ struct ActivityTypePickerSheet: View {
             }
             .navigationTitle("Choose Activity")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
                     }
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
         }

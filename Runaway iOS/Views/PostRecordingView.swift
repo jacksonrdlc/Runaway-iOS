@@ -6,20 +6,18 @@
 //
 
 import SwiftUI
-import MapKit
+import MapboxMaps
+import CoreLocation
+import Combine
 
 struct PostRecordingView: View {
     @ObservedObject var recordingService: ActivityRecordingService
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var activityName = ""
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var showingSaveError = false
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-    )
     
     var body: some View {
         NavigationView {
@@ -30,17 +28,13 @@ struct PostRecordingView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Route")
                                 .font(.headline)
-                                .foregroundColor(AppTheme.Colors.textPrimary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                             
                             RoutePreviewMap(
-                                routePoints: recordingService.gpsService.routePoints,
-                                region: $region
+                                routePoints: recordingService.gpsService.routePoints
                             )
                             .frame(height: 200)
                             .cornerRadius(12)
-                            .onAppear {
-                                setupMapRegion()
-                            }
                         }
                     }
                     
@@ -48,7 +42,7 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Activity Summary")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                         
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                             SummaryMetricCard(
@@ -89,14 +83,14 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Activity Details")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
-                        
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
                         VStack(spacing: 12) {
                             // Activity name input
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Activity Name")
                                     .font(.subheadline)
-                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                                 
                                 TextField("Enter activity name", text: $activityName)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -112,27 +106,27 @@ struct PostRecordingView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Type")
                                         .font(.caption)
-                                        .foregroundColor(AppTheme.Colors.textSecondary)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                                     Text(recordingService.currentSession?.activityType ?? "Run")
                                         .font(.subheadline)
-                                        .foregroundColor(AppTheme.Colors.textPrimary)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 VStack(alignment: .trailing, spacing: 4) {
                                     Text("Date")
                                         .font(.caption)
-                                        .foregroundColor(AppTheme.Colors.textSecondary)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                                     Text(formatDate(recordingService.currentSession?.startTime ?? Date()))
                                         .font(.subheadline)
-                                        .foregroundColor(AppTheme.Colors.textPrimary)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                                 }
                             }
                             .padding(.vertical, 8)
                         }
                         .padding()
-                        .background(AppTheme.Colors.cardBackground)
+                        .background(AppTheme.Colors.LightMode.cardBackground)
                         .cornerRadius(12)
                     }
                     
@@ -140,25 +134,25 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Route Statistics")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
-                        
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
                         HStack {
                             StatItem(
                                 title: "Route Points",
                                 value: "\(recordingService.gpsService.routePoints.count)",
                                 icon: "location.circle"
                             )
-                            
+
                             Spacer()
-                            
+
                             StatItem(
                                 title: "Start Time",
                                 value: formatStartTime(recordingService.currentSession?.startTime ?? Date()),
                                 icon: "clock.arrow.circlepath"
                             )
-                            
+
                             Spacer()
-                            
+
                             StatItem(
                                 title: "End Time",
                                 value: formatStartTime(recordingService.currentSession?.endTime ?? Date()),
@@ -166,15 +160,17 @@ struct PostRecordingView: View {
                             )
                         }
                         .padding()
-                        .background(AppTheme.Colors.cardBackground)
+                        .background(AppTheme.Colors.LightMode.cardBackground)
                         .cornerRadius(12)
                     }
                 }
                 .padding()
             }
-            .background(AppTheme.Colors.background)
+            .background(AppTheme.Colors.LightMode.surfaceBackground)
             .navigationTitle("Activity Summary")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Discard") {
@@ -210,18 +206,7 @@ struct PostRecordingView: View {
     }
     
     // MARK: - Methods
-    
-    private func setupMapRegion() {
-        let coordinates = recordingService.gpsService.routePoints.map { $0.coordinate }
-        
-        guard !coordinates.isEmpty else { return }
-        
-        let polylineService = PolylineEncodingService()
-        if let bounds = polylineService.getBounds(coordinates: coordinates) {
-            region = MKCoordinateRegion(center: bounds.center, span: bounds.span)
-        }
-    }
-    
+
     private func saveActivity() {
         guard !activityName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
@@ -311,22 +296,22 @@ struct SummaryMetricCard: View {
                     Text(value)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.textPrimary)
-                    
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
                     if !unit.isEmpty {
                         Text(unit)
                             .font(.caption)
-                            .foregroundColor(AppTheme.Colors.textTertiary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
                     }
                 }
-                
+
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
             }
         }
         .padding()
-        .background(AppTheme.Colors.cardBackground)
+        .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -336,21 +321,21 @@ struct StatItem: View {
     let title: String
     let value: String
     let icon: String
-    
+
     var body: some View {
         VStack(spacing: 4) {
             Image(systemName: icon)
-                .foregroundColor(AppTheme.Colors.accent)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
                 .font(.title3)
-            
+
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.textPrimary)
-            
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
             Text(title)
                 .font(.caption2)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -359,81 +344,144 @@ struct StatItem: View {
 // MARK: - Route Preview Map
 struct RoutePreviewMap: UIViewRepresentable {
     let routePoints: [GPSRoutePoint]
-    @Binding var region: MKCoordinateRegion
-    
-    func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
-        mapView.delegate = context.coordinator
-        mapView.isUserInteractionEnabled = false
-        mapView.mapType = .standard
-        mapView.showsCompass = false
-        mapView.showsScale = false
-        
+
+    func makeUIView(context: Context) -> MapView {
+        let mapInitOptions = MapInitOptions(styleURI: .standard)
+        let mapView = MapView(frame: .zero, mapInitOptions: mapInitOptions)
+
+        // Disable interactions for preview using gestures options
+        mapView.gestures.options.panEnabled = false
+        mapView.gestures.options.pinchEnabled = false
+        mapView.gestures.options.rotateEnabled = false
+        mapView.gestures.options.pitchEnabled = false
+
+        // Hide ornaments
+        mapView.ornaments.compassView.isHidden = true
+        mapView.ornaments.scaleBarView.isHidden = true
+        mapView.ornaments.logoView.isHidden = true
+        mapView.ornaments.attributionButton.isHidden = true
+
+        // Add route when style loads
+        mapView.mapboxMap.onStyleLoaded.observe { _ in
+            self.addRouteToMap(mapView)
+        }.store(in: &context.coordinator.cancellables)
+
         return mapView
     }
-    
-    func updateUIView(_ mapView: MKMapView, context: Context) {
-        // Set region
-        mapView.setRegion(region, animated: false)
-        
-        // Clear existing overlays
-        mapView.removeOverlays(mapView.overlays)
-        
-        // Add route polyline
-        if routePoints.count > 1 {
-            let coordinates = routePoints.map { $0.coordinate }
-            let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
-            mapView.addOverlay(polyline)
-            
-            // Add start and end annotations
-            let startAnnotation = MKPointAnnotation()
-            startAnnotation.coordinate = coordinates.first!
-            startAnnotation.title = "Start"
-            
-            let endAnnotation = MKPointAnnotation()
-            endAnnotation.coordinate = coordinates.last!
-            endAnnotation.title = "Finish"
-            
-            mapView.addAnnotations([startAnnotation, endAnnotation])
-        }
+
+    func updateUIView(_ mapView: MapView, context: Context) {
+        addRouteToMap(mapView)
     }
-    
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
-    
-    class Coordinator: NSObject, MKMapViewDelegate {
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            if let polyline = overlay as? MKPolyline {
-                let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = UIColor.systemBlue
-                renderer.lineWidth = 4
-                renderer.lineCap = .round
-                renderer.lineJoin = .round
-                return renderer
+
+    class Coordinator {
+        var cancellables = Set<AnyCancelable>()
+    }
+
+    private func addRouteToMap(_ mapView: MapView) {
+        guard routePoints.count > 1 else { return }
+
+        let coordinates = routePoints.map { $0.coordinate }
+
+        // Remove existing sources and layers if they exist
+        try? mapView.mapboxMap.removeLayer(withId: "route-layer")
+        try? mapView.mapboxMap.removeSource(withId: "route-source")
+        try? mapView.mapboxMap.removeLayer(withId: "markers-layer")
+        try? mapView.mapboxMap.removeSource(withId: "markers-source")
+
+        // Create LineString from coordinates
+        let lineString = LineString(coordinates)
+
+        // Create GeoJSON source for route
+        var routeSource = GeoJSONSource(id: "route-source")
+        routeSource.data = .geometry(.lineString(lineString))
+
+        // Add route source to map
+        try? mapView.mapboxMap.addSource(routeSource)
+
+        // Create line layer for the route
+        var lineLayer = LineLayer(id: "route-layer", source: "route-source")
+        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.LightMode.accent)))
+        lineLayer.lineWidth = .constant(4)
+        lineLayer.lineCap = .constant(.round)
+        lineLayer.lineJoin = .constant(.round)
+
+        // Add route layer to map
+        try? mapView.mapboxMap.addLayer(lineLayer)
+
+        // Add start and end markers
+        let startPoint = Point(coordinates.first!)
+        let endPoint = Point(coordinates.last!)
+
+        var features: [Feature] = []
+
+        // Start marker feature
+        var startFeature = Feature(geometry: .point(startPoint))
+        startFeature.properties = [
+            "marker-type": .string("start")
+        ]
+        features.append(startFeature)
+
+        // End marker feature
+        var endFeature = Feature(geometry: .point(endPoint))
+        endFeature.properties = [
+            "marker-type": .string("end")
+        ]
+        features.append(endFeature)
+
+        // Create markers source
+        var markersSource = GeoJSONSource(id: "markers-source")
+        markersSource.data = .featureCollection(FeatureCollection(features: features))
+
+        // Add markers source
+        try? mapView.mapboxMap.addSource(markersSource)
+
+        // Create circle layer for markers
+        var markersLayer = CircleLayer(id: "markers-layer", source: "markers-source")
+        markersLayer.circleRadius = .constant(8)
+        markersLayer.circleColor = .expression(
+            Exp(.match) {
+                Exp(.get) { "marker-type" }
+                "start"
+                UIColor.systemGreen
+                "end"
+                UIColor.systemRed
+                UIColor.gray
             }
-            return MKOverlayRenderer(overlay: overlay)
-        }
-        
-        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            guard !(annotation is MKUserLocation) else { return nil }
-            
-            let identifier = "RoutePoint"
-            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
-            
-            if annotationView == nil {
-                annotationView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-                annotationView?.canShowCallout = false
-            } else {
-                annotationView?.annotation = annotation
-            }
-            
-            if let pinView = annotationView as? MKPinAnnotationView {
-                pinView.pinTintColor = annotation.title == "Start" ? .green : .red
-            }
-            
-            return annotationView
-        }
+        )
+        markersLayer.circleStrokeColor = .constant(StyleColor(.white))
+        markersLayer.circleStrokeWidth = .constant(2)
+
+        // Add markers layer
+        try? mapView.mapboxMap.addLayer(markersLayer)
+
+        // Calculate bounds and fit camera
+        let minLat = coordinates.map { $0.latitude }.min() ?? coordinates[0].latitude
+        let maxLat = coordinates.map { $0.latitude }.max() ?? coordinates[0].latitude
+        let minLon = coordinates.map { $0.longitude }.min() ?? coordinates[0].longitude
+        let maxLon = coordinates.map { $0.longitude }.max() ?? coordinates[0].longitude
+
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2
+        )
+
+        // Add padding to ensure the route is fully visible
+        let latDelta = (maxLat - minLat) * 1.3
+        let lonDelta = (maxLon - minLon) * 1.3
+
+        // Calculate zoom level from delta
+        let maxDelta = max(latDelta, lonDelta)
+        let zoom = log2(360 / maxDelta) - 1
+
+        let camera = CameraOptions(
+            center: center,
+            zoom: zoom
+        )
+        mapView.mapboxMap.setCamera(to: camera)
     }
 }
 

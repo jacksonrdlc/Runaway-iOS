@@ -6,17 +6,13 @@
 //
 
 import SwiftUI
-import MapKit
+import MapboxMaps
 import CoreLocation
 
 struct PreRecordingView: View {
     @StateObject private var recordingService = ActivityRecordingService()
     @Environment(\.dismiss) private var dismiss
-    
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194), // Default to SF
-        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-    )
+
     @State private var showingPermissionAlert = false
     @State private var showingRecordingView = false
     @State private var activityType = "Run"
@@ -28,11 +24,10 @@ struct PreRecordingView: View {
     
     var body: some View {
         ZStack {
-            // Map taking up almost full screen
-            MapView(
-                region: $region,
-                currentLocation: recordingService.gpsService.currentLocation,
-                showCurrentLocation: true
+            // MapBox map taking up full screen
+            MapBoxBaseView(
+                config: .lightMode,
+                currentLocation: recordingService.gpsService.currentLocation
             )
             .ignoresSafeArea()
             
@@ -238,17 +233,13 @@ struct PreRecordingView: View {
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
             if let location = recordingService.gpsService.currentLocation {
                 print("📍 Got location for map centering: \(location.coordinate)")
-                region = MKCoordinateRegion(
-                    center: location.coordinate,
-                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                )
-                
+
                 // Reverse geocode to get location name
                 reverseGeocodeLocation(location)
-                
+
                 timer.invalidate()
             }
-            
+
             // Timeout after 30 seconds
             if timer.fireDate.timeIntervalSinceNow < -30 {
                 print("⏰ Location monitoring timeout")
@@ -318,63 +309,6 @@ struct PreRecordingView: View {
     private func openAppSettings() {
         if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsUrl)
-        }
-    }
-}
-
-// MARK: - Map View Component
-struct MapView: UIViewRepresentable {
-    @Binding var region: MKCoordinateRegion
-    let currentLocation: CLLocation?
-    let showCurrentLocation: Bool
-    
-    func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
-        mapView.delegate = context.coordinator
-        mapView.showsUserLocation = showCurrentLocation
-        mapView.userTrackingMode = .none
-        mapView.mapType = .standard
-        mapView.isZoomEnabled = true
-        mapView.isScrollEnabled = true
-        mapView.showsCompass = true
-        mapView.showsScale = false
-        
-        // Set initial region
-        mapView.setRegion(region, animated: false)
-        
-        return mapView
-    }
-    
-    func updateUIView(_ mapView: MKMapView, context: Context) {
-        // Update region if it changed significantly
-        let currentCenter = mapView.region.center
-        let newCenter = region.center
-        
-        let latDiff = abs(currentCenter.latitude - newCenter.latitude)
-        let lonDiff = abs(currentCenter.longitude - newCenter.longitude)
-        
-        // Only update if the difference is significant to avoid constant updates
-        if latDiff > 0.001 || lonDiff > 0.001 {
-            mapView.setRegion(region, animated: true)
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, MKMapViewDelegate {
-        let parent: MapView
-        
-        init(_ parent: MapView) {
-            self.parent = parent
-        }
-        
-        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            // Update binding when user moves map
-            DispatchQueue.main.async {
-                self.parent.region = mapView.region
-            }
         }
     }
 }

@@ -20,7 +20,7 @@ struct AthleteView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.background.ignoresSafeArea()
+            AppTheme.Colors.LightMode.background.ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
@@ -66,7 +66,7 @@ struct ProfileHeader: View {
                             .foregroundColor(.white)
                     )
             }
-            .frame(width: 80, height: 80)
+            .frame(width: 160, height: 160)
             .clipShape(Circle())
             .shadow(color: AppTheme.Colors.primary.opacity(0.3), radius: 8, x: 0, y: 4)
             
@@ -74,11 +74,11 @@ struct ProfileHeader: View {
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text("\(athlete.firstname ?? "Unknown") \(athlete.lastname ?? "Athlete")")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
-                
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
                 Text("Runner • Athlete")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
             }
         }
     }
@@ -96,14 +96,14 @@ struct QuickStatsGrid: View {
                 icon: "figure.run",
                 value: runs,
                 label: "Total Runs",
-                color: AppTheme.Colors.accent
+                color: AppTheme.Colors.LightMode.accent
             )
-            
+
             QuickStatItem(
                 icon: "road.lanes",
                 value: miles,
                 label: "Miles",
-                color: AppTheme.Colors.accent
+                color: AppTheme.Colors.LightMode.accent
             )
             
             QuickStatItem(
@@ -137,11 +137,11 @@ struct QuickStatItem: View {
             
             Text(value)
                 .font(AppTheme.Typography.title.weight(.bold))
-                .foregroundColor(AppTheme.Colors.textPrimary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Text(label)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .surfaceCard()
@@ -160,19 +160,19 @@ struct WeeklyStatsCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
                 Image(systemName: "calendar.badge.clock")
-                    .foregroundColor(AppTheme.Colors.accent)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                     .font(.title2)
 
                 Text("This Week")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
             }
-            
+
             HStack(spacing: AppTheme.Spacing.lg) {
-                StatPair(label: "Runs", value: String(weeklyRuns), color: AppTheme.Colors.accent)
-                StatPair(label: "Distance", value: weeklyDistance, color: AppTheme.Colors.accent)
+                StatPair(label: "Runs", value: String(weeklyRuns), color: AppTheme.Colors.LightMode.accent)
+                StatPair(label: "Distance", value: weeklyDistance, color: AppTheme.Colors.LightMode.accent)
                 StatPair(label: "Time", value: weeklyTime, color: AppTheme.Colors.warning)
                 Spacer()
             }
@@ -240,19 +240,19 @@ struct MonthlyStatsCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
                 Image(systemName: "calendar")
-                    .foregroundColor(AppTheme.Colors.accent)
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                     .font(.title2)
 
                 Text("This Month")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
             }
-            
+
             HStack(spacing: AppTheme.Spacing.lg) {
-                StatPair(label: "Runs", value: String(monthlyRuns), color: AppTheme.Colors.accent)
-                StatPair(label: "Distance", value: monthlyDistance, color: AppTheme.Colors.accent)
+                StatPair(label: "Runs", value: String(monthlyRuns), color: AppTheme.Colors.LightMode.accent)
+                StatPair(label: "Distance", value: monthlyDistance, color: AppTheme.Colors.LightMode.accent)
                 StatPair(label: "Avg Pace", value: averagePace, color: AppTheme.Colors.warning)
                 Spacer()
             }
@@ -339,16 +339,16 @@ struct AllTimeStatsCard: View {
 
                 Text("All Time")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
             }
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: AppTheme.Spacing.md) {
-                StatPair(label: "Total Runs", value: "\(stats.count ?? 0)", color: AppTheme.Colors.accent)
-                StatPair(label: "Total Distance", value: String(format: "%.1f mi", (stats.distance ?? 0.0) * 0.000621371), color: AppTheme.Colors.accent)
+                StatPair(label: "Total Runs", value: "\(stats.count ?? 0)", color: AppTheme.Colors.LightMode.accent)
+                StatPair(label: "Total Distance", value: String(format: "%.1f mi", (stats.distance ?? 0.0) * 0.000621371), color: AppTheme.Colors.LightMode.accent)
                 StatPair(label: "Total Time", value: formatTime(minutes: (stats.elapsedTime ?? 0.0) / 60), color: AppTheme.Colors.warning)
-                StatPair(label: "Best Pace", value: "6:45/mi", color: AppTheme.Colors.accent)
+                StatPair(label: "Best Pace", value: "6:45/mi", color: AppTheme.Colors.LightMode.accent)
             }
         }
         .surfaceCard()
@@ -369,7 +369,7 @@ struct StatPair: View {
 
             Text(label)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.textSecondary)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
         }
     }
 }
