@@ -25,17 +25,23 @@ jobs:
         echo "✓ MAPBOX_SECRET_TOKEN is set (length: ${#MAPBOX_SECRET_TOKEN} chars)"
         echo "✓ Token starts with: ${MAPBOX_SECRET_TOKEN:0:10}..."
 
-        echo "machine api.mapbox.com" > ~/.netrc
-        echo "login mapbox" >> ~/.netrc
-        echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
+        # Mapbox requires auth for multiple domains
+        cat > ~/.netrc << NETRC_EOF
+machine api.mapbox.com
+login mapbox
+password ${MAPBOX_SECRET_TOKEN}
+
+machine api.mapbox.cn
+login mapbox
+password ${MAPBOX_SECRET_TOKEN}
+NETRC_EOF
         chmod 600 ~/.netrc
 
         echo "=== Verifying .netrc ==="
         echo "✓ .netrc created at ~/.netrc"
-        echo "✓ .netrc permissions: $(ls -la ~/.netrc)"
-        echo "✓ .netrc contents (masked password):"
-        head -2 ~/.netrc
-        echo "password sk.***masked***"
+        ls -la ~/.netrc
+        echo "✓ .netrc line count: $(wc -l < ~/.netrc)"
+        echo "✓ First domain configured: $(head -1 ~/.netrc)"
         echo "=== Mapbox Auth Complete ==="
 
     - name: Select Xcode 16.2
@@ -52,9 +58,14 @@ jobs:
 
     - name: Resolve Swift packages
       run: |
+        echo "=== Resolving Swift Package Dependencies ==="
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
-          -resolvePackageDependencies
+          -resolvePackageDependencies 2>&1 | tee package_resolution.log
+        echo "=== Package Resolution Complete ==="
+        if grep -i "error\|failed\|unauthorized" package_resolution.log; then
+          echo "::warning::Package resolution may have issues - check log above"
+        fi
 
     - name: Build
       run: |
