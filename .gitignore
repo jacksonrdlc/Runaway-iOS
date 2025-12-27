@@ -37,4 +37,10 @@ GoogleService-Info.plist
 .env.production
 
 # Swift Package Manager
-.build/Runaway-iOS-Info.plist
+.build/
+.swiftpm
+
+# CI/CD artifacts
+*.xcresult
+*.log
+.build-artifacts/

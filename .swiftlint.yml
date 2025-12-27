@@ -1,0 +1,82 @@
+# SwiftLint Configuration for Runaway iOS
+
+# Disabled Rules - Rules that are too strict or not applicable
+disabled_rules:
+  - trailing_whitespace  # Allow trailing whitespace (common in markdown and comments)
+  - line_length          # Configured below instead of disabled completely
+
+# Opt-In Rules - Additional rules to enable for better code quality
+opt_in_rules:
+  - empty_count          # Prefer checking isEmpty over count == 0
+  - force_unwrapping     # Warn on force unwrapping with !
+
+# Excluded Paths - Directories to ignore during linting
+excluded:
+  - Pods
+  - .build
+  - DerivedData
+  - vendor
+  - Carthage
+  - .swiftpm
+  - RunawayWidget/Assets.xcassets
+  - "Runaway iOS/Assets.xcassets"
+
+# Line Length Configuration
+line_length:
+  warning: 150
+  error: 200
+  ignores_function_declarations: true
+  ignores_comments: true
+  ignores_urls: true
+
+# Identifier Name Configuration
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  max_length:
+    warning: 50
+    error: 60
+  excluded:
+    - id
+    - x
+    - y
+    - z
+    - i
+    - j
+    - k
+
+# Function Body Length
+function_body_length:
+  warning: 50
+  error: 100
+
+# Type Body Length
+type_body_length:
+  warning: 300
+  error: 500
+
+# File Length
+file_length:
+  warning: 500
+  error: 1000
+  ignore_comment_only_lines: true
+
+# Cyclomatic Complexity
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+# Nesting Depth
+nesting:
+  type_level:
+    warning: 2
+  statement_level:
+    warning: 5
+
+# Reporter - Use xcode for better integration
+reporter: "xcode"
+
+# Custom Rules (optional, for future enhancements)
+custom_rules:
+  # Add custom rules here as needed

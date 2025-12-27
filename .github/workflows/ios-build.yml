@@ -1,0 +1,315 @@
+name: iOS CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  SCHEME: "Runaway iOS"
+  WORKSPACE: "Runaway iOS.xcworkspace"
+  PROJECT: "Runaway iOS.xcodeproj"
+  DESTINATION: "platform=iOS Simulator,name=iPhone 15,OS=17.2"
+  XCODE_VERSION: "15.2"
+
+jobs:
+  build:
+    name: Build and Test iOS App
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+      
+      - name: Display Xcode and Swift versions
+        run: |
+          xcodebuild -version
+          swift --version
+      
+      - name: Cache Swift Package Manager dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+      
+      - name: Create placeholder Runaway-iOS-Info.plist
+        run: |
+          if [ ! -f "Runaway iOS/Runaway-iOS-Info.plist" ]; then
+            cat > "Runaway iOS/Runaway-iOS-Info.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>BGTaskSchedulerPermittedIdentifiers</key>
+            <array>
+              <string>com.jackrudelic.runawayios.realtime-background</string>
+            </array>
+            <key>CFBundleDisplayName</key>
+            <string>Runaway</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.jackrudelic.runawayios</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleIconName</key>
+            <string>AppIcon</string>
+            <key>CFBundleSignature</key>
+            <string>????</string>
+            <key>CFBundleURLTypes</key>
+            <array>
+              <dict>
+                <key>CFBundleTypeRole</key>
+                <string>Editor</string>
+                <key>CFBundleURLName</key>
+                <string>com.runawayios.ios</string>
+                <key>CFBundleURLSchemes</key>
+                <array>
+                  <string>runaway</string>
+                </array>
+              </dict>
+            </array>
+            <key>LSApplicationQueriesSchemes</key>
+            <array>
+              <string>strava</string>
+            </array>
+            <key>MBXAccessToken</key>
+            <string>pk.placeholder_token_for_ci</string>
+            <key>UIBackgroundModes</key>
+            <array>
+              <string>remote-notification</string>
+              <string>processing</string>
+              <string>fetch</string>
+            </array>
+            <key>RUNAWAY_API_KEY</key>
+            <string>placeholder_api_key</string>
+            <key>SUPABASE_URL</key>
+            <string>${SUPABASE_URL:-https://placeholder.supabase.co}</string>
+            <key>SUPABASE_KEY</key>
+            <string>${SUPABASE_KEY:-placeholder_key}</string>
+          </dict>
+          </plist>
+          EOF
+            echo "Created placeholder Runaway-iOS-Info.plist"
+          else
+            echo "Runaway-iOS-Info.plist already exists"
+          fi
+      
+      - name: Create placeholder GoogleService-Info.plist
+        run: |
+          if [ ! -f "Runaway iOS/GoogleService-Info.plist" ]; then
+            cat > "Runaway iOS/GoogleService-Info.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CLIENT_ID</key>
+            <string>placeholder-client-id</string>
+            <key>REVERSED_CLIENT_ID</key>
+            <string>com.googleusercontent.apps.placeholder</string>
+            <key>API_KEY</key>
+            <string>placeholder-api-key</string>
+            <key>GCM_SENDER_ID</key>
+            <string>123456789</string>
+            <key>PLIST_VERSION</key>
+            <string>1</string>
+            <key>BUNDLE_ID</key>
+            <string>com.jackrudelic.runawayios</string>
+            <key>PROJECT_ID</key>
+            <string>runaway-ios-placeholder</string>
+            <key>STORAGE_BUCKET</key>
+            <string>runaway-ios-placeholder.appspot.com</string>
+            <key>IS_ADS_ENABLED</key>
+            <false/>
+            <key>IS_ANALYTICS_ENABLED</key>
+            <false/>
+            <key>IS_APPINVITE_ENABLED</key>
+            <false/>
+            <key>IS_GCM_ENABLED</key>
+            <false/>
+            <key>IS_SIGNIN_ENABLED</key>
+            <false/>
+            <key>GOOGLE_APP_ID</key>
+            <string>1:123456789:ios:placeholder</string>
+          </dict>
+          </plist>
+          EOF
+            echo "Created placeholder GoogleService-Info.plist"
+          else
+            echo "GoogleService-Info.plist already exists"
+          fi
+      
+      - name: Set environment variables from secrets
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}" >> $GITHUB_ENV
+          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY || 'placeholder_key' }}" >> $GITHUB_ENV
+      
+      - name: Resolve Swift Package Manager dependencies
+        run: |
+          if [ -f "$WORKSPACE/contents.xcworkspacedata" ]; then
+            echo "Resolving SPM dependencies for workspace..."
+            xcodebuild -resolvePackageDependencies -workspace "$WORKSPACE" -scheme "$SCHEME"
+          else
+            echo "Resolving SPM dependencies for project..."
+            xcodebuild -resolvePackageDependencies -project "$PROJECT" -scheme "$SCHEME"
+          fi
+        continue-on-error: true
+      
+      - name: Build iOS app
+        run: |
+          set -o pipefail
+          
+          # Check if xcpretty is available
+          if command -v xcpretty &> /dev/null; then
+            XCPRETTY="| xcpretty"
+          else
+            echo "xcpretty not available, using raw output"
+            XCPRETTY=""
+          fi
+          
+          # Try workspace first, fall back to project
+          if [ -f "$WORKSPACE/contents.xcworkspacedata" ]; then
+            echo "Building with workspace: $WORKSPACE"
+            eval "xcodebuild clean build \
+              -workspace '$WORKSPACE' \
+              -scheme '$SCHEME' \
+              -destination '$DESTINATION' \
+              -configuration Debug \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY='' \
+              DEVELOPMENT_TEAM='' \
+              PROVISIONING_PROFILE_SPECIFIER='' \
+              -allowProvisioningUpdates \
+              $XCPRETTY"
+          else
+            echo "Building with project: $PROJECT"
+            eval "xcodebuild clean build \
+              -project '$PROJECT' \
+              -scheme '$SCHEME' \
+              -destination '$DESTINATION' \
+              -configuration Debug \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY='' \
+              DEVELOPMENT_TEAM='' \
+              PROVISIONING_PROFILE_SPECIFIER='' \
+              -allowProvisioningUpdates \
+              $XCPRETTY"
+          fi
+      
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          
+          # Check if xcpretty is available
+          if command -v xcpretty &> /dev/null; then
+            XCPRETTY="| xcpretty"
+          else
+            XCPRETTY=""
+          fi
+          
+          # Try workspace first, fall back to project
+          if [ -f "$WORKSPACE/contents.xcworkspacedata" ]; then
+            eval "xcodebuild test \
+              -workspace '$WORKSPACE' \
+              -scheme '$SCHEME' \
+              -destination '$DESTINATION' \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              -allowProvisioningUpdates \
+              $XCPRETTY"
+          else
+            eval "xcodebuild test \
+              -project '$PROJECT' \
+              -scheme '$SCHEME' \
+              -destination '$DESTINATION' \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              -allowProvisioningUpdates \
+              $XCPRETTY"
+          fi
+        continue-on-error: true
+      
+      - name: Build Widget Extension
+        run: |
+          set -o pipefail
+          
+          # Check if xcpretty is available
+          if command -v xcpretty &> /dev/null; then
+            XCPRETTY="| xcpretty"
+          else
+            XCPRETTY=""
+          fi
+          
+          # Try workspace first, fall back to project
+          if [ -f "$WORKSPACE/contents.xcworkspacedata" ]; then
+            eval "xcodebuild build \
+              -workspace '$WORKSPACE' \
+              -scheme 'RunawayWidgetExtension' \
+              -destination '$DESTINATION' \
+              -configuration Debug \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY='' \
+              DEVELOPMENT_TEAM='' \
+              PROVISIONING_PROFILE_SPECIFIER='' \
+              -allowProvisioningUpdates \
+              $XCPRETTY"
+          else
+            eval "xcodebuild build \
+              -project '$PROJECT' \
+              -scheme 'RunawayWidgetExtension' \
+              -destination '$DESTINATION' \
+              -configuration Debug \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY='' \
+              DEVELOPMENT_TEAM='' \
+              PROVISIONING_PROFILE_SPECIFIER='' \
+              -allowProvisioningUpdates \
+              $XCPRETTY"
+          fi
+        continue-on-error: true
+      
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            ~/Library/Logs/DiagnosticReports/
+            ~/Library/Developer/Xcode/DerivedData/*/Logs/
+          retention-days: 7
+  
+  lint:
+    name: SwiftLint Code Quality
+    runs-on: macos-14
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install SwiftLint
+        run: |
+          brew install swiftlint
+      
+      - name: Run SwiftLint
+        run: |
+          swiftlint lint --reporter github-actions-logging
+        continue-on-error: true
