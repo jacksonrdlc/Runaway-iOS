@@ -108,10 +108,10 @@ jobs:
             echo "Created placeholder Runaway-iOS-Info.plist"
             
             # If environment variables are set, update the plist with actual values
-            if [ ! -z "$SUPABASE_URL" ]; then
+            if [ -n "$SUPABASE_URL" ]; then
               plutil -replace SUPABASE_URL -string "$SUPABASE_URL" "Runaway iOS/Runaway-iOS-Info.plist" 2>/dev/null || true
             fi
-            if [ ! -z "$SUPABASE_KEY" ]; then
+            if [ -n "$SUPABASE_KEY" ]; then
               plutil -replace SUPABASE_KEY -string "$SUPABASE_KEY" "Runaway iOS/Runaway-iOS-Info.plist" 2>/dev/null || true
             fi
           else
