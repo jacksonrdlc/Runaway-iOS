@@ -13,8 +13,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Select Xcode 16
-      run: sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+    - name: Select Xcode 16.2
+      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
     - name: Show Xcode version
       run: xcodebuild -version
@@ -26,6 +26,6 @@ jobs:
       run: |
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
-          -destination "generic/platform=iOS Simulator" \
+          -sdk iphonesimulator \
           -skipPackagePluginValidation \
           build
