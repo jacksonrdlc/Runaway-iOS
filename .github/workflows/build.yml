@@ -19,42 +19,32 @@ jobs:
       run: |
         echo "=== Mapbox Auth Debug ==="
         if [ -z "$MAPBOX_SECRET_TOKEN" ]; then
-          echo "::error::MAPBOX_SECRET_TOKEN secret is NOT set or empty!"
-          exit 1
+          echo "::warning::MAPBOX_SECRET_TOKEN not set - Mapbox packages may fail to download"
+          echo "Continuing without Mapbox auth..."
+        else
+          echo "✓ MAPBOX_SECRET_TOKEN is set (length: ${#MAPBOX_SECRET_TOKEN} chars)"
+          # Mapbox requires auth for multiple domains
+          echo "machine api.mapbox.com" > ~/.netrc
+          echo "login mapbox" >> ~/.netrc
+          echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
+          echo "" >> ~/.netrc
+          echo "machine api.mapbox.cn" >> ~/.netrc
+          echo "login mapbox" >> ~/.netrc
+          echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
+          chmod 600 ~/.netrc
+          echo "✓ .netrc configured"
         fi
-        echo "✓ MAPBOX_SECRET_TOKEN is set (length: ${#MAPBOX_SECRET_TOKEN} chars)"
-        echo "✓ Token starts with: ${MAPBOX_SECRET_TOKEN:0:10}..."
-
-        # Mapbox requires auth for multiple domains
-        echo "machine api.mapbox.com" > ~/.netrc
-        echo "login mapbox" >> ~/.netrc
-        echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
-        echo "" >> ~/.netrc
-        echo "machine api.mapbox.cn" >> ~/.netrc
-        echo "login mapbox" >> ~/.netrc
-        echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
-        chmod 600 ~/.netrc
-
-        echo "=== Verifying .netrc ==="
-        echo "✓ .netrc created at ~/.netrc"
-        ls -la ~/.netrc
-        echo "✓ .netrc line count: $(wc -l < ~/.netrc)"
-        echo "✓ First domain configured: $(head -1 ~/.netrc)"
         echo "=== Mapbox Auth Complete ==="
 
     - name: Create Info.plist from template
-      env:
-        MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        RUNAWAY_API_KEY: ${{ secrets.RUNAWAY_API_KEY }}
       run: |
         cp Runaway-iOS-Info.plist.template Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_MAPBOX_TOKEN_HERE|${MAPBOX_PUBLIC_TOKEN:-placeholder}|g" Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_SUPABASE_PROJECT_URL_HERE|${SUPABASE_URL:-placeholder}|g" Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_SUPABASE_ANON_KEY_HERE|${SUPABASE_KEY:-placeholder}|g" Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|${RUNAWAY_API_KEY:-placeholder}|g" Runaway-iOS-Info.plist
-        echo "✓ Info.plist created from template"
+        # Use placeholder values for CI build - secrets not needed for compile check
+        sed -i '' "s|YOUR_MAPBOX_TOKEN_HERE|pk.placeholder|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_SUPABASE_PROJECT_URL_HERE|https://placeholder.supabase.co|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_SUPABASE_ANON_KEY_HERE|placeholder_key|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|placeholder_api_key|g" Runaway-iOS-Info.plist
+        echo "✓ Info.plist created from template with placeholder values"
 
     - name: Select Xcode 16.2
       run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
