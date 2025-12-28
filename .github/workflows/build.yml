@@ -42,6 +42,20 @@ jobs:
         echo "✓ First domain configured: $(head -1 ~/.netrc)"
         echo "=== Mapbox Auth Complete ==="
 
+    - name: Create Info.plist from template
+      env:
+        MAPBOX_PUBLIC_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        RUNAWAY_API_KEY: ${{ secrets.RUNAWAY_API_KEY }}
+      run: |
+        cp Runaway-iOS-Info.plist.template Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_MAPBOX_TOKEN_HERE|${MAPBOX_PUBLIC_TOKEN:-placeholder}|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_SUPABASE_PROJECT_URL_HERE|${SUPABASE_URL:-placeholder}|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_SUPABASE_ANON_KEY_HERE|${SUPABASE_KEY:-placeholder}|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|${RUNAWAY_API_KEY:-placeholder}|g" Runaway-iOS-Info.plist
+        echo "✓ Info.plist created from template"
+
     - name: Select Xcode 16.2
       run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
@@ -71,4 +85,5 @@ jobs:
           -scheme "Runaway iOS" \
           -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
           -skipPackagePluginValidation \
+          SWIFT_STRICT_CONCURRENCY=minimal \
           build
