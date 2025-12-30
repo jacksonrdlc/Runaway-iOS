@@ -52,22 +52,13 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
 
-    - name: List available simulators
-      id: simulators
+    - name: List available simulators and SDKs
       run: |
+        echo "=== Available SDKs ==="
+        xcodebuild -showsdks
+        echo ""
         echo "=== Available iOS Simulators ==="
-        xcrun simctl list devices available
-
-        # Find the latest available iPhone simulator
-        SIMULATOR=$(xcrun simctl list devices available | grep -E "iPhone (16|15|14)" | grep -v "unavailable" | head -1 | sed 's/^[[:space:]]*//' | cut -d'(' -f1 | sed 's/[[:space:]]*$//')
-
-        if [ -z "$SIMULATOR" ]; then
-          echo "No iPhone simulator found, using default"
-          SIMULATOR="iPhone 16"
-        fi
-
-        echo "Selected simulator: $SIMULATOR"
-        echo "simulator=$SIMULATOR" >> $GITHUB_OUTPUT
+        xcrun simctl list devices available | grep -E "iPhone|iOS"
 
     - name: Resolve Swift packages
       run: |
@@ -82,10 +73,10 @@ jobs:
 
     - name: Build
       run: |
-        echo "Building with simulator: ${{ steps.simulators.outputs.simulator }}"
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
-          -destination "platform=iOS Simulator,name=${{ steps.simulators.outputs.simulator }}" \
+          -sdk iphonesimulator \
+          -destination "platform=iOS Simulator,name=iPhone 15" \
           -skipPackagePluginValidation \
           SWIFT_STRICT_CONCURRENCY=minimal \
           build
