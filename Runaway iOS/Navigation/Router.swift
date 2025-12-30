@@ -19,6 +19,10 @@ class AppRouter {
         case activityDetail(Int) // Activity ID
         case activityList
 
+        // Recording Routes
+        case record // Pre-recording view
+        case activeRecording // Active recording view
+
         // Profile & Settings Routes
         case settings
         case accountInfo
@@ -95,6 +99,8 @@ class AppRouter {
             navigate(to: .commitmentSetup)
         case "/goals":
             navigate(to: .goalManagement)
+        case "/record", "/run", "/start-run":
+            navigate(to: .record)
         default:
             break
         }
@@ -137,6 +143,20 @@ extension AppRouter {
 
         case .activityList:
             ActivitiesView()
+
+        case .record:
+            // Recording views are handled separately via MainView tabs
+            // This case is for deep link navigation only
+            Text("Opening recording view...")
+                .onAppear {
+                    NotificationCenter.default.post(name: .navigateToRecordTab, object: nil)
+                }
+
+        case .activeRecording:
+            Text("Opening active recording...")
+                .onAppear {
+                    NotificationCenter.default.post(name: .navigateToRecordTab, object: nil)
+                }
 
         case .settings:
             SettingsView()

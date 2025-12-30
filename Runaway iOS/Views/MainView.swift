@@ -47,7 +47,7 @@ struct MainView: View {
                 .tag(0)
 
                 NavigationStack(path: Bindable(router).path) {
-                    UnifiedInsightsView()
+                    TrainingView()
                         .toolbarColorScheme(.light, for: .navigationBar)
                         .toolbarBackground(.visible, for: .navigationBar)
                         .toolbar {
@@ -159,6 +159,16 @@ struct MainView: View {
                 .tag(4)
             }
             .accentColor(AppTheme.Colors.LightMode.accent)
+            .onChange(of: selectedTab) { oldTab, newTab in
+                // Track tab selection analytics
+                let tabNames = ["Feed", "Training", "Coach", "Research", "Profile"]
+                let tabName = newTab < tabNames.count ? tabNames[newTab] : "Unknown"
+                AnalyticsService.shared.track(.tabSelected, category: .navigation, properties: [
+                    "tab_name": tabName,
+                    "tab_index": newTab,
+                    "previous_tab": oldTab
+                ])
+            }
             .task {
                 await loadInitialData()
                 realtimeService.startRealtimeSubscription()

@@ -31,9 +31,11 @@ class DataManager: ObservableObject {
     @Published var stats: AthleteStats?
     @Published var currentGoal: RunningGoal?
     @Published var todaysCommitment: DailyCommitment?
+    @Published var currentWeeklyPlan: WeeklyTrainingPlan?
     @Published var isLoadingActivities = false
     @Published var isLoadingAthlete = false
     @Published var isLoadingCommitment = false
+    @Published var isRegeneratingPlan = false
     @Published var lastDataRefresh: Date?
 
     // MARK: - Singleton
@@ -88,9 +90,6 @@ class DataManager: ObservableObject {
         if isFromToday {
             await commitmentManager.checkActivityFulfillsCommitment(activity)
         }
-
-        // Auto-generate journal
-        await autoGenerateJournalForCurrentWeek()
     }
 
     // MARK: - Data Loading Methods
@@ -167,6 +166,112 @@ class DataManager: ObservableObject {
         print("🔄 DataManager: Refreshing activities...")
         await loadActivities(for: userId)
         print("✅ DataManager: Activities refreshed. Total: \(activities.count)")
+
+        // Check if plan needs regeneration based on new activities
+        await checkAndRegeneratePlanIfNeeded()
+    }
+
+    // MARK: - Adaptive Training Plan
+
+    /// Load the current week's training plan
+    func loadCurrentWeeklyPlan() async {
+        guard let userId = UserSession.shared.userId else { return }
+
+        // Check cache first
+        if let cachedPlan = TrainingPlanService.getCachedPlan() {
+            currentWeeklyPlan = cachedPlan
+            return
+        }
+
+        // Try to fetch from server
+        do {
+            let sunday = TrainingPlanService.currentWeekSunday()
+            if let plan = try await TrainingPlanService.getWeeklyPlan(athleteId: userId, weekStartDate: sunday) {
+                currentWeeklyPlan = plan
+                TrainingPlanService.cachePlan(plan)
+            }
+        } catch {
+            #if DEBUG
+            print("📋 DataManager: Could not load weekly plan: \(error)")
+            #endif
+        }
+    }
+
+    /// Check if any new activities require plan regeneration and regenerate if needed
+    func checkAndRegeneratePlanIfNeeded() async {
+        guard let plan = currentWeeklyPlan ?? TrainingPlanService.getCachedPlan() else {
+            #if DEBUG
+            print("📋 DataManager: No current plan to check for regeneration")
+            #endif
+            return
+        }
+
+        guard let userId = UserSession.shared.userId else { return }
+
+        // Get activities from this week
+        let calendar = Calendar.current
+        let weekActivities = activities.filter { activity in
+            guard let ts = activity.activity_date ?? activity.start_date else { return false }
+            let activityDate = Date(timeIntervalSince1970: ts)
+            return activityDate >= plan.weekStartDate && activityDate <= plan.weekEndDate
+        }
+
+        // Check if any activity warrants regeneration
+        var needsRegeneration = false
+        for activity in weekActivities {
+            if TrainingPlanService.shouldRegeneratePlan(currentPlan: plan, newActivity: activity) {
+                needsRegeneration = true
+                break
+            }
+        }
+
+        if needsRegeneration {
+            #if DEBUG
+            print("📋 DataManager: Triggering plan regeneration based on activity differences")
+            #endif
+            await regenerateWeeklyPlan(currentPlan: plan, activities: weekActivities)
+        }
+    }
+
+    /// Regenerate the weekly plan based on completed activities
+    func regenerateWeeklyPlan(currentPlan: WeeklyTrainingPlan, activities: [Activity]) async {
+        guard let userId = UserSession.shared.userId else { return }
+
+        isRegeneratingPlan = true
+        defer { isRegeneratingPlan = false }
+
+        do {
+            let regeneratedPlan = try await TrainingPlanService.regeneratePlanWithActivities(
+                athleteId: userId,
+                currentPlan: currentPlan,
+                completedActivities: activities,
+                goal: currentGoal
+            )
+
+            currentWeeklyPlan = regeneratedPlan
+
+            #if DEBUG
+            print("📋 DataManager: Plan regenerated successfully")
+            #endif
+        } catch {
+            #if DEBUG
+            print("📋 DataManager: Plan regeneration failed: \(error)")
+            #endif
+        }
+    }
+
+    /// Force regenerate the plan (user-triggered)
+    func forceRegeneratePlan() async {
+        guard let plan = currentWeeklyPlan ?? TrainingPlanService.getCachedPlan() else { return }
+
+        let calendar = Calendar.current
+        let weekActivities = activities.filter { activity in
+            guard let ts = activity.activity_date ?? activity.start_date else { return false }
+            let activityDate = Date(timeIntervalSince1970: ts)
+            return activityDate >= plan.weekStartDate && activityDate <= plan.weekEndDate
+        }
+
+        await regenerateWeeklyPlan(currentPlan: plan, activities: weekActivities)
     }
 
     // MARK: - Data Modification Methods
@@ -186,57 +291,6 @@ class DataManager: ObservableObject {
         activities = activityStore.activities
     }
 
-    // MARK: - Journal Management
-
-    func autoGenerateJournalForCurrentWeek() async {
-        guard let athleteId = athlete?.id else {
-            print("⚠️ DataManager: No athlete ID for journal generation")
-            return
-        }
-
-        let calendar = Calendar.current
-        let now = Date()
-        guard let weekStart = calendar.dateComponents([.calendar, .yearForWeekOfYear, .weekOfYear], from: now).date else {
-            return
-        }
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let weekStartString = formatter.string(from: weekStart)
-
-        let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) ?? now
-        let weekStartTimestamp = weekStart.timeIntervalSince1970
-        let weekEndTimestamp = weekEnd.timeIntervalSince1970
-
-        let activitiesThisWeek = activities.filter { activity in
-            guard let activityDate = activity.start_date else { return false }
-            return activityDate >= weekStartTimestamp && activityDate < weekEndTimestamp
-        }
-
-        guard !activitiesThisWeek.isEmpty else { return }
-
-        do {
-            _ = try await JournalService.generateJournalEntry(
-                athleteId: athleteId,
-                weekStartDate: weekStartString
-            )
-            #if DEBUG
-            print("✅ DataManager: Journal generated for week starting \(weekStartString)")
-            #endif
-        } catch let error as JournalError {
-            switch error {
-            case .noActivitiesFound:
-                break // Expected if week just started
-            case .httpError(let code):
-                print("❌ DataManager: Journal HTTP error: \(code)")
-            default:
-                print("❌ DataManager: Journal error: \(error)")
-            }
-        } catch {
-            print("❌ DataManager: Journal generation failed: \(error)")
-        }
-    }
-
     // MARK: - Commitment Management
 
     func createCommitment(_ activityType: CommitmentActivityType) async throws {
@@ -254,6 +308,22 @@ class DataManager: ObservableObject {
 
     func refreshTodaysCommitment() async {
         await commitmentManager.refresh()
+        todaysCommitment = commitmentManager.todaysCommitment
+    }
+
+    func updateCommitment(to activityType: CommitmentActivityType) async throws {
+        isLoadingCommitment = true
+        defer { isLoadingCommitment = false }
+
+        try await commitmentManager.updateCommitment(to: activityType)
+        todaysCommitment = commitmentManager.todaysCommitment
+    }
+
+    func deleteCommitment() async throws {
+        isLoadingCommitment = true
+        defer { isLoadingCommitment = false }
+
+        try await commitmentManager.deleteCommitment()
         todaysCommitment = commitmentManager.todaysCommitment
     }
 

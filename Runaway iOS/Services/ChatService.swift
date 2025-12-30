@@ -2,130 +2,133 @@
 //  ChatService.swift
 //  Runaway iOS
 //
-//  Service for Chat API communication with AI Running Coach
+//  Service for Chat with AI Running Coach
+//  iOS 26+: Uses on-device Apple Foundation Models
+//  iOS <26: AI features disabled (no cloud fallback by design)
 //
 
 import Foundation
 
 class ChatService {
-    // MARK: - Endpoints
+    // MARK: - On-Device AI Check
 
-    // Supabase Edge Functions (Migrated from Cloud Run)
-    #if DEBUG
-    private static let stravaDataBaseURL = "http://localhost:54321"  // Local Supabase development
-    #else
-    private static let stravaDataBaseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co"  // Production Supabase
-    #endif
-    private static let chatEndpoint = "/functions/v1/chat"
+    /// Check if on-device AI is available (iOS 26+)
+    @MainActor
+    static var isOnDeviceAIAvailable: Bool {
+        FoundationModelsService.shared.isAvailable
+    }
 
     // MARK: - Public Methods
 
-    /// Send a message to the AI running coach (New Backend)
+    /// Send a message to the AI running coach
+    /// Uses on-device AI on iOS 26+, throws error on older versions
     static func sendMessage(
         message: String,
         conversationId: String? = nil,
         context: ChatContext? = nil
     ) async throws -> ChatResponse {
-        // Use new strava-data chat API
-        let url = URL(string: stravaDataBaseURL + chatEndpoint)!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 30.0
-
-        // Add auth headers (kept for compatibility)
-        let authHeaders = await APIConfiguration.RunawayCoach.getAuthHeaders()
-        for (key, value) in authHeaders {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Get athlete ID from DataManager
-        let athleteId = await MainActor.run {
-            DataManager.shared.athlete?.id ?? 94451852 // Fallback to known ID
+        // Check if on-device AI is available
+        let foundationModelsService = await MainActor.run {
+            FoundationModelsService.shared
         }
 
-        // Create request body for new API (simplified format)
-        var requestBody: [String: Any] = [
-            "athlete_id": athleteId,
-            "message": message
-        ]
-
-        // Include conversation_id if provided (for multi-turn conversations)
-        if let conversationId = conversationId {
-            requestBody["conversation_id"] = conversationId
+        let isAvailable = await MainActor.run {
+            foundationModelsService.isAvailable
         }
 
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        guard isAvailable else {
+            // No cloud fallback - require iOS 26 upgrade
+            throw ChatError.requiresiOS26
+        }
 
         #if DEBUG
-        print("💬 Chat API Request (New Backend):")
-        print("   URL: \(url)")
-        print("   Athlete ID: \(athleteId)")
+        print("💬 Chat Request (On-Device AI):")
         print("   Message: \(message)")
         #endif
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Build athlete context for personalized responses
+        let athleteContext = await buildAthleteContext()
+        let recentActivities = await buildRecentActivities()
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ChatError.invalidResponse
+        do {
+            // Use on-device Foundation Models
+            let response = try await foundationModelsService.generateCoachResponse(
+                message: message,
+                athleteContext: athleteContext,
+                recentActivities: recentActivities
+            )
+
+            #if DEBUG
+            print("   ✅ On-device response received")
+            print("   Response length: \(response.count) characters")
+            #endif
+
+            return ChatResponse(
+                success: true,
+                message: response,
+                conversationId: conversationId ?? UUID().uuidString,
+                triggeredAnalysis: nil,
+                errorMessage: nil,
+                processingTime: 0.0,
+                isOnDevice: true
+            )
+
+        } catch let error as FoundationModelsError {
+            #if DEBUG
+            print("   ❌ Foundation Models error: \(error.localizedDescription)")
+            #endif
+
+            if error.requiresUpgrade {
+                throw ChatError.requiresiOS26
+            }
+            throw ChatError.onDeviceError(error)
         }
+    }
 
-        #if DEBUG
-        print("   Response Code: \(httpResponse.statusCode)")
-        #endif
+    // MARK: - On-Device Context Builders
 
-        switch httpResponse.statusCode {
-        case 200:
-            do {
-                // New API response format
-                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                guard let answer = json?["answer"] as? String else {
-                    throw ChatError.decodingError(NSError(domain: "ChatService", code: -1))
-                }
+    @MainActor
+    private static func buildAthleteContext() -> AthleteContext? {
+        let dataManager = DataManager.shared
+        let activities = dataManager.activities
 
-                // Extract conversation_id from response (returned by backend for threading)
-                let returnedConversationId = json?["conversation_id"] as? String ?? UUID().uuidString
+        // Calculate weekly mileage
+        let weeklyMileage = calculateWeeklyMileage(from: activities)
 
-                // Convert to existing ChatResponse format
-                let chatResponse = ChatResponse(
-                    success: true,
-                    message: answer,
-                    conversationId: returnedConversationId,
-                    triggeredAnalysis: nil,
-                    errorMessage: nil,
-                    processingTime: 0.0
-                )
+        // Get current goal
+        let currentGoal = dataManager.currentGoal?.type.displayName
 
-                #if DEBUG
+        return AthleteContext(
+            weeklyMileage: weeklyMileage,
+            currentGoal: currentGoal,
+            fitnessLevel: nil
+        )
+    }
 
+    @MainActor
+    private static func buildRecentActivities() -> [ActivitySummary]? {
+        let activities = DataManager.shared.activities
 
-                print("   ✅ Chat response received from new backend")
-                print("   Answer length: \(answer.count) characters")
-                print("   Conversation ID: \(returnedConversationId)")
-                #endif
-                return chatResponse
-            } catch {
-                #if DEBUG
-                print("   ❌ Decoding error: \(error)")
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("   Raw Response: \(jsonString)")
-                }
-                #endif
-                throw ChatError.decodingError(error)
+        // Filter to only include actual running activities with meaningful distance
+        let runningActivities = activities.filter { activity in
+            // Must have distance > 0 (at least 0.1 miles = ~160 meters)
+            guard let distance = activity.distance, distance > 160 else {
+                return false
             }
 
-        case 401:
-            throw ChatError.unauthorized
+            // Must be a running activity type
+            guard let activityType = activity.type?.lowercased() else {
+                return false
+            }
 
-        case 404:
-            throw ChatError.notFound
-
-        case 500:
-            throw ChatError.serverError("Internal server error")
-
-        default:
-            throw ChatError.invalidResponse
+            // Include runs, walks, hikes - common endurance activities
+            let validTypes = ["run", "running", "walk", "walking", "hike", "hiking", "trail run"]
+            return validTypes.contains { activityType.contains($0) }
         }
+
+        guard !runningActivities.isEmpty else { return nil }
+
+        return runningActivities.prefix(5).map { ActivitySummary(from: $0) }
     }
 
     /// Get full conversation by ID (Not yet implemented in new backend)
@@ -165,8 +168,16 @@ class ChatService {
         goal: RunningGoal? = nil,
         athlete: Athlete? = nil
     ) -> ChatContext {
+        // Filter to only meaningful running activities
+        let filteredActivities = activities.filter { activity in
+            guard let distance = activity.distance, distance > 160 else { return false }
+            guard let activityType = activity.type?.lowercased() else { return false }
+            let validTypes = ["run", "running", "walk", "walking", "hike", "hiking", "trail run"]
+            return validTypes.contains { activityType.contains($0) }
+        }
+
         // Recent activity (last run)
-        let recentActivity = activities.first.flatMap { activity -> RecentActivityContext? in
+        let recentActivity = filteredActivities.first.flatMap { activity -> RecentActivityContext? in
             guard let distance = activity.distance,
                   let speed = activity.average_speed,
                   let dateInterval = activity.activity_date ?? activity.start_date else {
@@ -188,7 +199,7 @@ class ChatService {
         }
 
         // Recent activities (last 10)
-        let activityContexts = activities.prefix(10).compactMap { activity -> ActivityContext? in
+        let activityContexts = filteredActivities.prefix(10).compactMap { activity -> ActivityContext? in
             guard let distance = activity.distance,
                   let speed = activity.average_speed,
                   let dateInterval = activity.activity_date ?? activity.start_date else {

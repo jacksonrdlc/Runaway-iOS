@@ -337,109 +337,192 @@ struct GoalReadinessSection: View {
     }
 }
 
-// MARK: - Training Journal Section
+// MARK: - Weekly Training Plan Section
 
-struct TrainingJournalSection: View {
-    let journal: TrainingJournal?
-    @State private var isExpanded = false
+struct WeeklyPlanSection: View {
+    @EnvironmentObject var dataManager: DataManager
+    @State private var isLoading = false
+    @State private var isGenerating = false
+    @State private var selectedWorkout: DailyWorkout?
+    @State private var selectedEntry: WeekDayEntry?
+
+    /// Use the plan from DataManager (which handles regeneration)
+    private var weeklyPlan: WeeklyTrainingPlan? {
+        dataManager.currentWeeklyPlan
+    }
+
+    /// Merged entries combining plan with actual activities
+    private var weekEntries: [WeekDayEntry] {
+        guard let plan = weeklyPlan else { return [] }
+        return plan.mergedWithActivities(dataManager.activities)
+    }
+
+    /// Week stats comparing planned vs actual
+    private var weekStats: (plannedMiles: Double, actualMiles: Double, completedWorkouts: Int, plannedWorkouts: Int)? {
+        guard let plan = weeklyPlan else { return nil }
+        return plan.weekStats(with: dataManager.activities)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             // Header
             HStack {
-                Image(systemName: "book.fill")
+                Image(systemName: "calendar")
                     .foregroundColor(AppTheme.Colors.LightMode.accent)
-                Text("Training Journal")
+                Text("This Week's Plan")
                     .font(AppTheme.Typography.headline)
                     .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                // Show regenerating indicator
+                if dataManager.isRegeneratingPlan {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                        Text("Adapting...")
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    }
+                }
+
                 Spacer()
-                if let journal = journal {
-                    Text(journal.weekRangeString)
+
+                if let plan = weeklyPlan {
+                    Text(plan.weekRangeString)
                         .font(AppTheme.Typography.caption)
                         .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
             }
             .padding(.horizontal)
 
-            if let journal = journal {
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                    // Week Stats Summary
-                    WeekStatsGrid(stats: journal.weekStats)
-                        .padding(.horizontal)
-
-                    // Narrative
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                        HStack {
-                            Image(systemName: "quote.bubble.fill")
-                                .foregroundColor(AppTheme.Colors.LightMode.accent.opacity(0.6))
-                                .font(.caption)
-                            Text("Coach's Summary")
-                                .font(AppTheme.Typography.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
-                        }
-                        .padding(.horizontal)
-
-                        Text(journal.narrative)
-                            .font(AppTheme.Typography.body)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
-                            .lineSpacing(4)
-                            .padding()
-                            .background(AppTheme.Colors.LightMode.surfaceBackground)
-                            .cornerRadius(AppTheme.CornerRadius.medium)
-                            .padding(.horizontal)
-                    }
-
-                    // Insights
-                    if !journal.insights.isEmpty {
-                        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                            HStack {
-                                Image(systemName: "lightbulb.fill")
+            if isLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                .padding()
+            } else if weeklyPlan != nil {
+                // Week summary with actual vs planned
+                if let stats = weekStats {
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        // Actual vs Planned Miles
+                        VStack(spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text(String(format: "%.1f", stats.actualMiles))
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundColor(AppTheme.Colors.LightMode.accent)
-                                Text("Key Insights")
-                                    .font(AppTheme.Typography.subheadline)
-                                    .fontWeight(.semibold)
+                                Text("/")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                Text(String(format: "%.0f mi", stats.plannedMiles))
+                                    .font(.caption)
                                     .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
-                                Spacer()
-                                Button(action: { isExpanded.toggle() }) {
-                                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
-                                }
                             }
-                            .padding(.horizontal)
+                            Text("Miles")
+                                .font(.caption2)
+                                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.Colors.LightMode.surfaceBackground)
+                        .cornerRadius(8)
 
-                            ForEach(Array(journal.insights.prefix(isExpanded ? journal.insights.count : 3)), id: \.id) { insight in
-                                InsightRow(insight: insight)
-                                    .padding(.horizontal)
+                        // Completed Workouts
+                        VStack(spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text("\(stats.completedWorkouts)")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(.green)
+                                Text("/")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                Text("\(stats.plannedWorkouts)")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                             }
+                            Text("Completed")
+                                .font(.caption2)
+                                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.Colors.LightMode.surfaceBackground)
+                        .cornerRadius(8)
 
-                            if !isExpanded && journal.insights.count > 3 {
-                                Button(action: { isExpanded = true }) {
-                                    Text("See \(journal.insights.count - 3) more")
-                                        .font(AppTheme.Typography.caption)
-                                        .foregroundColor(AppTheme.Colors.LightMode.accent)
-                                }
-                                .padding(.horizontal)
+                        // Progress Ring
+                        let progress = stats.plannedWorkouts > 0 ? Double(stats.completedWorkouts) / Double(stats.plannedWorkouts) : 0
+                        VStack(spacing: 2) {
+                            ZStack {
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.2), lineWidth: 4)
+                                    .frame(width: 28, height: 28)
+                                Circle()
+                                    .trim(from: 0, to: progress)
+                                    .stroke(AppTheme.Colors.LightMode.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                    .frame(width: 28, height: 28)
+                                    .rotationEffect(.degrees(-90))
                             }
+                            Text("\(Int(progress * 100))%")
+                                .font(.caption2)
+                                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.Colors.LightMode.surfaceBackground)
+                        .cornerRadius(8)
+                    }
+                    .padding(.horizontal)
+                }
+
+                // Daily entries (merged with activities)
+                VStack(spacing: 8) {
+                    ForEach(weekEntries) { entry in
+                        WeekDayRow(entry: entry) {
+                            selectedEntry = entry
+                            selectedWorkout = entry.plannedWorkout
                         }
                     }
                 }
-                .padding(.vertical, AppTheme.Spacing.sm)
-            } else {
-                // Empty State
-                VStack(spacing: AppTheme.Spacing.md) {
-                    Image(systemName: "book.closed")
-                        .font(.system(size: 48))
-                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                .padding(.horizontal)
 
-                    Text("No journal entry yet")
-                        .font(AppTheme.Typography.headline)
+                if let notes = weeklyPlan?.notes {
+                    Text(notes)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                }
+            } else {
+                // Empty State with Generate button
+                VStack(spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.system(size: 40))
+                        .foregroundColor(AppTheme.Colors.LightMode.accent.opacity(0.6))
+
+                    Text("No plan for this week")
+                        .font(AppTheme.Typography.subheadline)
                         .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
 
-                    Text("Your weekly training summary will appear here")
-                        .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
-                        .multilineTextAlignment(.center)
+                    Button(action: { Task { await generatePlan() } }) {
+                        HStack {
+                            if isGenerating {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
+                            Text(isGenerating ? "Generating..." : "Generate Plan")
+                        }
+                        .font(AppTheme.Typography.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(AppTheme.Colors.LightMode.accent)
+                        .cornerRadius(AppTheme.CornerRadius.medium)
+                    }
+                    .disabled(isGenerating)
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -453,6 +536,269 @@ struct TrainingJournalSection: View {
                 .stroke(Color.black.opacity(0.08), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .sheet(item: $selectedWorkout) { workout in
+            WorkoutDetailSheet(workout: workout)
+        }
+        .task {
+            await loadPlan()
+        }
+    }
+
+    private func loadPlan() async {
+        isLoading = true
+
+        // Load plan through DataManager (handles caching and regeneration checks)
+        await dataManager.loadCurrentWeeklyPlan()
+
+        // Also check if regeneration is needed based on current activities
+        await dataManager.checkAndRegeneratePlanIfNeeded()
+
+        isLoading = false
+    }
+
+    private func generatePlan() async {
+        guard let userId = UserSession.shared.userId else { return }
+        isGenerating = true
+
+        do {
+            let plan = try await TrainingPlanService.generateWeeklyPlan(
+                athleteId: userId,
+                goal: dataManager.currentGoal
+            )
+            // Store in DataManager and cache
+            dataManager.currentWeeklyPlan = plan
+            TrainingPlanService.cachePlan(plan)
+        } catch {
+            #if DEBUG
+            print("Failed to generate plan: \(error)")
+            #endif
+        }
+
+        isGenerating = false
+    }
+}
+
+// MARK: - Week Day Row (shows planned workout OR actual activity)
+
+struct WeekDayRow: View {
+    let entry: WeekDayEntry
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Day indicator
+                VStack {
+                    Text(entry.dayOfWeek.shortName)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundColor(dayTextColor)
+                }
+                .frame(width: 36, height: 36)
+                .background(dayBackgroundColor)
+                .cornerRadius(8)
+
+                // Icon (checkmark for completed, workout type for planned)
+                Image(systemName: entry.icon)
+                    .font(.subheadline)
+                    .foregroundColor(entry.iconColor)
+                    .frame(width: 20)
+
+                // Content
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(entry.displayTitle)
+                            .font(AppTheme.Typography.subheadline)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .lineLimit(1)
+                            .strikethrough(entry.isPast && !entry.isCompleted && entry.plannedWorkout != nil)
+
+                        if let status = entry.statusText {
+                            Text(status)
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundColor(statusColor)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(statusColor.opacity(0.15))
+                                .cornerRadius(4)
+                        }
+                    }
+
+                    // Show actual pace if completed
+                    if let pace = entry.formattedPace {
+                        Text(pace)
+                            .font(.caption2)
+                            .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                    }
+                }
+
+                Spacer()
+
+                // Distance or duration
+                if let distance = entry.formattedDistance {
+                    Text(distance)
+                        .font(AppTheme.Typography.caption)
+                        .fontWeight(entry.isCompleted ? .semibold : .regular)
+                        .foregroundColor(entry.isCompleted ? .green : AppTheme.Colors.LightMode.textSecondary)
+                } else if let duration = entry.formattedDuration {
+                    Text(duration)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                }
+
+                if entry.plannedWorkout != nil || entry.actualActivity != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(rowBackgroundColor)
+            .cornerRadius(AppTheme.CornerRadius.small)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var dayTextColor: Color {
+        if entry.isToday {
+            return .white
+        }
+        if entry.isCompleted {
+            return .green
+        }
+        return AppTheme.Colors.LightMode.textSecondary
+    }
+
+    private var dayBackgroundColor: Color {
+        if entry.isToday {
+            return AppTheme.Colors.LightMode.accent
+        }
+        if entry.isCompleted {
+            return Color.green.opacity(0.15)
+        }
+        return AppTheme.Colors.LightMode.surfaceBackground
+    }
+
+    private var rowBackgroundColor: Color {
+        if entry.isCompleted {
+            return Color.green.opacity(0.05)
+        }
+        if entry.isPast && entry.plannedWorkout != nil {
+            return Color.orange.opacity(0.05)
+        }
+        return AppTheme.Colors.LightMode.surfaceBackground
+    }
+
+    private var statusColor: Color {
+        if entry.isCompleted {
+            return .green
+        }
+        if entry.isPast && entry.plannedWorkout != nil {
+            return .orange
+        }
+        if entry.isToday {
+            return AppTheme.Colors.LightMode.accent
+        }
+        return .gray
+    }
+}
+
+// MARK: - Compact Workout Row
+
+struct CompactWorkoutRow: View {
+    let workout: DailyWorkout
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Day
+                VStack {
+                    Text(workout.dayOfWeek.shortName)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundColor(isToday ? .white : AppTheme.Colors.LightMode.textSecondary)
+                }
+                .frame(width: 36, height: 36)
+                .background(isToday ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.surfaceBackground)
+                .cornerRadius(8)
+
+                // Workout type icon
+                Image(systemName: workout.workoutType.icon)
+                    .font(.subheadline)
+                    .foregroundColor(workout.workoutType.color)
+                    .frame(width: 20)
+
+                // Title
+                Text(workout.title)
+                    .font(AppTheme.Typography.subheadline)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                // Distance or duration
+                if let distance = workout.formattedDistance {
+                    Text(distance)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                } else if let duration = workout.formattedDuration {
+                    Text(duration)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(AppTheme.Colors.LightMode.surfaceBackground)
+            .cornerRadius(AppTheme.CornerRadius.small)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var isToday: Bool {
+        Calendar.current.isDateInToday(workout.date)
+    }
+}
+
+// MARK: - Plan Stat Pill
+
+struct PlanStatPill: View {
+    let icon: String
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
+            Text(value)
+                .font(AppTheme.Typography.headline)
+                .fontWeight(.bold)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Legacy Training Journal Section (deprecated)
+
+struct TrainingJournalSection: View {
+    let journal: TrainingJournal?
+
+    var body: some View {
+        // Replaced by WeeklyPlanSection
+        EmptyView()
     }
 }
 

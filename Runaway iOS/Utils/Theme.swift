@@ -154,6 +154,8 @@ struct AppTheme {
                 return purple // Purple for cycling
             case "swim", "swimming":
                 return info // Blue for swimming
+            case "yoga":
+                return purple // Purple for yoga
             default:
                 return primary
             }

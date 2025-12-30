@@ -120,8 +120,45 @@ struct ActiveRecordingView: View {
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                     }
 
-                    // Audio coaching indicator
-                    if let lastPrompt = audioCoaching.lastPromptMessage,
+                    // Listening indicator - prominent when voice input is active
+                    if audioCoaching.isListening {
+                        HStack(spacing: 12) {
+                            // Animated waveform
+                            ListeningWaveform()
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Listening...")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                Text("Say how you're feeling or ask for stats")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+
+                            Spacer()
+
+                            // Cancel button
+                            Button(action: {
+                                audioCoaching.stopVoiceInput()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.green.opacity(0.9))
+                                .shadow(color: .green.opacity(0.5), radius: 10, x: 0, y: 4)
+                        )
+                        .transition(.scale.combined(with: .opacity))
+                        .animation(.spring(response: 0.3), value: audioCoaching.isListening)
+                    }
+                    // Audio coaching prompt indicator (when speaking)
+                    else if let lastPrompt = audioCoaching.lastPromptMessage,
                        let promptTime = audioCoaching.lastPromptTime,
                        Date().timeIntervalSince(promptTime) < 5.0 {
                         HStack {
@@ -359,6 +396,31 @@ struct ActiveRecordingMapBoxView: View {
             style: .recording,
             showMarkers: false
         )
+    }
+}
+
+// MARK: - Listening Waveform Animation
+struct ListeningWaveform: View {
+    @State private var animating = false
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<4, id: \.self) { index in
+                Capsule()
+                    .fill(.white)
+                    .frame(width: 4, height: animating ? CGFloat.random(in: 12...24) : 8)
+                    .animation(
+                        .easeInOut(duration: 0.3)
+                        .repeatForever(autoreverses: true)
+                        .delay(Double(index) * 0.1),
+                        value: animating
+                    )
+            }
+        }
+        .frame(width: 28, height: 24)
+        .onAppear {
+            animating = true
+        }
     }
 }
 

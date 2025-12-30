@@ -1,15 +1,15 @@
 //
-//  UnifiedInsightsViewModel.swift
+//  TrainingViewModel.swift
 //  Runaway iOS
 //
-//  Unified ViewModel combining Quick Wins and Local Analysis
+//  ViewModel for Training view with weekly plan and insights
 //
 
 import Foundation
 import SwiftUI
 
 @MainActor
-class UnifiedInsightsViewModel: ObservableObject {
+class TrainingViewModel: ObservableObject {
     // MARK: - Published Properties
 
     // Quick Wins Data

@@ -122,6 +122,7 @@ final class SplitTracker: ObservableObject {
         if currentSplitStartTime == nil {
             currentSplitStartTime = Date()
             splitStartDistance = totalDistance
+            print("SplitTracker: Initialized with distance \(totalDistance)m")
         }
 
         lastTotalDistance = totalDistance
@@ -131,7 +132,14 @@ final class SplitTracker: ObservableObject {
         let expectedSplitNumber = splits.count + 1
         let completedSplits = Int(totalDistance / unitDistance)
 
+        // Log progress every ~100m
+        let distanceMiles = totalDistance / 1609.34
+        if Int(totalDistance) % 100 == 0 && totalDistance > 0 {
+            print("SplitTracker: \(String(format: "%.2f", distanceMiles)) miles, split progress: \(Int(currentSplitDistance))m / \(Int(unitDistance))m")
+        }
+
         if completedSplits >= expectedSplitNumber {
+            print("SplitTracker: Split \(expectedSplitNumber) completed!")
             completeSplit(at: totalDistance, pace: currentPace)
         }
     }

@@ -9,72 +9,344 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
+// MARK: - Activity Attributes
+
 struct RunawayWidgetAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-        // Dynamic stateful properties about your activity go here!
-        var emoji: String
+        // Dynamic state updated during the activity
+        var elapsedTime: TimeInterval
+        var distance: Double // meters
+        var currentPace: Double // seconds per mile
+        var averagePace: Double // seconds per mile
+        var isPaused: Bool
     }
 
-    // Fixed non-changing properties about your activity go here!
-    var name: String
+    // Fixed properties set when activity starts
+    var activityType: String
+    var startTime: Date
 }
+
+// MARK: - Live Activity Widget
 
 struct RunawayWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RunawayWidgetAttributes.self) { context in
-            // Lock screen/banner UI goes here
-            VStack {
-                Text("Hello \(context.state.emoji)")
-            }
-            .activityBackgroundTint(Color.cyan)
-            .activitySystemActionForegroundColor(Color.black)
-
+            // Lock screen / banner UI
+            LockScreenLiveActivityView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
-                // Expanded UI goes here.  Compose the expanded UI through
-                // various regions, like leading/trailing/center/bottom
+                // Expanded Dynamic Island
                 DynamicIslandExpandedRegion(.leading) {
-                    Text("Leading")
+                    HStack(spacing: 4) {
+                        Image(systemName: activityIcon(for: context.attributes.activityType))
+                            .foregroundColor(.green)
+                        Text(formatDistance(context.state.distance))
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        Text("mi")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text("Trailing")
+                    HStack(spacing: 4) {
+                        Image(systemName: "timer")
+                            .foregroundColor(.blue)
+                        Text(formatTime(context.state.elapsedTime))
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                    }
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    if context.state.isPaused {
+                        HStack {
+                            Image(systemName: "pause.circle.fill")
+                                .foregroundColor(.orange)
+                            Text("PAUSED")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
+                        }
+                    }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("Bottom \(context.state.emoji)")
-                    // more content
+                    HStack(spacing: 24) {
+                        VStack(spacing: 2) {
+                            Text(formatPace(context.state.currentPace))
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            Text("Current")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+
+                        Divider()
+                            .frame(height: 30)
+                            .background(Color.gray.opacity(0.5))
+
+                        VStack(spacing: 2) {
+                            Text(formatPace(context.state.averagePace))
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            Text("Average")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
             } compactLeading: {
-                Text("L")
+                // Compact leading - show distance
+                HStack(spacing: 2) {
+                    Image(systemName: "figure.run")
+                        .foregroundColor(.green)
+                    Text(formatDistance(context.state.distance))
+                        .font(.caption)
+                        .fontWeight(.bold)
+                }
             } compactTrailing: {
-                Text("T \(context.state.emoji)")
+                // Compact trailing - show time
+                Text(formatTimeCompact(context.state.elapsedTime))
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(context.state.isPaused ? .orange : .white)
             } minimal: {
-                Text(context.state.emoji)
+                // Minimal - just running icon
+                Image(systemName: context.state.isPaused ? "pause.fill" : "figure.run")
+                    .foregroundColor(context.state.isPaused ? .orange : .green)
             }
-            .widgetURL(URL(string: "http://www.apple.com"))
-            .keylineTint(Color.red)
+            .widgetURL(URL(string: "runaway://activity"))
+            .keylineTint(.green)
         }
+    }
+
+    // MARK: - Helpers
+
+    private func activityIcon(for type: String) -> String {
+        switch type.lowercased() {
+        case "run": return "figure.run"
+        case "walk": return "figure.walk"
+        case "ride", "bike": return "bicycle"
+        case "hike": return "figure.hiking"
+        case "swim": return "figure.pool.swim"
+        default: return "figure.run"
+        }
+    }
+
+    private func formatDistance(_ meters: Double) -> String {
+        let miles = meters / 1609.34
+        return String(format: "%.2f", miles)
+    }
+
+    private func formatTime(_ seconds: TimeInterval) -> String {
+        let hours = Int(seconds) / 3600
+        let minutes = (Int(seconds) % 3600) / 60
+        let secs = Int(seconds) % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, secs)
+        } else {
+            return String(format: "%d:%02d", minutes, secs)
+        }
+    }
+
+    private func formatTimeCompact(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        return String(format: "%d:%02d", minutes, secs)
+    }
+
+    private func formatPace(_ secondsPerMile: Double) -> String {
+        guard secondsPerMile > 0 && secondsPerMile < 3600 else { return "--:--" }
+        let minutes = Int(secondsPerMile) / 60
+        let seconds = Int(secondsPerMile) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 
+// MARK: - Lock Screen View
+
+struct LockScreenLiveActivityView: View {
+    let context: ActivityViewContext<RunawayWidgetAttributes>
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Header
+            HStack {
+                Image(systemName: activityIcon)
+                    .font(.title2)
+                    .foregroundColor(.green)
+
+                Text(context.attributes.activityType)
+                    .font(.headline)
+                    .fontWeight(.bold)
+
+                Spacer()
+
+                if context.state.isPaused {
+                    HStack(spacing: 4) {
+                        Image(systemName: "pause.circle.fill")
+                        Text("PAUSED")
+                    }
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.2))
+                    .cornerRadius(8)
+                } else {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 8, height: 8)
+                        Text("ACTIVE")
+                    }
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.green)
+                }
+            }
+
+            // Main metrics
+            HStack(spacing: 0) {
+                // Distance
+                MetricColumn(
+                    value: formatDistance(context.state.distance),
+                    unit: "mi",
+                    label: "DISTANCE",
+                    color: .green
+                )
+
+                Spacer()
+
+                // Time
+                MetricColumn(
+                    value: formatTime(context.state.elapsedTime),
+                    unit: "",
+                    label: "TIME",
+                    color: .blue
+                )
+
+                Spacer()
+
+                // Pace
+                MetricColumn(
+                    value: formatPace(context.state.averagePace),
+                    unit: "/mi",
+                    label: "AVG PACE",
+                    color: .orange
+                )
+            }
+        }
+        .padding()
+        .activityBackgroundTint(Color.black.opacity(0.8))
+        .activitySystemActionForegroundColor(.white)
+    }
+
+    private var activityIcon: String {
+        switch context.attributes.activityType.lowercased() {
+        case "run": return "figure.run"
+        case "walk": return "figure.walk"
+        case "ride", "bike": return "bicycle"
+        case "hike": return "figure.hiking"
+        case "swim": return "figure.pool.swim"
+        default: return "figure.run"
+        }
+    }
+
+    private func formatDistance(_ meters: Double) -> String {
+        let miles = meters / 1609.34
+        return String(format: "%.2f", miles)
+    }
+
+    private func formatTime(_ seconds: TimeInterval) -> String {
+        let hours = Int(seconds) / 3600
+        let minutes = (Int(seconds) % 3600) / 60
+        let secs = Int(seconds) % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, secs)
+        } else {
+            return String(format: "%d:%02d", minutes, secs)
+        }
+    }
+
+    private func formatPace(_ secondsPerMile: Double) -> String {
+        guard secondsPerMile > 0 && secondsPerMile < 3600 else { return "--:--" }
+        let minutes = Int(secondsPerMile) / 60
+        let seconds = Int(secondsPerMile) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
+// MARK: - Metric Column
+
+struct MetricColumn: View {
+    let value: String
+    let unit: String
+    let label: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            Text(label)
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundColor(color)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Preview
+
 extension RunawayWidgetAttributes {
     fileprivate static var preview: RunawayWidgetAttributes {
-        RunawayWidgetAttributes(name: "World")
+        RunawayWidgetAttributes(activityType: "Run", startTime: Date())
     }
 }
 
 extension RunawayWidgetAttributes.ContentState {
-    fileprivate static var smiley: RunawayWidgetAttributes.ContentState {
-        RunawayWidgetAttributes.ContentState(emoji: "😀")
-     }
-     
-     fileprivate static var starEyes: RunawayWidgetAttributes.ContentState {
-         RunawayWidgetAttributes.ContentState(emoji: "🤩")
-     }
+    fileprivate static var running: RunawayWidgetAttributes.ContentState {
+        RunawayWidgetAttributes.ContentState(
+            elapsedTime: 1847,
+            distance: 4023,
+            currentPace: 512,
+            averagePace: 498,
+            isPaused: false
+        )
+    }
+
+    fileprivate static var paused: RunawayWidgetAttributes.ContentState {
+        RunawayWidgetAttributes.ContentState(
+            elapsedTime: 1847,
+            distance: 4023,
+            currentPace: 0,
+            averagePace: 498,
+            isPaused: true
+        )
+    }
 }
 
 #Preview("Notification", as: .content, using: RunawayWidgetAttributes.preview) {
-   RunawayWidgetLiveActivity()
+    RunawayWidgetLiveActivity()
 } contentStates: {
-    RunawayWidgetAttributes.ContentState.smiley
-    RunawayWidgetAttributes.ContentState.starEyes
+    RunawayWidgetAttributes.ContentState.running
+    RunawayWidgetAttributes.ContentState.paused
 }

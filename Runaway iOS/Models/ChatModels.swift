@@ -106,6 +106,25 @@ struct ChatResponse: Codable {
     let triggeredAnalysis: TriggeredAnalysis?
     let errorMessage: String?
     let processingTime: Double
+    let isOnDevice: Bool  // True when using on-device Foundation Models
+
+    init(
+        success: Bool,
+        message: String,
+        conversationId: String,
+        triggeredAnalysis: TriggeredAnalysis? = nil,
+        errorMessage: String? = nil,
+        processingTime: Double = 0.0,
+        isOnDevice: Bool = false
+    ) {
+        self.success = success
+        self.message = message
+        self.conversationId = conversationId
+        self.triggeredAnalysis = triggeredAnalysis
+        self.errorMessage = errorMessage
+        self.processingTime = processingTime
+        self.isOnDevice = isOnDevice
+    }
 
     enum CodingKeys: String, CodingKey {
         case success
@@ -114,6 +133,7 @@ struct ChatResponse: Codable {
         case triggeredAnalysis = "triggered_analysis"
         case errorMessage = "error_message"
         case processingTime = "processing_time"
+        case isOnDevice = "is_on_device"
     }
 }
 
@@ -269,6 +289,8 @@ enum ChatError: Error, LocalizedError {
     case serverError(String)
     case networkError(Error)
     case decodingError(Error)
+    case requiresiOS26          // On-device AI requires iOS 26+
+    case onDeviceError(Error)   // Error from Foundation Models
 
     var errorDescription: String? {
         switch self {
@@ -284,6 +306,20 @@ enum ChatError: Error, LocalizedError {
             return "Network error: \(error.localizedDescription)"
         case .decodingError(let error):
             return "Data parsing error: \(error.localizedDescription)"
+        case .requiresiOS26:
+            return "AI Coach requires iOS 26 or later. Please upgrade to use AI features."
+        case .onDeviceError(let error):
+            return "On-device AI error: \(error.localizedDescription)"
+        }
+    }
+
+    /// Returns true if this error requires an iOS upgrade to resolve
+    var requiresUpgrade: Bool {
+        switch self {
+        case .requiresiOS26:
+            return true
+        default:
+            return false
         }
     }
 }

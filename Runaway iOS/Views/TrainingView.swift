@@ -1,15 +1,22 @@
 //
-//  UnifiedInsightsView.swift
+//  TrainingView.swift
 //  Runaway iOS
 //
-//  Unified Insights view combining Quick Wins and Local Analysis
+//  Training view with streamlined hierarchy:
+//  Action-first → Readiness → Progress → Details
+//
+//  Based on UX research for athletic apps:
+//  - Eastern Peak fitness app best practices
+//  - Output Sports athlete monitoring dashboards
+//  - Strava case study by Samantha Marin
 //
 
 import SwiftUI
 
-struct UnifiedInsightsView: View {
+struct TrainingView: View {
     @EnvironmentObject var dataManager: DataManager
-    @StateObject private var viewModel = UnifiedInsightsViewModel()
+    @Environment(AppRouter.self) private var router
+    @StateObject private var viewModel = TrainingViewModel()
     @State private var selectedDetailView: DetailViewType?
 
     enum DetailViewType: Identifiable {
@@ -35,55 +42,36 @@ struct UnifiedInsightsView: View {
                 LoadingInsightsStateView()
             } else {
                 ScrollView {
-                    LazyVStack(spacing: AppTheme.Spacing.lg) {
-                        // Section 0: Training Journal (Featured)
-                        TrainingJournalSection(journal: viewModel.currentJournal)
-                            .padding(.horizontal)
+                    VStack(spacing: 16) {
+                        // 1. Readiness Banner (glanceable, color-coded)
+                        ReadinessBanner()
 
-                        // Section 1: Hero Stats Carousel
-                        if viewModel.hasQuickWinsData {
-                            HeroStatsSection(quickWinsData: viewModel.quickWinsData)
-                        }
+                        // 2. Today's Focus (most actionable - what to do NOW)
+                        TodaysFocusCard()
 
-                        // Section 2: Priority Insights
-                        if !viewModel.unifiedRecommendations.isEmpty || viewModel.performanceTrend != nil {
-                            PriorityInsightsSection(
-                                recommendations: viewModel.unifiedRecommendations,
-                                performanceTrend: viewModel.performanceTrend
-                            )
-                        }
+                        // 3. Week Progress (compact, glanceable)
+                        WeekProgressRow()
 
-                        // Section 3: Performance at a Glance
-                        PerformanceGlanceSection(
-                            activities: dataManager.activities,
-                            quickWinsData: viewModel.quickWinsData
-                        )
+                        // 4. Coach Insight (AI differentiator)
+                        CoachInsightCard(onAskCoach: navigateToCoach)
 
-                        // Section 4: Deep Dive Navigation
-                        DeepDiveNavigationGrid(
+                        // 5. Key Metrics (3 metrics max)
+                        KeyMetricsGrid(quickWinsData: viewModel.quickWinsData)
+
+                        // 6. Trends Chart (single, expandable)
+                        CompactTrendsChart(activities: dataManager.activities)
+
+                        // 7. Explore (deep dives at bottom - progressive disclosure)
+                        ExploreSection(
                             quickWinsData: viewModel.quickWinsData,
                             onWeatherTap: { selectedDetailView = .weather },
                             onVO2MaxTap: { selectedDetailView = .vo2max },
                             onTrainingLoadTap: { selectedDetailView = .trainingLoad },
                             onActivityTrendsTap: { selectedDetailView = .activityTrends }
                         )
-
-                        // Section 5: Charts & Analysis
-                        ChartsSection(
-                            activities: dataManager.activities,
-                            weeklyData: viewModel.localAnalysis?.insights.weeklyVolume ?? []
-                        )
-
-                        // Section 6: Goal & Readiness
-                        if dataManager.currentGoal != nil || viewModel.localAnalysis?.insights.goalReadiness != nil {
-                            GoalReadinessSection(
-                                activities: dataManager.activities,
-                                goalReadiness: viewModel.localAnalysis?.insights.goalReadiness,
-                                nextRunPrediction: viewModel.localAnalysis?.insights.nextRunPrediction
-                            )
-                        }
                     }
-                    .padding(AppTheme.Spacing.md)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
                 }
             }
         }
@@ -133,6 +121,17 @@ struct UnifiedInsightsView: View {
             await viewModel.loadAllData(activities: dataManager.activities)
         }
     }
+
+    private func navigateToCoach() {
+        // Navigate to Coach tab
+        NotificationCenter.default.post(name: .navigateToCoachTab, object: nil)
+    }
+}
+
+// MARK: - Notification for Coach Navigation
+
+extension Notification.Name {
+    static let navigateToCoachTab = Notification.Name("navigateToCoachTab")
 }
 
 // MARK: - Empty State
@@ -201,10 +200,10 @@ struct LoadingInsightsStateView: View {
 
 // MARK: - Preview
 
-struct UnifiedInsightsView_Previews: PreviewProvider {
+struct TrainingView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
-            UnifiedInsightsView()
+            TrainingView()
                 .environmentObject(DataManager.shared)
         }
     }

@@ -40,6 +40,7 @@ struct ActivityTypeQuery: EntityQuery {
     var availableActivityTypes: [ActivityTypeEntity] {
         [
             ActivityTypeEntity(id: "run", name: "Run", color: "#3399FF"),
+            ActivityTypeEntity(id: "trail_run", name: "Trail Run", color: "#228B22"),
             ActivityTypeEntity(id: "walk", name: "Walk", color: "#66CC66"),
             ActivityTypeEntity(id: "weight_training", name: "Weight Training", color: "#FFB300"),
             ActivityTypeEntity(id: "yoga", name: "Yoga", color: "#CC66CC"),

@@ -176,10 +176,21 @@ struct NoCommitmentView: View {
 // MARK: - Active Commitment View
 
 struct ActiveCommitmentView: View {
+    @EnvironmentObject var dataManager: DataManager
     let commitment: DailyCommitment
     @State private var currentTime = Date()
+    @State private var showingEditSheet = false
+    @State private var showingDeleteConfirmation = false
+    @State private var selectedActivityType: CommitmentActivityType
+    @State private var errorMessage: String?
+    @State private var isUpdating = false
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    init(commitment: DailyCommitment) {
+        self.commitment = commitment
+        _selectedActivityType = State(initialValue: commitment.activityType)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -228,9 +239,115 @@ struct ActiveCommitmentView: View {
                 // Progress ring
                 CommitmentProgressRing(timeRemaining: commitment.timeRemainingToday)
             }
+
+            // Edit/Delete controls
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Button(action: { showingEditSheet = true }) {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Image(systemName: "pencil")
+                        Text("Edit")
+                    }
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.accent)
+                    .padding(.horizontal, AppTheme.Spacing.sm)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .background(AppTheme.Colors.accent.opacity(0.1))
+                    .cornerRadius(AppTheme.CornerRadius.small)
+                }
+                .disabled(isUpdating)
+
+                Button(action: { showingDeleteConfirmation = true }) {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Image(systemName: "trash")
+                        Text("Remove")
+                    }
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .padding(.horizontal, AppTheme.Spacing.sm)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .background(AppTheme.Colors.error.opacity(0.1))
+                    .cornerRadius(AppTheme.CornerRadius.small)
+                }
+                .disabled(isUpdating)
+
+                Spacer()
+
+                if isUpdating {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+            }
+            .padding(.top, AppTheme.Spacing.xs)
+
+            // Error message
+            if let error = errorMessage {
+                Text(error)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .padding(.horizontal, AppTheme.Spacing.sm)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .background(AppTheme.Colors.error.opacity(0.1))
+                    .cornerRadius(AppTheme.CornerRadius.small)
+            }
         }
         .onReceive(timer) { _ in
             currentTime = Date()
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            EditCommitmentSheet(
+                selectedType: $selectedActivityType,
+                currentType: commitment.activityType,
+                onSave: updateCommitment
+            )
+        }
+        .alert("Remove Commitment?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                deleteCommitment()
+            }
+        } message: {
+            Text("Are you sure you want to remove today's commitment? You can set a new one afterward.")
+        }
+    }
+
+    private func updateCommitment() {
+        guard selectedActivityType != commitment.activityType else {
+            showingEditSheet = false
+            return
+        }
+
+        Task {
+            isUpdating = true
+            errorMessage = nil
+            defer { isUpdating = false }
+
+            do {
+                try await dataManager.updateCommitment(to: selectedActivityType)
+                await MainActor.run {
+                    showingEditSheet = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to update: \(error.localizedDescription)"
+                    selectedActivityType = commitment.activityType
+                }
+            }
+        }
+    }
+
+    private func deleteCommitment() {
+        Task {
+            isUpdating = true
+            errorMessage = nil
+            defer { isUpdating = false }
+
+            do {
+                try await dataManager.deleteCommitment()
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to remove: \(error.localizedDescription)"
+                }
+            }
         }
     }
 }
@@ -426,6 +543,115 @@ struct ActivityTypePickerSheet: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(AppTheme.Colors.LightMode.accent)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Edit Commitment Sheet
+
+struct EditCommitmentSheet: View {
+    @Environment(\.dismiss) var dismiss
+    @Binding var selectedType: CommitmentActivityType
+    let currentType: CommitmentActivityType
+    let onSave: () -> Void
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                Text("Change your commitment type")
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .padding(.top, AppTheme.Spacing.md)
+
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    ForEach(CommitmentActivityType.allCases, id: \.self) { activityType in
+                        Button(action: {
+                            selectedType = activityType
+                        }) {
+                            HStack(spacing: AppTheme.Spacing.md) {
+                                ZStack {
+                                    Circle()
+                                        .fill(selectedType == activityType ?
+                                              AppTheme.Colors.accent.opacity(0.2) :
+                                              AppTheme.Colors.textTertiary.opacity(0.1))
+                                        .frame(width: 44, height: 44)
+
+                                    Image(systemName: activityType.icon)
+                                        .foregroundColor(selectedType == activityType ?
+                                                        AppTheme.Colors.accent :
+                                                        AppTheme.Colors.LightMode.textSecondary)
+                                        .font(.title3)
+                                }
+
+                                Text(activityType.displayName)
+                                    .font(AppTheme.Typography.body)
+                                    .fontWeight(selectedType == activityType ? .semibold : .regular)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                                Spacer()
+
+                                if selectedType == activityType {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(AppTheme.Colors.accent)
+                                        .font(.title3)
+                                } else {
+                                    Circle()
+                                        .stroke(AppTheme.Colors.textTertiary.opacity(0.3), lineWidth: 1.5)
+                                        .frame(width: 22, height: 22)
+                                }
+                            }
+                            .padding(AppTheme.Spacing.md)
+                            .background(
+                                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                                    .fill(selectedType == activityType ?
+                                          AppTheme.Colors.accent.opacity(0.05) :
+                                          Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                                    .stroke(selectedType == activityType ?
+                                           AppTheme.Colors.accent.opacity(0.3) :
+                                           AppTheme.Colors.textTertiary.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, AppTheme.Spacing.md)
+
+                Spacer()
+
+                Button(action: onSave) {
+                    HStack {
+                        Spacer()
+                        Text("Save Changes")
+                            .font(AppTheme.Typography.body)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.black)
+                        Spacer()
+                    }
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .background(AppTheme.Colors.accent)
+                    .cornerRadius(AppTheme.CornerRadius.medium)
+                }
+                .disabled(selectedType == currentType)
+                .opacity(selectedType == currentType ? 0.5 : 1.0)
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.bottom, AppTheme.Spacing.lg)
+            }
+            .navigationTitle("Edit Commitment")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        selectedType = currentType
+                        dismiss()
+                    }
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
                 }
             }
         }

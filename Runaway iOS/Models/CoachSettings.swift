@@ -89,11 +89,11 @@ struct CoachSettings: Codable {
 
     // MARK: - Voice Settings
 
-    /// Speech rate (0.0 - 1.0, default 0.52)
-    var speechRate: Float = 0.52
+    /// Speech rate (0.0 - 1.0, default 0.5)
+    var speechRate: Float = 0.50
 
-    /// Voice volume (0.0 - 1.0, default 1.0)
-    var volume: Float = 1.0
+    /// Voice volume (0.0 - 1.0, default 0.8 - doesn't blast over music)
+    var volume: Float = 0.8
 
     /// Voice identifier (nil = system default)
     var voiceIdentifier: String? = nil
@@ -104,13 +104,13 @@ struct CoachSettings: Codable {
     /// Duck music volume during prompts
     var duckMusicDuringPrompts: Bool = true
 
-    // MARK: - Voice Input (Phase 3)
+    // MARK: - Voice Input
 
     /// Enable voice responses to prompts
-    var enableVoiceInput: Bool = false
+    var enableVoiceInput: Bool = true
 
-    /// Enable shake gesture to activate voice input (disabled by default)
-    var enableShakeToSpeak: Bool = false
+    /// Enable shake gesture to activate voice input
+    var enableShakeToSpeak: Bool = true
 
     /// Auto-listen after check-in prompts (e.g., "How are you feeling?")
     var autoListenAfterCheckIn: Bool = true

@@ -80,7 +80,7 @@ struct CardView: View {
 
                     // Metrics row with modern styling
                     HStack(spacing: AppTheme.Spacing.lg) {
-                        if let distance = activity.distance {
+                        if let distance = activity.distance, distance * 0.000621371 >= 0.1 {
                             MetricPill(
                                 icon: AppIcons.distance,
                                 value: String(format: "%.2f", distance * 0.000621371),
@@ -98,7 +98,7 @@ struct CardView: View {
                             )
                         }
 
-                        if let distance = activity.distance, let time = activity.elapsed_time {
+                        if let distance = activity.distance, let time = activity.elapsed_time, distance * 0.000621371 >= 0.1 {
                             MetricPill(
                                 icon: AppIcons.pace,
                                 value: calculatePace(distance: distance * 0.000621371, time: time),
@@ -139,6 +139,7 @@ struct CardView: View {
         case "trail run", "trail_run", "trailrun": return "figure.run"
         case "walk", "walking": return "figure.walk"
         case "bike", "cycling": return "bicycle"
+        case "yoga": return "figure.mind.and.body"
         default: return "figure.mixed.cardio"
         }
     }

@@ -8,6 +8,8 @@
 import SwiftUI
 import Foundation
 import FirebaseCore
+import AppIntents
+import HealthKit
 
 @main
 struct Runaway_iOSApp: App {
@@ -15,6 +17,7 @@ struct Runaway_iOSApp: App {
     @StateObject private var realtimeService = RealtimeService.shared
     @StateObject private var dataManager = DataManager.shared
     @StateObject private var stravaService = StravaService()
+    @StateObject private var activityRecordingService = ActivityRecordingService()
     @State private var router = AppRouter()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
@@ -89,18 +92,72 @@ struct Runaway_iOSApp: App {
                     print("📱 App became active - starting realtime services")
                     realtimeService.startRealtimeSubscription()
                     LocationManager.shared.requestLocationPermission()
+
+                    // Request HealthKit authorization if available
+                    if HealthKitManager.shared.isHealthKitAvailable {
+                        Task {
+                            let authorized = await HealthKitManager.shared.requestAuthorization()
+                            if authorized {
+                                print("✅ HealthKit authorization complete")
+                            } else {
+                                print("⚠️ HealthKit authorization not granted")
+                            }
+                        }
+                    }
+
+                    // Track analytics session
+                    AnalyticsService.shared.startSession()
+                    AnalyticsService.shared.track(.appOpened, category: .engagement)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
                     print("📱 App entered background - using silent push notifications for background sync")
                     // Background tasks disabled - using silent push notifications instead
                     // realtimeService.scheduleBackgroundRefresh()
+
+                    // Track analytics
+                    AnalyticsService.shared.track(.appBackgrounded, category: .engagement)
+                    AnalyticsService.shared.endSession()
                 }
                 .onOpenURL { url in
                     handleDeepLink(url)
                     // Also pass to router for navigation deep links
                     router.handleDeepLink(url)
                 }
+                // MARK: - Siri Intent Handlers
+                .onReceive(NotificationCenter.default.publisher(for: .startRecordingFromSiri)) { notification in
+                    handleStartRecordingFromSiri(notification)
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .stopRecordingFromSiri)) { _ in
+                    handleStopRecordingFromSiri()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .pauseRecordingFromSiri)) { _ in
+                    activityRecordingService.pauseRecording()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .resumeRecordingFromSiri)) { _ in
+                    activityRecordingService.resumeRecording()
+                }
         }
+    }
+
+    // MARK: - Siri Recording Handlers
+
+    private func handleStartRecordingFromSiri(_ notification: Notification) {
+        let activityType = notification.userInfo?["activityType"] as? String ?? "Run"
+
+        // Navigate to recording tab via notification
+        NotificationCenter.default.post(name: .navigateToRecordTab, object: nil)
+
+        // Start recording after a brief delay to let the view appear
+        Task {
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            await MainActor.run {
+                activityRecordingService.startRecording(activityType: activityType)
+            }
+        }
+    }
+
+    private func handleStopRecordingFromSiri() {
+        activityRecordingService.stopRecording()
     }
 
     // MARK: - Deep Link Handling

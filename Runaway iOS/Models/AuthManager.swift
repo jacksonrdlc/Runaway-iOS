@@ -66,26 +66,48 @@ public final class AuthManager: ObservableObject {
     }
 
     func signUp(email: String, password: String) async throws {
-        _ = try await supabase.auth.signUp(
-            email: email,
-            password: password
-        )
-        // Auth state will be updated automatically via listener
+        AnalyticsService.shared.track(.signupStarted, category: .authentication)
+
+        do {
+            _ = try await supabase.auth.signUp(
+                email: email,
+                password: password
+            )
+            // Auth state will be updated automatically via listener
+            AnalyticsService.shared.track(.signupCompleted, category: .authentication)
+        } catch {
+            AnalyticsService.shared.track(.loginFailed, category: .authentication, properties: [
+                "error": error.localizedDescription,
+                "type": "signup"
+            ])
+            throw error
+        }
     }
-    
+
     func signIn(email: String, password: String) async throws {
-        _ = try await supabase.auth.signIn(
-            email: email,
-            password: password
-        )
-        // Auth state will be updated automatically via listener
+        AnalyticsService.shared.track(.loginStarted, category: .authentication)
+
+        do {
+            _ = try await supabase.auth.signIn(
+                email: email,
+                password: password
+            )
+            // Auth state will be updated automatically via listener
+            AnalyticsService.shared.track(.loginCompleted, category: .authentication)
+        } catch {
+            AnalyticsService.shared.track(.loginFailed, category: .authentication, properties: [
+                "error": error.localizedDescription
+            ])
+            throw error
+        }
     }
-    
+
     func signOut() async throws {
         try await supabase.auth.signOut()
         DispatchQueue.main.async {
             self.currentUser = nil
             self.isAuthenticated = false
         }
+        AnalyticsService.shared.track(.logoutCompleted, category: .authentication)
     }
 }

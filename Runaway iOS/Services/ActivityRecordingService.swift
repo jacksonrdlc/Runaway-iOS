@@ -10,6 +10,8 @@ import CoreLocation
 import MapKit
 import Combine
 import WidgetKit
+import ActivityKit
+import HealthKit
 
 // MARK: - Recording State
 enum RecordingState {
@@ -67,6 +69,11 @@ class ActivityRecordingService: ObservableObject {
     private let autoPauseThreshold: Double = 0.5 // m/s (~1.1 mph)
     private let autoPauseDelay: TimeInterval = 10.0 // seconds
     private var lowSpeedStartTime: Date?
+    private var liveActivityUpdateTimer: Timer?
+
+    // MARK: - HealthKit Integration
+    private let healthKitWorkoutService = HealthKitWorkoutService.shared
+    private var savedHealthKitWorkout: HKWorkout?
     
     // MARK: - Computed Properties
     var canStartRecording: Bool {
@@ -101,24 +108,47 @@ class ActivityRecordingService: ObservableObject {
             print("❌ Cannot start recording - invalid state or permissions")
             return
         }
-        
+
         print("🏃 Starting activity recording")
-        
+
+        // Track analytics
+        AnalyticsService.shared.trackActivityStarted(type: activityType, name: name)
+
         // Create new session
         currentSession = RecordingSession(
             startTime: Date(),
             name: name.isEmpty ? generateDefaultName() : name,
             activityType: activityType
         )
-        
+
         // Start GPS tracking
         gpsService.startTracking()
-        
+
         // Update state
         state = .recording
         isAutopaused = false
         lowSpeedStartTime = nil
-        
+
+        // Start Live Activity
+        LiveActivityService.shared.startActivity(
+            activityType: activityType,
+            startTime: Date()
+        )
+        startLiveActivityUpdates()
+
+        // Start HealthKit workout session if authorized
+        if HealthKitManager.shared.isAuthorized {
+            Task {
+                do {
+                    let hkActivityType = HealthKitManager.shared.workoutActivityType(for: activityType)
+                    try await healthKitWorkoutService.startWorkout(activityType: hkActivityType)
+                    print("✅ HealthKit workout session started")
+                } catch {
+                    print("⚠️ Failed to start HealthKit workout: \(error.localizedDescription)")
+                }
+            }
+        }
+
         print("✅ Recording started successfully")
     }
     
@@ -127,13 +157,25 @@ class ActivityRecordingService: ObservableObject {
             print("❌ Cannot pause recording - invalid state")
             return
         }
-        
+
         print("⏸️ Pausing activity recording")
-        
+
+        // Track analytics
+        AnalyticsService.shared.track(.activityPaused, category: .activity, properties: [
+            "elapsed_time": currentSession?.elapsedTime ?? 0,
+            "distance": gpsService.totalDistance
+        ])
+
         gpsService.pauseTracking()
         state = .paused
         pauseStartTime = Date()
         isAutopaused = false
+
+        // Update Live Activity to show paused state
+        updateLiveActivityState(isPaused: true)
+
+        // Pause HealthKit workout
+        healthKitWorkoutService.pauseWorkout()
     }
     
     func resumeRecording() {
@@ -141,19 +183,30 @@ class ActivityRecordingService: ObservableObject {
             print("❌ Cannot resume recording - invalid state")
             return
         }
-        
+
         print("▶️ Resuming activity recording")
-        
+
+        // Track analytics
+        AnalyticsService.shared.track(.activityResumed, category: .activity, properties: [
+            "paused_duration": pauseStartTime.map { Date().timeIntervalSince($0) } ?? 0
+        ])
+
         // Add paused time to total
         if let pauseStart = pauseStartTime {
             let pausedTime = Date().timeIntervalSince(pauseStart)
             currentSession?.pausedDuration += pausedTime
             pauseStartTime = nil
         }
-        
+
         gpsService.resumeTracking()
         state = .recording
         isAutopaused = false
+
+        // Update Live Activity to show active state
+        updateLiveActivityState(isPaused: false)
+
+        // Resume HealthKit workout
+        healthKitWorkoutService.resumeWorkout()
     }
     
     func stopRecording() {
@@ -161,31 +214,77 @@ class ActivityRecordingService: ObservableObject {
             print("❌ Cannot stop recording - invalid state")
             return
         }
-        
+
         print("⏹️ Stopping activity recording")
-        
+
+        // Track analytics
+        AnalyticsService.shared.track(.activityStopped, category: .activity, properties: [
+            "elapsed_time": currentSession?.elapsedTime ?? 0,
+            "distance": gpsService.totalDistance,
+            "activity_type": currentSession?.activityType ?? "unknown"
+        ])
+
         // Stop GPS tracking
         gpsService.stopTracking()
-        
+
         // Update session with final data
         if var session = currentSession {
             session.endTime = Date()
             session.totalDistance = gpsService.totalDistance
             session.routePoints = gpsService.routePoints
-            
+
             // Add any remaining paused time
             if let pauseStart = pauseStartTime {
                 let pausedTime = Date().timeIntervalSince(pauseStart)
                 session.pausedDuration += pausedTime
                 pauseStartTime = nil
             }
-            
+
             currentSession = session
         }
-        
+
         state = .completed
         isAutopaused = false
-        
+
+        // Stop Live Activity updates and show summary
+        stopLiveActivityUpdates()
+        if let session = currentSession {
+            LiveActivityService.shared.endActivityWithSummary(
+                elapsedTime: session.elapsedTime,
+                distance: session.totalDistance,
+                averagePace: session.averagePace * 60 // Convert to seconds per mile
+            )
+        } else {
+            LiveActivityService.shared.endActivity()
+        }
+
+        // End HealthKit workout session and save
+        if healthKitWorkoutService.isRecording, let session = currentSession {
+            Task {
+                do {
+                    // Convert route points to CLLocation
+                    let locations = session.routePoints.map { point in
+                        CLLocation(
+                            coordinate: point.coordinate,
+                            altitude: point.altitude,
+                            horizontalAccuracy: point.horizontalAccuracy,
+                            verticalAccuracy: point.horizontalAccuracy,
+                            timestamp: point.timestamp
+                        )
+                    }
+
+                    savedHealthKitWorkout = try await healthKitWorkoutService.endWorkout(
+                        totalDistance: session.totalDistance,
+                        totalDuration: session.elapsedTime,
+                        routeLocations: locations
+                    )
+                    print("✅ HealthKit workout saved")
+                } catch {
+                    print("⚠️ Failed to save HealthKit workout: \(error.localizedDescription)")
+                }
+            }
+        }
+
         print("✅ Recording completed successfully")
         print("📊 Final stats:")
         print("   - Distance: \(String(format: "%.2f", currentSession?.totalDistanceMiles ?? 0)) miles")
@@ -195,7 +294,14 @@ class ActivityRecordingService: ObservableObject {
     
     func discardRecording() {
         print("🗑️ Discarding activity recording")
-        
+
+        // Track analytics
+        AnalyticsService.shared.track(.activityDiscarded, category: .activity, properties: [
+            "elapsed_time": currentSession?.elapsedTime ?? 0,
+            "distance": gpsService.totalDistance,
+            "activity_type": currentSession?.activityType ?? "unknown"
+        ])
+
         gpsService.stopTracking()
         gpsService.clearRoute()
         currentSession = nil
@@ -203,7 +309,15 @@ class ActivityRecordingService: ObservableObject {
         isAutopaused = false
         pauseStartTime = nil
         lowSpeedStartTime = nil
-        
+        savedHealthKitWorkout = nil
+
+        // End Live Activity
+        stopLiveActivityUpdates()
+        LiveActivityService.shared.endActivity()
+
+        // Cancel HealthKit workout without saving
+        healthKitWorkoutService.cancelWorkout()
+
         print("✅ Recording discarded")
     }
     
@@ -242,6 +356,11 @@ class ActivityRecordingService: ObservableObject {
             default: activityTypeId = 103 // Default to Run
             }
 
+            // Format date as ISO 8601 for PostgreSQL timestamp
+            let iso8601Formatter = ISO8601DateFormatter()
+            iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let activityDateString = iso8601Formatter.string(from: session.startTime)
+
             // Create activity for database with correct field names
             return [
                 "athlete_id": AnyEncodable(userId),
@@ -249,7 +368,7 @@ class ActivityRecordingService: ObservableObject {
                 "activity_type_id": AnyEncodable(activityTypeId),
                 "distance": AnyEncodable(session.totalDistance),
                 "elapsed_time": AnyEncodable(Int(session.elapsedTime)),
-                "activity_date": AnyEncodable(session.startTime.timeIntervalSince1970),
+                "activity_date": AnyEncodable(activityDateString),
                 "map_summary_polyline": AnyEncodable(encodedPolyline)
             ]
         }.value
@@ -259,8 +378,20 @@ class ActivityRecordingService: ObservableObject {
 
         print("✅ Activity saved successfully with ID: \(savedActivity.id)")
 
+        // Track analytics
+        AnalyticsService.shared.trackActivitySaved(
+            type: session.activityType,
+            distance: session.totalDistance,
+            duration: session.elapsedTime
+        )
+
         // Refresh widgets after activity recording save
         WidgetRefreshService.refreshForActivityUpdate()
+
+        // Add to activity store to trigger commitment check
+        await MainActor.run {
+            ActivityStore.shared.addActivity(savedActivity)
+        }
 
         // Clear session after successful save
         await MainActor.run {
@@ -279,10 +410,21 @@ class ActivityRecordingService: ObservableObject {
                 self?.updateSessionData()
             }
             .store(in: &cancellables)
-        
+
         gpsService.$currentSpeed
             .sink { [weak self] speed in
                 self?.checkForAutopause(speed: speed)
+            }
+            .store(in: &cancellables)
+
+        // Forward GPS locations to HealthKit for real-time route building
+        gpsService.$currentLocation
+            .compactMap { $0 }
+            .sink { [weak self] location in
+                guard let self = self,
+                      self.state == .recording,
+                      self.healthKitWorkoutService.isRecording else { return }
+                self.healthKitWorkoutService.addLocationSample(location)
             }
             .store(in: &cancellables)
     }
@@ -332,6 +474,60 @@ class ActivityRecordingService: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d 'at' h:mm a"
         return "Run on \(formatter.string(from: Date()))"
+    }
+
+    // MARK: - Live Activity Helpers
+
+    private func startLiveActivityUpdates() {
+        // Update Live Activity every second
+        liveActivityUpdateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateLiveActivity()
+            }
+        }
+    }
+
+    private func stopLiveActivityUpdates() {
+        liveActivityUpdateTimer?.invalidate()
+        liveActivityUpdateTimer = nil
+    }
+
+    private func updateLiveActivity() {
+        guard let session = currentSession else { return }
+
+        // Calculate current pace in seconds per mile
+        let currentPaceSecondsPerMile: Double
+        if gpsService.currentSpeed > 0.5 { // Above threshold
+            let milesPerSecond = gpsService.currentSpeed / 1609.34
+            currentPaceSecondsPerMile = milesPerSecond > 0 ? 1.0 / milesPerSecond : 0
+        } else {
+            currentPaceSecondsPerMile = 0
+        }
+
+        // Calculate average pace in seconds per mile
+        let averagePaceSecondsPerMile = session.averagePace * 60 // Convert min/mile to sec/mile
+
+        LiveActivityService.shared.updateActivity(
+            elapsedTime: session.elapsedTime,
+            distance: gpsService.totalDistance,
+            currentPace: currentPaceSecondsPerMile,
+            averagePace: averagePaceSecondsPerMile,
+            isPaused: state == .paused || isAutopaused
+        )
+    }
+
+    private func updateLiveActivityState(isPaused: Bool) {
+        guard let session = currentSession else { return }
+
+        let averagePaceSecondsPerMile = session.averagePace * 60
+
+        LiveActivityService.shared.updateActivity(
+            elapsedTime: session.elapsedTime,
+            distance: gpsService.totalDistance,
+            currentPace: 0, // Current pace is 0 when paused
+            averagePace: averagePaceSecondsPerMile,
+            isPaused: isPaused
+        )
     }
 }
 

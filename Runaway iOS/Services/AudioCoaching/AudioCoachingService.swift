@@ -58,6 +58,16 @@ final class AudioCoachingService: ObservableObject {
             self.lastPromptMessage = prompt.message
             self.lastPromptTime = Date()
 
+            // Track analytics
+            let elapsedTime = self.recordingService?.currentSession?.elapsedTime ?? 0
+            let distance = self.recordingService?.gpsService.totalDistance ?? 0
+            AnalyticsService.shared.trackAudioPrompt(
+                type: prompt.type.rawValue,
+                message: prompt.message,
+                elapsedTime: elapsedTime,
+                distance: distance
+            )
+
             // Auto-listen after check-in prompts if enabled
             if prompt.expectsResponse &&
                self.settings.enableVoiceInput &&
@@ -71,6 +81,13 @@ final class AudioCoachingService: ObservableObject {
             #if DEBUG
             print("AudioCoaching: Split \(split.splitNumber) completed - \(split.formattedPace) pace")
             #endif
+
+            // Track analytics
+            AnalyticsService.shared.trackSplitAnnounced(
+                splitNumber: split.splitNumber,
+                pace: split.pace,
+                distance: split.distance * Double(split.splitNumber)
+            )
         }
     }
 
@@ -194,19 +211,21 @@ final class AudioCoachingService: ObservableObject {
 
     // MARK: - Binding to Recording Service
 
+    private var recordingCancellables = Set<AnyCancellable>()
+
     /// Bind to an ActivityRecordingService to observe run state
     func bind(to recordingService: ActivityRecordingService) {
         self.recordingService = recordingService
 
-        // Cancel any existing subscriptions
-        cancellables.removeAll()
+        // Cancel only recording-specific subscriptions (not voice coordinator ones)
+        recordingCancellables.removeAll()
 
         // Subscribe to recording state changes
         recordingService.$state
             .sink { [weak self] state in
                 self?.handleRecordingStateChange(state)
             }
-            .store(in: &cancellables)
+            .store(in: &recordingCancellables)
 
         // Subscribe to GPS service updates
         recordingService.gpsService.$totalDistance
@@ -214,18 +233,23 @@ final class AudioCoachingService: ObservableObject {
             .sink { [weak self] distance, speed in
                 self?.handleDistanceUpdate(distance: distance, speed: speed)
             }
-            .store(in: &cancellables)
+            .store(in: &recordingCancellables)
+
+        print("AudioCoachingService: Bound to recording service")
     }
 
     /// Unbind from recording service
     func unbind() {
-        cancellables.removeAll()
+        recordingCancellables.removeAll()
         recordingService = nil
+        print("AudioCoachingService: Unbound from recording service")
     }
 
     // MARK: - State Change Handlers
 
     private func handleRecordingStateChange(_ state: RecordingState) {
+        print("AudioCoachingService: Recording state changed to \(state)")
+
         switch state {
         case .ready:
             // Reset for new run
@@ -233,24 +257,50 @@ final class AudioCoachingService: ObservableObject {
 
         case .recording:
             if !isActive {
+                print("AudioCoachingService: Starting audio coaching")
                 start()
             } else {
                 // Resuming from pause
+                print("AudioCoachingService: Resuming from pause")
                 triggerEngine.resume()
             }
 
         case .paused:
+            print("AudioCoachingService: Pausing triggers")
             triggerEngine.pause()
 
         case .completed:
+            print("AudioCoachingService: Stopping audio coaching")
             stop()
         }
     }
 
     private func handleDistanceUpdate(distance: Double, speed: Double) {
-        guard isActive, isEnabled, settings.isEnabled else { return }
+        guard isActive else {
+            #if DEBUG
+            print("AudioCoaching: Skipping update - not active")
+            #endif
+            return
+        }
+        guard isEnabled else {
+            #if DEBUG
+            print("AudioCoaching: Skipping update - isEnabled=false")
+            #endif
+            return
+        }
+        guard settings.isEnabled else {
+            #if DEBUG
+            print("AudioCoaching: Skipping update - settings.isEnabled=false")
+            #endif
+            return
+        }
         guard let service = recordingService,
-              let session = service.currentSession else { return }
+              let session = service.currentSession else {
+            #if DEBUG
+            print("AudioCoaching: Skipping update - no recording session")
+            #endif
+            return
+        }
 
         // Calculate current pace (seconds per mile)
         let currentPace: TimeInterval
@@ -347,12 +397,21 @@ final class AudioCoachingService: ObservableObject {
     /// Manually start voice input (e.g., from button press)
     func startVoiceInput() async {
         guard isActive, settings.enableVoiceInput else { return }
+
+        // Track analytics
+        AnalyticsService.shared.track(.voiceInputStarted, category: .audioCoaching, properties: [
+            "elapsed_time": recordingService?.currentSession?.elapsedTime ?? 0
+        ])
+
         await voiceCoordinator.startListening()
     }
 
     /// Stop voice input
     func stopVoiceInput() {
         voiceCoordinator.stopListening()
+
+        // Track analytics
+        AnalyticsService.shared.track(.voiceInputCompleted, category: .audioCoaching)
     }
 
     /// Toggle voice input

@@ -172,10 +172,15 @@ final class VoiceInputService: NSObject, ObservableObject {
     private func configureAudioSession() async throws {
         let audioSession = AVAudioSession.sharedInstance()
 
+        // Use playAndRecord with options that minimize disruption to other audio
+        // .duckOthers: lowers music volume instead of stopping it
+        // .defaultToSpeaker: use speaker for recording prompts
+        // .allowBluetoothA2DP: allow Bluetooth headphones
+        // .mixWithOthers: don't fully interrupt other audio
         try audioSession.setCategory(
             .playAndRecord,
-            mode: .measurement,
-            options: [.duckOthers, .defaultToSpeaker, .allowBluetooth]
+            mode: .spokenAudio,
+            options: [.duckOthers, .defaultToSpeaker, .allowBluetoothA2DP, .mixWithOthers]
         )
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
     }
@@ -183,11 +188,16 @@ final class VoiceInputService: NSObject, ObservableObject {
     private func restoreAudioSession() async throws {
         let audioSession = AVAudioSession.sharedInstance()
 
+        // Deactivate first to notify other apps they can resume
+        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+
+        // Set back to ambient so other audio apps resume automatically
         try audioSession.setCategory(
-            .playback,
+            .ambient,
+            mode: .spokenAudio,
             options: [.duckOthers, .mixWithOthers]
         )
-        try audioSession.setActive(true)
+        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
     }
 
     // MARK: - Recognition Handling

@@ -10,60 +10,64 @@ struct LoginView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
-            Text(isSignUp ? "Create Account" : "Welcome Back")
-                .font(.largeTitle)
-                .padding(.bottom, 30)
-            
-            TextField("Email", text: $email)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .textInputAutocapitalization(.never)
-                .padding()
-                .onAppear {
-                    email = "jackrudelic@gmail.com"
-                }
-            
-            SecureField("Password", text: $password)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
-                .onAppear {
+            ZStack {
+                Color.white.ignoresSafeArea()
+
+                VStack {
+                    Text(isSignUp ? "Create Account" : "Welcome Back")
+                        .font(.largeTitle)
+                        .padding(.bottom, 30)
+
+                    TextField("Email", text: $email)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .textInputAutocapitalization(.never)
+                        .padding()
+                        .onAppear {
+                            email = "jackrudelic@gmail.com"
+                        }
+
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                        .onAppear {
                             password = "password"
                         }
-            
-            Button(action: {
-                Task {
-                    do {
-                        if isSignUp {
-                            try await userSession.signUp(email: email, password: password)
-                        } else {
-                            try await userSession.signIn(email: email, password: password)
+
+                    Button(action: {
+                        Task {
+                            do {
+                                if isSignUp {
+                                    try await userSession.signUp(email: email, password: password)
+                                } else {
+                                    try await userSession.signIn(email: email, password: password)
+                                }
+                            } catch {
+                                showError = true
+                                errorMessage = error.localizedDescription
+                            }
                         }
-                    } catch {
-                        showError = true
-                        errorMessage = error.localizedDescription
+                    }) {
+                        Text(isSignUp ? "Sign Up" : "Sign In")
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
+                    .padding()
+
+                    Button(action: { isSignUp.toggle() }) {
+                        Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
+                            .foregroundColor(.blue)
                     }
                 }
-            }) {
-                Text(isSignUp ? "Sign Up" : "Sign In")
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
+                .padding()
             }
-            .padding()
-            
-            Button(action: { isSignUp.toggle() }) {
-                Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
-                    .foregroundColor(.blue)
-            }
-            }
-            .padding()
             .navigationTitle("Welcome")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.white, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .background(AppTheme.Colors.LightMode.background.ignoresSafeArea())
         }
         .alert("Error", isPresented: $showError) {
             Button("OK", role: .cancel) {}

@@ -74,10 +74,18 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8E06B7C62F0434C700A17DDE /* Exceptions for "Runaway iOS" folder in "Runaway iOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Runaway iOSTests/Runaway_iOSTests.swift",
+			);
+			target = 8EEECC412D64CF150053014A /* Runaway iOS */;
+		};
 		8E6C2E6B2D943666002619A0 /* Exceptions for "Runaway iOS" folder in "Runaway iOSTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"GoogleService-Info.plist",
+				"Runaway iOSTests/Runaway_iOSTests.swift",
 			);
 			target = 8EEECC512D64CF170053014A /* Runaway iOSTests */;
 		};
@@ -108,16 +116,12 @@
 		8EEECC442D64CF150053014A /* Runaway iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				8E06B7C62F0434C700A17DDE /* Exceptions for "Runaway iOS" folder in "Runaway iOS" target */,
 				8E6C2E6B2D943666002619A0 /* Exceptions for "Runaway iOS" folder in "Runaway iOSTests" target */,
 				8E6C2E6C2D943666002619A0 /* Exceptions for "Runaway iOS" folder in "Runaway iOSUITests" target */,
 				8E6C2E6D2D943666002619A0 /* Exceptions for "Runaway iOS" folder in "RunawayWidgetExtension" target */,
 			);
 			path = "Runaway iOS";
-			sourceTree = "<group>";
-		};
-		8EEECC552D64CF170053014A /* Runaway iOSTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Runaway iOSTests";
 			sourceTree = "<group>";
 		};
 		8EEECC5F2D64CF170053014A /* Runaway iOSUITests */ = {
@@ -187,7 +191,6 @@
 			children = (
 				8EEECE302D64F0EA0053014A /* RunawayWidgetExtension.entitlements */,
 				8EEECC442D64CF150053014A /* Runaway iOS */,
-				8EEECC552D64CF170053014A /* Runaway iOSTests */,
 				8EEECC5F2D64CF170053014A /* Runaway iOSUITests */,
 				8EEECCD22D64D02B0053014A /* RunawayWidget */,
 				8EEECCCD2D64D02B0053014A /* Frameworks */,
@@ -267,9 +270,6 @@
 			);
 			dependencies = (
 				8EEECC542D64CF170053014A /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				8EEECC552D64CF170053014A /* Runaway iOSTests */,
 			);
 			name = "Runaway iOSTests";
 			packageProductDependencies = (
@@ -590,6 +590,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Runaway iOS/Preview Content\"";
+				DEVELOPMENT_TEAM = P3YKE7B3N9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";
@@ -626,6 +627,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Runaway iOS/Preview Content\"";
+				DEVELOPMENT_TEAM = P3YKE7B3N9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Runaway-iOS-Info.plist";

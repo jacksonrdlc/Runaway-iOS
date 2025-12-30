@@ -42,12 +42,18 @@ final class TTSService: NSObject, ObservableObject {
 
     private func configureAudioSession() {
         do {
-            // Configure for playback with ducking (lowers other audio volume)
+            // Use .playback category so audio plays in background (phone in pocket)
+            // .duckOthers: temporarily lowers music volume instead of pausing it
+            // .mixWithOthers: allows our audio to play alongside other audio
+            // This combination allows coaching prompts while keeping music playing
             let options: AVAudioSession.CategoryOptions = settings.duckOtherAudio
-                ? [.duckOthers, .interruptSpokenAudioAndMixWithOthers]
+                ? [.duckOthers, .mixWithOthers]
                 : [.mixWithOthers]
 
-            try audioSession.setCategory(.playback, mode: .voicePrompt, options: options)
+            // .playback category is REQUIRED for background audio during runs
+            // The ducking options prevent it from stopping other audio
+            try audioSession.setCategory(.playback, mode: .spokenAudio, options: options)
+            print("TTSService: Audio session configured with playback + ducking")
         } catch {
             print("TTSService: Failed to configure audio session: \(error)")
         }
@@ -78,17 +84,18 @@ final class TTSService: NSObject, ObservableObject {
         let utterance = AVSpeechUtterance(string: message)
         utterance.rate = settings.speechRate
         utterance.pitchMultiplier = 1.0
-        utterance.volume = 1.0
-        utterance.preUtteranceDelay = 0.1
-        utterance.postUtteranceDelay = 0.1
+        // Use settings volume (default 0.8) - don't force max volume
+        utterance.volume = settings.volume
+        utterance.preUtteranceDelay = 0.05
+        utterance.postUtteranceDelay = 0.05
 
-        // Set voice
+        // Set voice - prefer user's choice, then enhanced, then default
         if let voiceId = settings.voiceIdentifier,
            let voice = AVSpeechSynthesisVoice(identifier: voiceId) {
             utterance.voice = voice
         } else {
-            // Use default enhanced voice for current locale
-            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+            // Use best available enhanced voice (Siri-quality)
+            utterance.voice = Self.bestAvailableVoice()
         }
 
         completionHandler = completion
@@ -134,6 +141,41 @@ final class TTSService: NSObject, ObservableObject {
     }
 
     // MARK: - Voice Management
+
+    /// Get the best available voice - prefers enhanced "Siri-like" voices
+    static func bestAvailableVoice(for language: String = "en-US") -> AVSpeechSynthesisVoice? {
+        let allVoices = AVSpeechSynthesisVoice.speechVoices()
+
+        // Priority 1: Premium/enhanced voices for the exact language
+        let enhancedVoices = allVoices.filter {
+            $0.language == language && $0.quality == .enhanced
+        }
+
+        // Prefer specific high-quality voices (Samantha, Ava, etc.)
+        let preferredNames = ["Samantha", "Ava", "Allison", "Susan", "Siri"]
+        for name in preferredNames {
+            if let voice = enhancedVoices.first(where: { $0.name.contains(name) }) {
+                return voice
+            }
+        }
+
+        // Any enhanced voice
+        if let voice = enhancedVoices.first {
+            return voice
+        }
+
+        // Priority 2: Enhanced voices for the language prefix (e.g., "en")
+        let languagePrefix = String(language.prefix(2))
+        let prefixEnhanced = allVoices.filter {
+            $0.language.hasPrefix(languagePrefix) && $0.quality == .enhanced
+        }
+        if let voice = prefixEnhanced.first {
+            return voice
+        }
+
+        // Priority 3: Any voice for the language
+        return AVSpeechSynthesisVoice(language: language)
+    }
 
     /// Get available voices for a language
     static func availableVoices(for language: String = "en") -> [AVSpeechSynthesisVoice] {

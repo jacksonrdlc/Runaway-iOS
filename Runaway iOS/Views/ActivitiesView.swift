@@ -8,7 +8,6 @@ struct ActivitiesView: View {
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var realtimeService: RealtimeService
     @State private var selectedActivity: LocalActivity?
-    @State private var showingDetail = false
     @State private var showingRecording = false
     
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
@@ -73,7 +72,6 @@ struct ActivitiesView: View {
                                     previousActivities: previousActivities,
                                     onTap: {
                                         selectedActivity = convertToLocalActivity(activity)
-                                        showingDetail = true
                                     }
                                 )
                                 .padding(.horizontal, AppTheme.Spacing.md)
@@ -111,11 +109,9 @@ struct ActivitiesView: View {
                 }
             }
             
-            .sheet(isPresented: $showingDetail) {
-                if let activity = selectedActivity {
-                    NavigationView {
-                        ActivityDetailView(activity: activity)
-                    }
+            .sheet(item: $selectedActivity) { activity in
+                NavigationView {
+                    ActivityDetailView(activity: activity)
                 }
             }
             .fullScreenCover(isPresented: $showingRecording) {

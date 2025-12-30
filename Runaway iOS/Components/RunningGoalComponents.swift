@@ -10,7 +10,6 @@ import Charts
 
 // MARK: - Main Goal Card Component
 struct RunningGoalCard: View {
-    @StateObject private var goalAgent = GoalRecommendationAgent()
     @State private var showingGoalInput = false
     @State private var currentGoal: RunningGoal?
     @State private var goalAnalysis: GoalAnalysis?
@@ -69,15 +68,6 @@ struct RunningGoalCard: View {
                 } else {
                     // Fallback to progress chart if no readiness data
                     GoalProgressChart(analysis: analysis)
-                }
-                
-                // AI Recommendations
-                if !goalAgent.isAnalyzing {
-                    GoalRecommendationsSection(recommendations: analysis.recommendations)
-                } else {
-                    ProgressView("Generating AI recommendations...")
-                        .frame(maxWidth: .infinity)
-                        .padding()
                 }
             } else if !isLoadingGoal {
                 // Empty State
@@ -139,10 +129,20 @@ struct RunningGoalCard: View {
     }
     
     private func generateAnalysis(for goal: RunningGoal) async {
-        let analysis = await goalAgent.analyzeGoalAndGenerateRecommendations(
+        // Simple local analysis based on current progress
+        let currentProgress = goal.currentProgress
+        let projectedCompletion = min(currentProgress * 100 / max(goal.weeksRemaining, 1), 100)
+        let isOnTrack = projectedCompletion >= 80
+
+        let analysis = GoalAnalysis(
             goal: goal,
-            activities: activities
+            currentProgress: currentProgress,
+            projectedCompletion: projectedCompletion,
+            isOnTrack: isOnTrack,
+            recommendations: [],
+            progressPoints: []
         )
+
         await MainActor.run {
             goalAnalysis = analysis
         }
@@ -346,66 +346,6 @@ struct GoalProgressChart: View {
         .padding()
         .background(AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-    }
-}
-
-// MARK: - Recommendations Section
-struct GoalRecommendationsSection: View {
-    let recommendations: [TrainingRecommendation]
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("AI Training Recommendations")
-                .font(.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
-            
-            ForEach(recommendations) { recommendation in
-                RecommendationCard(recommendation: recommendation)
-            }
-        }
-    }
-}
-
-struct RecommendationCard: View {
-    let recommendation: TrainingRecommendation
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Run \(recommendation.runNumber)")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
-
-                Spacer()
-
-                Text(recommendation.formattedDistance)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
-            }
-
-            Text(recommendation.description)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
-
-            Text("Pace: \(recommendation.formattedPace)")
-                .font(.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
-            
-            Text(recommendation.reasoning)
-                .font(.caption)
-                .foregroundColor(AppTheme.Colors.textTertiary)
-                .italic()
-        }
-        .padding(12)
-        .background(AppTheme.Colors.LightMode.surfaceBackground)
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.black.opacity(0.08), lineWidth: 1)
-        )
     }
 }
 

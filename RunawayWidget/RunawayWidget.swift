@@ -292,7 +292,6 @@ struct Provider: AppIntentTimelineProvider {
                         
                         do {
                             let activity = try decoder.decode(Activity.self, from: jsonData)
-                            print(activity)
                             thursdayActivities.append(activity)
                         } catch {
                             print(error.localizedDescription)

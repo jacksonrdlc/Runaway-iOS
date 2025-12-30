@@ -13,7 +13,6 @@ class EnhancedAnalysisService: ObservableObject {
     
     private let apiService = RunawayCoachAPIService()
     private let localAnalyzer = RunningAnalyzer()
-    private let goalAgent = GoalRecommendationAgent()
     
     // MARK: - Comprehensive Analysis
     
@@ -181,31 +180,32 @@ class EnhancedAnalysisService: ObservableObject {
         goal: RunningGoal,
         activities: [Activity]
     ) async -> EnhancedGoalAnalysis {
-        // Start local analysis
-        let localTask = Task { () -> GoalAnalysis in
-            await goalAgent.analyzeGoalAndGenerateRecommendations(
-                goal: goal,
+        // Simple local analysis based on current progress
+        let currentProgress = goal.currentProgress
+        let projectedCompletion = min(currentProgress * 100 / max(Double(goal.weeksRemaining), 1), 100)
+        let isOnTrack = projectedCompletion >= 80
+
+        let localAnalysis = GoalAnalysis(
+            goal: goal,
+            currentProgress: currentProgress,
+            projectedCompletion: projectedCompletion,
+            isOnTrack: isOnTrack,
+            recommendations: [],
+            progressPoints: []
+        )
+
+        // Try API assessment
+        var apiAssessment: GoalAssessment?
+        do {
+            let response = try await apiService.assessGoals(
+                goals: [goal],
                 activities: activities
             )
+            apiAssessment = response.goalAssessments.first
+        } catch {
+            // API assessment failed, continue with local analysis only
         }
-        
-        // Try API assessment
-        let apiTask = Task { () -> GoalAssessment? in
-            do {
-                let response = try await apiService.assessGoals(
-                    goals: [goal],
-                    activities: activities
-                )
-                return response.goalAssessments.first
-            } catch {
-                return nil
-            }
-        }
-        
-        // Wait for both to complete
-        let localAnalysis = await localTask.value
-        let apiAssessment = await apiTask.value
-        
+
         return EnhancedGoalAnalysis(
             localAnalysis: localAnalysis,
             apiAssessment: apiAssessment,

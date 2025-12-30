@@ -13,6 +13,8 @@ import Foundation
 protocol CommitmentRepositoryProtocol {
     func getTodaysCommitment(userId: Int) async throws -> DailyCommitment?
     func createCommitment(_ commitment: DailyCommitment) async throws -> DailyCommitment
+    func updateCommitment(_ commitment: DailyCommitment) async throws -> DailyCommitment
+    func deleteCommitment(id: Int) async throws
     func fulfillCommitment(commitmentId: Int) async throws -> DailyCommitment
     func checkAndFulfillCommitment(userId: Int, activityType: String?) async throws -> Bool
 }
@@ -31,6 +33,14 @@ final class SupabaseCommitmentRepository: CommitmentRepositoryProtocol {
 
     func createCommitment(_ commitment: DailyCommitment) async throws -> DailyCommitment {
         return try await CommitmentService.createCommitment(commitment)
+    }
+
+    func updateCommitment(_ commitment: DailyCommitment) async throws -> DailyCommitment {
+        return try await CommitmentService.updateCommitment(commitment)
+    }
+
+    func deleteCommitment(id: Int) async throws {
+        try await CommitmentService.deleteCommitment(id: id)
     }
 
     func fulfillCommitment(commitmentId: Int) async throws -> DailyCommitment {
@@ -59,6 +69,17 @@ final class MockCommitmentRepository: CommitmentRepositoryProtocol {
         if shouldThrowError { throw RepositoryError.networkError }
         mockCommitment = commitment
         return commitment
+    }
+
+    func updateCommitment(_ commitment: DailyCommitment) async throws -> DailyCommitment {
+        if shouldThrowError { throw RepositoryError.networkError }
+        mockCommitment = commitment
+        return commitment
+    }
+
+    func deleteCommitment(id: Int) async throws {
+        if shouldThrowError { throw RepositoryError.networkError }
+        mockCommitment = nil
     }
 
     func fulfillCommitment(commitmentId: Int) async throws -> DailyCommitment {

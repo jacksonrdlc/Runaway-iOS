@@ -13,12 +13,9 @@ class StravaService: ObservableObject {
     // Strava OAuth configuration
     private let clientID = "118220" // Must match STRAVA_CLIENT_ID in data sync service
 
-    // Supabase Edge Functions (Migrated from Cloud Run)
-    #if DEBUG
-    private let dataSyncServiceBaseURL = "http://localhost:54321" // Local Supabase development
-    #else
-    private let dataSyncServiceBaseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co" // Production Supabase
-    #endif
+    // Supabase Edge Functions - Always use production
+    // (localhost doesn't work on physical devices)
+    private let dataSyncServiceBaseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co"
 
     @Published var isConnected = false
     @Published var isLoading = false
@@ -31,6 +28,11 @@ class StravaService: ObservableObject {
 
     /// Generate Strava OAuth URL with auth_user_id in state parameter
     func getStravaConnectURL(authUserId: String) -> URL? {
+        // Track analytics
+        Task { @MainActor in
+            AnalyticsService.shared.track(.stravaConnectStarted, category: .strava)
+        }
+
         // Build URL components for proper encoding
         var components = URLComponents(string: "https://www.strava.com/oauth/authorize")!
 
@@ -148,6 +150,11 @@ class StravaService: ObservableObject {
             }
             #endif
 
+            // Track analytics
+            AnalyticsService.shared.track(.stravaConnected, category: .strava, properties: [
+                "has_athlete_id": athleteId != nil
+            ])
+
             isConnected = true
 
             // Refresh athlete data to reflect new connection
@@ -158,6 +165,11 @@ class StravaService: ObservableObject {
             #if DEBUG
             print("   ❌ Strava connection failed")
             #endif
+
+            // Track analytics
+            AnalyticsService.shared.track(.stravaSyncFailed, category: .strava, properties: [
+                "error": "authorization_failed"
+            ])
 
             error = StravaError.authorizationFailed
         }
@@ -202,6 +214,11 @@ class StravaService: ObservableObject {
         syncProgress = "Starting sync..."
         error = nil
         defer { isSyncing = false }
+
+        // Track analytics
+        AnalyticsService.shared.track(.stravaSyncStarted, category: .strava, properties: [
+            "sync_type": syncType.rawValue
+        ])
 
         guard let url = URL(string: "\(dataSyncServiceBaseURL)/functions/v1/sync-beta") else {
             throw StravaError.invalidURL
@@ -304,6 +321,12 @@ class StravaService: ObservableObject {
                 syncProgress = "Sync completed successfully"
                 lastSyncDate = Date()
 
+                // Track analytics
+                AnalyticsService.shared.trackStravaSync(
+                    activitiesCount: jobStatus.activities_processed ?? 0,
+                    success: true
+                )
+
                 // Reload athlete data to get synced activities
                 if let userId = UserSession.shared.userId {
                     await DataManager.shared.loadAthlete(for: userId)
@@ -314,6 +337,14 @@ class StravaService: ObservableObject {
 
             case "failed":
                 syncProgress = nil
+
+                // Track analytics
+                AnalyticsService.shared.trackStravaSync(
+                    activitiesCount: jobStatus.activities_processed ?? 0,
+                    success: false,
+                    error: jobStatus.error ?? "Unknown error"
+                )
+
                 throw StravaError.syncFailed(jobStatus.error ?? "Unknown error")
 
             case "pending", "running":

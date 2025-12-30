@@ -16,13 +16,27 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // iOS 26 Upgrade Banner (when AI not available)
+            if viewModel.requiresUpgrade {
+                iOS26UpgradeBanner()
+            }
+
+            // On-device AI indicator
+            if viewModel.isUsingOnDeviceAI && !viewModel.requiresUpgrade {
+                OnDeviceAIIndicator()
+            }
+
             // Messages List
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: AppTheme.Spacing.md) {
                         if !viewModel.hasMessages {
                             // Welcome message
-                            WelcomeView()
+                            if viewModel.requiresUpgrade {
+                                UpgradeRequiredWelcomeView()
+                            } else {
+                                WelcomeView()
+                            }
                         }
 
                         // Chat messages
@@ -53,8 +67,8 @@ struct ChatView: View {
                 }
             }
 
-            // Suggested Prompts (when no messages)
-            if !viewModel.hasMessages && !viewModel.isLoading {
+            // Suggested Prompts (when no messages and AI available)
+            if !viewModel.hasMessages && !viewModel.isLoading && !viewModel.requiresUpgrade {
                 SuggestedPromptsView(
                     prompts: viewModel.suggestedPrompts,
                     onSelect: { prompt in
@@ -66,10 +80,11 @@ struct ChatView: View {
                 )
             }
 
-            // Message Input
+            // Message Input (disabled when upgrade required)
             MessageInputView(
                 text: $messageText,
                 isLoading: viewModel.isLoading,
+                isDisabled: viewModel.requiresUpgrade,
                 onSend: {
                     let message = messageText
                     messageText = ""  // Clear immediately for better UX
@@ -84,6 +99,10 @@ struct ChatView: View {
         .background(AppTheme.Colors.LightMode.background)
         .navigationTitle("AI Coach")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // Re-check AI availability when view appears
+            viewModel.refreshAIAvailability()
+        }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
@@ -144,17 +163,47 @@ struct ChatMessageBubble: View {
         message.role == "user"
     }
 
+    /// Parse markdown content into AttributedString for rendering
+    private var formattedContent: AttributedString {
+        // For user messages, just return plain text
+        if isUser {
+            return AttributedString(message.content)
+        }
+
+        // For assistant messages, parse markdown
+        do {
+            var attributed = try AttributedString(markdown: message.content, options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+            // Apply default styling
+            attributed.font = AppTheme.Typography.body
+            attributed.foregroundColor = AppTheme.Colors.LightMode.textPrimary
+            return attributed
+        } catch {
+            // Fallback to plain text if markdown parsing fails
+            var plain = AttributedString(message.content)
+            plain.font = AppTheme.Typography.body
+            plain.foregroundColor = AppTheme.Colors.LightMode.textPrimary
+            return plain
+        }
+    }
+
     var body: some View {
         HStack {
             if isUser { Spacer() }
 
             VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
-                Text(message.content)
-                    .font(AppTheme.Typography.body)
-                    .foregroundColor(isUser ? .white : AppTheme.Colors.LightMode.textPrimary)
-                    .padding(AppTheme.Spacing.md)
-                    .background(isUser ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.cardBackground)
-                    .cornerRadius(AppTheme.CornerRadius.medium)
+                if isUser {
+                    Text(message.content)
+                        .font(AppTheme.Typography.body)
+                        .foregroundColor(.white)
+                        .padding(AppTheme.Spacing.md)
+                        .background(AppTheme.Colors.LightMode.accent)
+                        .cornerRadius(AppTheme.CornerRadius.medium)
+                } else {
+                    Text(formattedContent)
+                        .padding(AppTheme.Spacing.md)
+                        .background(AppTheme.Colors.LightMode.cardBackground)
+                        .cornerRadius(AppTheme.CornerRadius.medium)
+                }
 
                 if let date = ISO8601DateFormatter().date(from: message.timestamp) {
                     Text(date, style: .time)
@@ -235,32 +284,150 @@ struct SuggestedPromptsView: View {
     }
 }
 
+// MARK: - iOS 26 Upgrade Banner
+
+struct iOS26UpgradeBanner: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+                .font(.title3)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("iOS 26 Required")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                Text("Upgrade to use on-device AI coaching")
+                    .font(.caption)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                .font(.caption)
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(Color.orange.opacity(0.1))
+    }
+}
+
+// MARK: - On-Device AI Indicator
+
+struct OnDeviceAIIndicator: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "brain.head.profile")
+                .foregroundColor(.green)
+                .font(.caption)
+
+            Text("On-device AI")
+                .font(.caption)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+
+            Text("Private & Offline")
+                .font(.caption2)
+                .foregroundColor(.green)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(4)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(Color.green.opacity(0.05))
+    }
+}
+
+// MARK: - Upgrade Required Welcome View
+
+struct UpgradeRequiredWelcomeView: View {
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.1))
+                    .frame(width: 100, height: 100)
+
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 50))
+                    .foregroundColor(.orange)
+            }
+
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("AI Coach Coming Soon")
+                    .font(AppTheme.Typography.title)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                Text("Your device needs iOS 26 or later to use on-device AI coaching. This feature uses Apple Intelligence to provide personalized, private coaching without sending data to external servers.")
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            // Feature benefits
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                FeatureBenefitRow(icon: "lock.shield.fill", text: "100% private - data stays on device")
+                FeatureBenefitRow(icon: "wifi.slash", text: "Works completely offline")
+                FeatureBenefitRow(icon: "bolt.fill", text: "Fast, instant responses")
+                FeatureBenefitRow(icon: "figure.run", text: "Personalized to your training")
+            }
+            .padding(.top, AppTheme.Spacing.md)
+        }
+        .padding(AppTheme.Spacing.xl)
+    }
+}
+
+struct FeatureBenefitRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .frame(width: 24)
+
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+
+            Spacer()
+        }
+    }
+}
+
 // MARK: - Message Input View
 
 struct MessageInputView: View {
     @Binding var text: String
     let isLoading: Bool
+    var isDisabled: Bool = false
     let onSend: () -> Void
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            FastTextInput(text: $text, placeholder: "Ask your coach...")
+            FastTextInput(text: $text, placeholder: isDisabled ? "Upgrade to iOS 26 to chat..." : "Ask your coach...")
                 .frame(minHeight: 44, maxHeight: 120)
                 .background(Color(uiColor: .systemGray6))
                 .cornerRadius(20)
-                .disabled(isLoading)
+                .disabled(isLoading || isDisabled)
+                .opacity(isDisabled ? 0.6 : 1.0)
 
             Button(action: {
-                if !text.isEmpty && !isLoading {
+                if !text.isEmpty && !isLoading && !isDisabled {
                     onSend()
                 }
             }) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 32))
-                    .foregroundColor(text.isEmpty || isLoading ? .gray : AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(text.isEmpty || isLoading || isDisabled ? .gray : AppTheme.Colors.LightMode.accent)
             }
             .buttonStyle(.plain)
-            .disabled(text.isEmpty || isLoading)
+            .disabled(text.isEmpty || isLoading || isDisabled)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)

@@ -13,7 +13,6 @@ struct ResearchView: View {
     @ObservedObject private var locationManager = LocationManager.shared
     @State private var selectedCategory: ArticleCategory? = nil
     @State private var selectedArticle: ResearchArticle?
-    @State private var showingArticle = false
     @State private var filteredArticles: [ResearchArticle] = []
     
     private func updateFilteredArticles() {
@@ -94,7 +93,6 @@ struct ResearchView: View {
                     ForEach(Array(filteredArticles.enumerated()), id: \.offset) { index, article in
                         ArticleCard(article: article) {
                             selectedArticle = article
-                            showingArticle = true
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 12)
@@ -150,10 +148,8 @@ struct ResearchView: View {
         .onAppear {
             updateFilteredArticles()
         }
-        .sheet(isPresented: $showingArticle) {
-            if let article = selectedArticle {
-                ArticleWebView(article: article)
-            }
+        .sheet(item: $selectedArticle) { article in
+            ArticleWebView(article: article)
         }
         }
     }

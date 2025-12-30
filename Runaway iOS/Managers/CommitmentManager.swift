@@ -15,6 +15,8 @@ protocol CommitmentManagerProtocol: ObservableObject {
 
     func loadTodaysCommitment(for userId: Int) async
     func createCommitment(_ activityType: CommitmentActivityType) async throws
+    func updateCommitment(to activityType: CommitmentActivityType) async throws
+    func deleteCommitment() async throws
     func checkActivityFulfillsCommitment(_ activity: Activity) async
     func refresh() async
 }
@@ -76,6 +78,60 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
         }
     }
 
+    // MARK: - Commitment Update
+
+    func updateCommitment(to activityType: CommitmentActivityType) async throws {
+        guard let userId = UserSession.shared.userId else {
+            throw CommitmentError.noUserId
+        }
+
+        guard let currentCommitment = todaysCommitment, let commitmentId = currentCommitment.id else {
+            throw CommitmentError.noCommitmentToUpdate
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let updatedCommitment = DailyCommitment(
+                id: commitmentId,
+                athleteId: userId,
+                commitmentDate: currentCommitment.commitmentDate,
+                activityType: activityType,
+                isFulfilled: currentCommitment.isFulfilled,
+                fulfilledAt: currentCommitment.fulfilledAt,
+                createdAt: currentCommitment.createdAt,
+                updatedAt: nil
+            )
+            let result = try await repository.updateCommitment(updatedCommitment)
+            self.todaysCommitment = result
+            print("✅ CommitmentManager: Updated commitment to \(activityType.displayName)")
+        } catch {
+            print("❌ CommitmentManager: Failed to update commitment: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - Commitment Deletion
+
+    func deleteCommitment() async throws {
+        guard let currentCommitment = todaysCommitment, let commitmentId = currentCommitment.id else {
+            throw CommitmentError.noCommitmentToDelete
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await repository.deleteCommitment(id: commitmentId)
+            self.todaysCommitment = nil
+            print("✅ CommitmentManager: Deleted commitment")
+        } catch {
+            print("❌ CommitmentManager: Failed to delete commitment: \(error)")
+            throw error
+        }
+    }
+
     // MARK: - Commitment Fulfillment
 
     func checkActivityFulfillsCommitment(_ activity: Activity) async {
@@ -120,6 +176,8 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
 enum CommitmentError: Error, LocalizedError {
     case noUserId
     case creationFailed
+    case noCommitmentToUpdate
+    case noCommitmentToDelete
 
     var errorDescription: String? {
         switch self {
@@ -127,6 +185,10 @@ enum CommitmentError: Error, LocalizedError {
             return "No user ID available"
         case .creationFailed:
             return "Failed to create commitment"
+        case .noCommitmentToUpdate:
+            return "No commitment exists to update"
+        case .noCommitmentToDelete:
+            return "No commitment exists to delete"
         }
     }
 }
