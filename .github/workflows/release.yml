@@ -1,0 +1,149 @@
+name: Release to App Store
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      upload_to_testflight:
+        description: 'Upload to TestFlight'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  archive-and-distribute:
+    runs-on: macos-15
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Mapbox SDK authentication
+      env:
+        MAPBOX_SECRET_TOKEN: ${{ secrets.MAPBOX_SECRET_TOKEN }}
+      run: |
+        if [ -n "$MAPBOX_SECRET_TOKEN" ]; then
+          echo "machine api.mapbox.com" > ~/.netrc
+          echo "login mapbox" >> ~/.netrc
+          echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
+          echo "machine api.mapbox.cn" >> ~/.netrc
+          echo "login mapbox" >> ~/.netrc
+          echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
+          chmod 600 ~/.netrc
+          echo "✓ Mapbox auth configured"
+        fi
+
+    - name: Create Info.plist with production values
+      env:
+        MAPBOX_TOKEN: ${{ secrets.MAPBOX_PUBLIC_TOKEN }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        RUNAWAY_API_KEY: ${{ secrets.RUNAWAY_API_KEY }}
+      run: |
+        cp Runaway-iOS-Info.plist.template Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_MAPBOX_TOKEN_HERE|${MAPBOX_TOKEN}|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_SUPABASE_PROJECT_URL_HERE|${SUPABASE_URL}|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_SUPABASE_ANON_KEY_HERE|${SUPABASE_KEY}|g" Runaway-iOS-Info.plist
+        sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|${RUNAWAY_API_KEY}|g" Runaway-iOS-Info.plist
+        echo "✓ Info.plist configured with production values"
+
+    - name: Select Xcode 16.2
+      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+    - name: Install Apple certificate and provisioning profile
+      env:
+        CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+        CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISION_PROFILE_BASE64 }}
+        KEYCHAIN_PASSWORD: ${{ github.run_id }}
+      run: |
+        # Create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+        PROVISION_PATH=$RUNNER_TEMP/profile.mobileprovision
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # Decode from base64
+        echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "$PROVISION_PROFILE_BASE64" | base64 --decode -o $PROVISION_PATH
+
+        # Create temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # Import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+        # Install provisioning profile
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp $PROVISION_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+
+        echo "✓ Certificate and provisioning profile installed"
+
+    - name: Resolve Swift packages
+      run: |
+        xcodebuild -project "Runaway iOS.xcodeproj" \
+          -scheme "Runaway iOS" \
+          -resolvePackageDependencies
+
+    - name: Build archive
+      run: |
+        xcodebuild -project "Runaway iOS.xcodeproj" \
+          -scheme "Runaway iOS" \
+          -configuration Release \
+          -archivePath $RUNNER_TEMP/RunawayiOS.xcarchive \
+          -destination "generic/platform=iOS" \
+          -skipPackagePluginValidation \
+          SWIFT_STRICT_CONCURRENCY=minimal \
+          archive
+
+    - name: Create ExportOptions.plist
+      run: |
+        cat > $RUNNER_TEMP/ExportOptions.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>destination</key>
+            <string>upload</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+                <key>com.jackrudelic.labs.Runaway-iOS</key>
+                <string>${{ secrets.PROVISION_PROFILE_NAME }}</string>
+            </dict>
+        </dict>
+        </plist>
+        EOF
+
+    - name: Export and upload to App Store Connect
+      env:
+        APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+      run: |
+        # Create API key file
+        mkdir -p ~/.appstoreconnect/private_keys
+        echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+
+        # Export and upload
+        xcodebuild -exportArchive \
+          -archivePath $RUNNER_TEMP/RunawayiOS.xcarchive \
+          -exportPath $RUNNER_TEMP/export \
+          -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+          -allowProvisioningUpdates \
+          -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8 \
+          -authenticationKeyID $APP_STORE_CONNECT_API_KEY_ID \
+          -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID
+
+        echo "✓ Successfully uploaded to App Store Connect"
+
+    - name: Clean up keychain
+      if: always()
+      run: |
+        security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
