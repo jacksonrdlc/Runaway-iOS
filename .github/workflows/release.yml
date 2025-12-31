@@ -41,10 +41,11 @@ jobs:
         RUNAWAY_API_KEY: ${{ secrets.RUNAWAY_API_KEY }}
       run: |
         cp Runaway-iOS-Info.plist.template Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_MAPBOX_TOKEN_HERE|${MAPBOX_TOKEN}|g" Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_SUPABASE_PROJECT_URL_HERE|${SUPABASE_URL}|g" Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_SUPABASE_ANON_KEY_HERE|${SUPABASE_KEY}|g" Runaway-iOS-Info.plist
-        sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|${RUNAWAY_API_KEY}|g" Runaway-iOS-Info.plist
+        # Use plutil to safely set plist values (handles special characters)
+        plutil -replace MBXAccessToken -string "${MAPBOX_TOKEN}" Runaway-iOS-Info.plist
+        plutil -replace SUPABASE_URL -string "${SUPABASE_URL}" Runaway-iOS-Info.plist
+        plutil -replace SUPABASE_KEY -string "${SUPABASE_KEY}" Runaway-iOS-Info.plist
+        plutil -replace RUNAWAY_API_KEY -string "${RUNAWAY_API_KEY}" Runaway-iOS-Info.plist
         echo "✓ Info.plist configured with production values"
 
     - name: Select Xcode 16.2
