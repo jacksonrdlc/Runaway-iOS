@@ -98,13 +98,21 @@ For running news feed:
 
 Get your key at: https://newsapi.org/
 
-## Step 4: Configure Firebase (Optional)
+## Step 4: Configure Firebase
 
-If using Firebase Analytics/Messaging:
+Firebase is required for the app to build and run properly.
 
-1. Download `GoogleService-Info.plist` from Firebase Console
-2. Add it to the project root
-3. Ensure it's added to the main app target
+### For Local Development
+
+1. Download `GoogleService-Info.plist` from [Firebase Console](https://console.firebase.google.com/)
+2. Add it to the `Runaway iOS/` directory
+3. The file is gitignored for security
+
+### For CI/CD
+
+See [FIREBASE_SECRETS_SETUP.md](./FIREBASE_SECRETS_SETUP.md) for configuring GitHub Actions secrets.
+
+**Note:** The CI workflows automatically generate a placeholder `GoogleService-Info.plist` if Firebase secrets aren't configured, allowing builds to complete.
 
 ## Step 5: Install Dependencies
 
