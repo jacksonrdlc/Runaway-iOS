@@ -93,7 +93,15 @@ jobs:
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
           -destination "generic/platform=iOS" \
+          -disablePackageRepositoryCache \
           -resolvePackageDependencies
+
+    - name: Clean build artifacts
+      run: |
+        # Clean derived data to prevent Xcode 16 SPM caching issues
+        rm -rf ~/Library/Developer/Xcode/DerivedData
+        rm -rf ~/Library/Caches/org.swift.swiftpm
+        echo "✓ Cleaned build artifacts and SPM cache"
 
     - name: Build archive
       run: |
