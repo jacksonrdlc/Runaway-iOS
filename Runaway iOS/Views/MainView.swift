@@ -169,6 +169,9 @@ struct MainView: View {
                     "previous_tab": oldTab
                 ])
             }
+            .onReceive(NotificationCenter.default.publisher(for: .navigateToCoachTab)) { _ in
+                selectedTab = 2 // Coach tab
+            }
             .task {
                 await loadInitialData()
                 realtimeService.startRealtimeSubscription()

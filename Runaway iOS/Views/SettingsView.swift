@@ -107,7 +107,10 @@ struct SettingsView: View {
                 subtitle: "Manage push notifications",
                 color: AppTheme.Colors.accent
             ) {
-                // TODO: Navigate to notification settings
+                // Open iOS notification settings for this app
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
             }
 
             SettingsRow(
@@ -116,17 +119,23 @@ struct SettingsView: View {
                 subtitle: "Privacy and location settings",
                 color: AppTheme.Colors.warning
             ) {
-                // TODO: Navigate to location settings
+                // Open iOS settings for location
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
             }
 
-            SettingsRow(
-                icon: "cloud",
-                title: "Data Sync",
-                subtitle: "Sync activities and preferences",
-                color: AppTheme.Colors.success
-            ) {
-                // TODO: Navigate to sync settings
+            NavigationLink(destination: CoachSettingsView()) {
+                SettingsRow(
+                    icon: "brain.head.profile",
+                    title: "Coach Settings",
+                    subtitle: "Customize AI coaching preferences",
+                    color: AppTheme.Colors.success
+                ) {
+                    // Navigation handled by NavigationLink
+                }
             }
+            .buttonStyle(PlainButtonStyle())
         }
     }
 
@@ -177,7 +186,10 @@ struct SettingsView: View {
                 subtitle: "Get help and find answers",
                 color: AppTheme.Colors.primary
             ) {
-                // TODO: Navigate to help
+                // Open help website
+                if let url = URL(string: "https://runaway.app/help") {
+                    UIApplication.shared.open(url)
+                }
             }
 
             SettingsRow(
@@ -186,7 +198,22 @@ struct SettingsView: View {
                 subtitle: "Get in touch with our team",
                 color: AppTheme.Colors.accent
             ) {
-                // TODO: Open email or contact form
+                // Open email compose
+                if let url = URL(string: "mailto:support@runaway.app?subject=Runaway%20iOS%20Support") {
+                    UIApplication.shared.open(url)
+                }
+            }
+
+            SettingsRow(
+                icon: "star",
+                title: "Rate the App",
+                subtitle: "Help us improve with your feedback",
+                color: AppTheme.Colors.warning
+            ) {
+                // Open App Store review
+                if let url = URL(string: "https://apps.apple.com/app/id123456789?action=write-review") {
+                    UIApplication.shared.open(url)
+                }
             }
         }
     }

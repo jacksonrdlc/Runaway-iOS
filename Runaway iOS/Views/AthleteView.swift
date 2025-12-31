@@ -36,13 +36,13 @@ struct AthleteView: View {
                         MonthlyStatsCard(stats: stats)
                         AllTimeStatsCard(stats: stats)
                     }
+
+                    // Awards Section
+                    AwardsPreviewSection()
                 }
                 .padding(AppTheme.Spacing.md)
             }
         }
-//        .onAppear{
-//            setStats()
-//        }
     }
 }
 

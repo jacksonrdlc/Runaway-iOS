@@ -44,6 +44,9 @@ class AppRouter {
 
         // Analysis Routes
         case activityInsights(Int) // Activity ID
+
+        // Awards Routes
+        case awards
     }
 
     // MARK: - Navigation Methods
@@ -101,6 +104,8 @@ class AppRouter {
             navigate(to: .goalManagement)
         case "/record", "/run", "/start-run":
             navigate(to: .record)
+        case "/awards", "/achievements":
+            navigate(to: .awards)
         default:
             break
         }
@@ -193,6 +198,9 @@ extension AppRouter {
 
         case .activityInsights(let activityId):
             ActivityInsightsPlaceholder(activityId: activityId)
+
+        case .awards:
+            AwardsView()
         }
     }
 }
