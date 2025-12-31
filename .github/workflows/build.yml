@@ -75,11 +75,19 @@ jobs:
         echo "=== Resolving Swift Package Dependencies ==="
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
+          -disablePackageRepositoryCache \
           -resolvePackageDependencies 2>&1 | tee package_resolution.log
         echo "=== Package Resolution Complete ==="
         if grep -i "error\|failed\|unauthorized" package_resolution.log; then
           echo "::warning::Package resolution may have issues - check log above"
         fi
+
+    - name: Clean build artifacts
+      run: |
+        # Clean derived data to prevent Xcode 16 SPM caching issues
+        rm -rf ~/Library/Developer/Xcode/DerivedData
+        rm -rf ~/Library/Caches/org.swift.swiftpm
+        echo "✓ Cleaned build artifacts and SPM cache"
 
     - name: Build
       run: |
