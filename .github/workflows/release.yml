@@ -58,9 +58,9 @@ jobs:
       run: |
         # Create GoogleService-Info.plist with Firebase configuration
         # Use actual secrets if available, otherwise use placeholders for build
-        API_KEY="${FIREBASE_API_KEY:-AIzaSyPlaceholder_ReplaceWithRealKey}"
+        API_KEY="${FIREBASE_API_KEY:-PLACEHOLDER_FIREBASE_API_KEY}"
         PROJECT_ID="${FIREBASE_PROJECT_ID:-runaway-ios-placeholder}"
-        APP_ID="${FIREBASE_APP_ID:-1:123456789:ios:abc123def456}"
+        APP_ID="${FIREBASE_APP_ID:-1:123456789:ios:PLACEHOLDER}"
         GCM_SENDER_ID="${FIREBASE_GCM_SENDER_ID:-123456789}"
         STORAGE_BUCKET="${FIREBASE_STORAGE_BUCKET:-runaway-ios-placeholder.appspot.com}"
         

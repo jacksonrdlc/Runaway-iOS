@@ -55,7 +55,7 @@ jobs:
         <plist version="1.0">
         <dict>
           <key>API_KEY</key>
-          <string>AIzaSyPlaceholder_ReplaceWithRealKey</string>
+          <string>PLACEHOLDER_FIREBASE_API_KEY</string>
           <key>GCM_SENDER_ID</key>
           <string>123456789</string>
           <key>PLIST_VERSION</key>
@@ -77,7 +77,7 @@ jobs:
           <key>IS_SIGNIN_ENABLED</key>
           <false/>
           <key>GOOGLE_APP_ID</key>
-          <string>1:123456789:ios:abc123def456</string>
+          <string>1:123456789:ios:PLACEHOLDER</string>
         </dict>
         </plist>
         EOF

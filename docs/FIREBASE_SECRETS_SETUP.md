@@ -73,6 +73,8 @@ After adding secrets, trigger a release workflow run to verify:
 ## Security Notes
 
 - Never commit `GoogleService-Info.plist` to the repository
-- Firebase secrets are safe to use in CI as they're client-side configuration (not API keys)
-- The real security comes from Firebase Security Rules in your Firebase Console
-- Rotate secrets if they're accidentally exposed
+- Firebase configuration values are client-side and safe to use in CI/CD
+- These are not secret API keys - they identify your app to Firebase services
+- **Real security** comes from Firebase Security Rules configured in your Firebase Console
+- Configure proper domain restrictions and Security Rules to protect your Firebase services
+- Rotate Firebase configuration if accidentally exposed publicly
