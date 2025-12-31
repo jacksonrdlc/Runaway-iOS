@@ -158,9 +158,11 @@ jobs:
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
           -configuration Release \
+          -sdk iphoneos \
           -archivePath $RUNNER_TEMP/RunawayiOS.xcarchive \
           -destination "generic/platform=iOS" \
           -skipPackagePluginValidation \
+          -allowProvisioningUpdates \
           SWIFT_STRICT_CONCURRENCY=minimal \
           archive
 
