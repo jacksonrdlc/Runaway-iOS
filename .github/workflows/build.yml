@@ -52,13 +52,21 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
 
+    - name: Install iOS Simulator
+      run: |
+        sudo xcodebuild -downloadPlatform iOS
+      continue-on-error: true
+
     - name: List available simulators and SDKs
       run: |
         echo "=== Available SDKs ==="
         xcodebuild -showsdks
         echo ""
         echo "=== Available iOS Simulators ==="
-        xcrun simctl list devices available | grep -E "iPhone|iOS"
+        xcrun simctl list devices available | grep -E "iPhone|iOS" || true
+        echo ""
+        echo "=== Available Runtimes ==="
+        xcrun simctl list runtimes
 
     - name: Resolve Swift packages
       run: |

@@ -713,14 +713,16 @@ struct KeyMetricsGrid: View {
         let activities = dataManager.activities
         let calendar = Calendar.current
         let now = Date()
-        guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) else {
+
+        // Use calendar week (Sunday to Saturday) for consistency
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now) else {
             return "0 mi"
         }
 
         let weeklyActivities = activities.filter { activity in
             guard let dateInterval = activity.activity_date ?? activity.start_date else { return false }
             let activityDate = Date(timeIntervalSince1970: dateInterval)
-            return activityDate >= weekAgo
+            return activityDate >= weekInterval.start && activityDate < weekInterval.end
         }
 
         let totalMeters = weeklyActivities.compactMap { $0.distance }.reduce(0, +)
@@ -863,15 +865,15 @@ struct ThisWeekActivitiesSection: View {
         let calendar = Calendar.current
         let now = Date()
 
-        // Get start of this week (Sunday)
-        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+        // Use calendar week (Sunday to Saturday) for consistency across app
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now) else {
             return []
         }
 
         return dataManager.activities.filter { activity in
             guard let dateInterval = activity.activity_date ?? activity.start_date else { return false }
             let activityDate = Date(timeIntervalSince1970: dateInterval)
-            return activityDate >= weekStart && activityDate <= now
+            return activityDate >= weekInterval.start && activityDate < weekInterval.end
         }.prefix(5).map { $0 }
     }
 

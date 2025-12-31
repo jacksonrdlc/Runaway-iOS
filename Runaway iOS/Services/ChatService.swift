@@ -263,7 +263,9 @@ class ChatService {
     private static func calculateWeeklyMileage(from activities: [Activity]) -> Double? {
         let calendar = Calendar.current
         let now = Date()
-        guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) else {
+
+        // Use calendar week (Sunday to Saturday) for consistency across app
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now) else {
             return nil
         }
 
@@ -272,7 +274,7 @@ class ChatService {
                 return false
             }
             let activityDate = Date(timeIntervalSince1970: dateInterval)
-            return activityDate >= weekAgo
+            return activityDate >= weekInterval.start && activityDate < weekInterval.end
         }
 
         let totalMeters = weeklyActivities.compactMap { $0.distance }.reduce(0, +)
