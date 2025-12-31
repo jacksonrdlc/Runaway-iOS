@@ -13,7 +13,7 @@ on:
 
 jobs:
   archive-and-distribute:
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
     - uses: actions/checkout@v4
@@ -48,11 +48,11 @@ jobs:
         plutil -replace RUNAWAY_API_KEY -string "${RUNAWAY_API_KEY}" Runaway-iOS-Info.plist
         echo "✓ Info.plist configured with production values"
 
-    - name: Select Xcode
+    - name: Select Xcode 16
       run: |
-        # Use latest available Xcode on the runner
-        sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || \
-        sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer || \
+        sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || \
+        sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer || \
+        sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer || \
         sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
         xcodebuild -version
 
