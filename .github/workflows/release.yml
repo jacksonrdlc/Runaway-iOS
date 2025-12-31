@@ -13,7 +13,7 @@ on:
 
 jobs:
   archive-and-distribute:
-    runs-on: macos-15
+    runs-on: macos-14
 
     steps:
     - uses: actions/checkout@v4
@@ -48,8 +48,13 @@ jobs:
         plutil -replace RUNAWAY_API_KEY -string "${RUNAWAY_API_KEY}" Runaway-iOS-Info.plist
         echo "✓ Info.plist configured with production values"
 
-    - name: Select Xcode 16.2
-      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+    - name: Select Xcode
+      run: |
+        # Use latest available Xcode on the runner
+        sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || \
+        sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer || \
+        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        xcodebuild -version
 
     - name: Install Apple certificate and provisioning profile
       env:
@@ -87,6 +92,7 @@ jobs:
       run: |
         xcodebuild -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
+          -destination "generic/platform=iOS" \
           -resolvePackageDependencies
 
     - name: Build archive
