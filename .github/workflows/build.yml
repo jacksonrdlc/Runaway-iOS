@@ -46,6 +46,43 @@ jobs:
         sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|placeholder_api_key|g" Runaway-iOS-Info.plist
         echo "✓ Info.plist created from template with placeholder values"
 
+    - name: Create GoogleService-Info.plist
+      run: |
+        # Create GoogleService-Info.plist with placeholder Firebase configuration for CI build
+        cat > "Runaway iOS/GoogleService-Info.plist" << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>API_KEY</key>
+          <string>AIzaSyPlaceholder_ReplaceWithRealKey</string>
+          <key>GCM_SENDER_ID</key>
+          <string>123456789</string>
+          <key>PLIST_VERSION</key>
+          <string>1</string>
+          <key>BUNDLE_ID</key>
+          <string>com.jackrudelic.labs.Runaway-iOS</string>
+          <key>PROJECT_ID</key>
+          <string>runaway-ios-placeholder</string>
+          <key>STORAGE_BUCKET</key>
+          <string>runaway-ios-placeholder.appspot.com</string>
+          <key>IS_ADS_ENABLED</key>
+          <false/>
+          <key>IS_ANALYTICS_ENABLED</key>
+          <false/>
+          <key>IS_APPINVITE_ENABLED</key>
+          <false/>
+          <key>IS_GCM_ENABLED</key>
+          <true/>
+          <key>IS_SIGNIN_ENABLED</key>
+          <false/>
+          <key>GOOGLE_APP_ID</key>
+          <string>1:123456789:ios:abc123def456</string>
+        </dict>
+        </plist>
+        EOF
+        echo "✓ GoogleService-Info.plist created with placeholder values"
+
     - name: Select Xcode 16
       run: |
         sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || \

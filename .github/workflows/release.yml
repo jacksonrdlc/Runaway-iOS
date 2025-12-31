@@ -48,6 +48,56 @@ jobs:
         plutil -replace RUNAWAY_API_KEY -string "${RUNAWAY_API_KEY}" Runaway-iOS-Info.plist
         echo "✓ Info.plist configured with production values"
 
+    - name: Create GoogleService-Info.plist
+      env:
+        FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        FIREBASE_GCM_SENDER_ID: ${{ secrets.FIREBASE_GCM_SENDER_ID }}
+        FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+      run: |
+        # Create GoogleService-Info.plist with Firebase configuration
+        # Use actual secrets if available, otherwise use placeholders for build
+        API_KEY="${FIREBASE_API_KEY:-AIzaSyPlaceholder_ReplaceWithRealKey}"
+        PROJECT_ID="${FIREBASE_PROJECT_ID:-runaway-ios-placeholder}"
+        APP_ID="${FIREBASE_APP_ID:-1:123456789:ios:abc123def456}"
+        GCM_SENDER_ID="${FIREBASE_GCM_SENDER_ID:-123456789}"
+        STORAGE_BUCKET="${FIREBASE_STORAGE_BUCKET:-runaway-ios-placeholder.appspot.com}"
+        
+        cat > "Runaway iOS/GoogleService-Info.plist" << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>API_KEY</key>
+          <string>${API_KEY}</string>
+          <key>GCM_SENDER_ID</key>
+          <string>${GCM_SENDER_ID}</string>
+          <key>PLIST_VERSION</key>
+          <string>1</string>
+          <key>BUNDLE_ID</key>
+          <string>com.jackrudelic.labs.Runaway-iOS</string>
+          <key>PROJECT_ID</key>
+          <string>${PROJECT_ID}</string>
+          <key>STORAGE_BUCKET</key>
+          <string>${STORAGE_BUCKET}</string>
+          <key>IS_ADS_ENABLED</key>
+          <false/>
+          <key>IS_ANALYTICS_ENABLED</key>
+          <false/>
+          <key>IS_APPINVITE_ENABLED</key>
+          <false/>
+          <key>IS_GCM_ENABLED</key>
+          <true/>
+          <key>IS_SIGNIN_ENABLED</key>
+          <false/>
+          <key>GOOGLE_APP_ID</key>
+          <string>${APP_ID}</string>
+        </dict>
+        </plist>
+        EOF
+        echo "✓ GoogleService-Info.plist created"
+
     - name: Select Xcode 16
       run: |
         sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || \
