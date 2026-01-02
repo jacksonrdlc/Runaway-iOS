@@ -1,632 +1,485 @@
 # Runaway AI Architecture
-**Version**: 1.0
-**Last Updated**: 2025-12-01
-**Status**: Two independent AI services with potential for integration
+
+**Version**: 2.0
+**Last Updated**: January 2026
+**Status**: Consolidated on Supabase Edge Functions
 
 ---
 
 ## Executive Summary
 
-The Runaway ecosystem currently has **two AI-powered backend services**, each serving distinct purposes:
+The Runaway AI system has been consolidated into **Supabase Edge Functions**, providing:
 
-1. **strava-data** (Node.js) - Data sync + conversational chat
-2. **runaway-coach** (Python) - Structured analysis + multi-agent workflows
+1. **Comprehensive Analysis** - Training load, VO2max, weather impact
+2. **AI Coaching Chat** - Conversational coaching powered by Claude
+3. **Real-time Insights** - Live analysis during and after workouts
 
-This document defines clear boundaries, explains current capabilities, and outlines future integration strategies.
-
----
-
-## Service Overview
-
-### 1. strava-data (Node.js/Express)
-
-**Primary Purpose**: Strava data synchronization + conversational AI chat
-
-**Technology Stack**:
-- **Runtime**: Node.js on Cloud Run
-- **Database**: Supabase (PostgreSQL + pgvector)
-- **AI**: Claude 3 Opus (Anthropic) + OpenAI embeddings
-- **Deployment**: Google Cloud Run
-- **Production URL**: https://strava-sync-a2xd4ppmsq-uc.a.run.app
-
-**Current Capabilities**:
-- ✅ Strava OAuth integration
-- ✅ Activity sync (full history + incremental)
-- ✅ Background job processing
-- ✅ **Conversational Chat API** (NEW - 2025-12-01)
-  - Natural language Q&A about training history
-  - Semantic search over 712 activities
-  - RAG (Retrieval Augmented Generation)
-  - Temporal query detection ("when did I last...")
-
-**Database Schema**:
-```sql
--- Core tables
-activities (712 rows) - Full Strava activity data
-athletes - Athlete profiles
-commitments - Daily training commitments
-goals - Training goals
-
--- AI-specific tables (NEW)
-activity_embeddings - OpenAI embeddings (1536 dimensions)
-chat_conversations - Chat history
-athlete_ai_profiles - AI memory/preferences
-```
-
-**API Endpoints**:
-```
-GET  /health                    - Health check
-POST /api/oauth/authorize       - Strava OAuth
-POST /api/sync                  - Full activity sync
-POST /api/sync-beta            - Recent 20 activities
-GET  /api/jobs/:jobId          - Job status
-POST /api/chat                  - Conversational chat (PUBLIC)
-GET  /api/chat/history/:id     - Chat history
-```
-
-**Chat Implementation**:
-```javascript
-// strava-data/src/services/ChatService.js
-class ChatService {
-    async chat(athleteId, userQuery) {
-        // 1. Build context
-        const context = {
-            profile: await getAthleteProfile(athleteId),
-            recentActivities: await getRecentActivities(athleteId, 14),
-            relevantActivities: await searchSimilarActivities(userQuery),
-            stats: await calculateStats(athleteId)
-        };
-
-        // 2. Detect temporal queries
-        const isTemporalQuery = /\b(last|recent|latest)\b/i.test(userQuery);
-        if (isTemporalQuery) {
-            // Sort by date instead of just similarity
-        }
-
-        // 3. Call Claude with context
-        const prompt = formatPrompt(userQuery, context);
-        const answer = await callClaude(prompt);
-
-        // 4. Store conversation
-        await storeConversation(athleteId, userQuery, answer);
-
-        return { answer, context };
-    }
-}
-```
-
-**Embedding Strategy**:
-- **Model**: OpenAI text-embedding-ada-002 (1536 dimensions)
-- **What's Embedded**: Activity summaries (not raw GPS data)
-- **Summary Format**: "13.1 mile run at 8:30/mi pace with avg HR 155 on Monday, Nov 18, 2025"
-- **Search**: pgvector with HNSW index, cosine similarity
-- **Context Window**: Core memory + recent 14 days + top 5 relevant activities
+This architecture replaces the previous multi-service approach (strava-data + runaway-coach) with a unified, serverless solution.
 
 ---
 
-### 2. runaway-coach (Python/FastAPI)
+## Architecture Overview
 
-**Primary Purpose**: Structured running analysis via multi-agent AI system
-
-**Technology Stack**:
-- **Runtime**: Python 3.11 with FastAPI
-- **AI Framework**: LangGraph + Claude (Anthropic)
-- **Agents**: Custom agent architecture with AsyncAnthropic
-- **Deployment**: Google Cloud Run (or Cloud Functions)
-
-**Current Capabilities**:
-- ✅ Multi-agent workflow orchestration
-- ✅ Specialized analysis agents:
-  - **Performance Analysis**: Trends, metrics, consistency
-  - **Goal Strategy**: Feasibility, progress, timeline
-  - **Pace Optimization**: Zone recommendations, HR mapping
-  - **Workout Planning**: Personalized workout creation
-- ✅ Supervisor agent for coordination
-- ✅ Rule-based fallbacks (when Claude unavailable)
-
-**Agent Architecture**:
-```python
-# core/workflows/runner_analysis_workflow.py
-class RunnerAnalysisWorkflow:
-    """
-    Sequential workflow:
-    Performance → Goal → Pace → Workout → Synthesis
-    """
-
-    def build_graph(self):
-        workflow = StateGraph(RunnerAnalysisState)
-
-        # Add nodes (agents)
-        workflow.add_node("performance", self.analyze_performance)
-        workflow.add_node("goal", self.analyze_goal)
-        workflow.add_node("pace", self.optimize_pace)
-        workflow.add_node("workout", self.plan_workout)
-        workflow.add_node("synthesize", self.synthesize_recommendations)
-
-        # Define edges (flow)
-        workflow.set_entry_point("performance")
-        workflow.add_edge("performance", "goal")
-        workflow.add_edge("goal", "pace")
-        workflow.add_edge("pace", "workout")
-        workflow.add_edge("workout", "synthesize")
-        workflow.add_edge("synthesize", END)
-
-        return workflow.compile()
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     RUNAWAY AI ARCHITECTURE                      │
+│                                                                  │
+│  ┌──────────────────┐                                           │
+│  │   iOS App        │                                           │
+│  │                  │                                           │
+│  │  QuickWinsService├─────┐                                     │
+│  │  ChatService     │     │                                     │
+│  └──────────────────┘     │                                     │
+│                           │                                     │
+│                           ▼                                     │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │                   SUPABASE                              │    │
+│  │                                                         │    │
+│  │  ┌─────────────────────────────────────────────────┐   │    │
+│  │  │           Edge Functions (Deno)                  │   │    │
+│  │  │                                                  │   │    │
+│  │  │  ┌────────────────────┐  ┌──────────────────┐  │   │    │
+│  │  │  │ comprehensive-     │  │ chat             │  │   │    │
+│  │  │  │ analysis           │  │                  │  │   │    │
+│  │  │  │                    │  │ • Conversation   │  │   │    │
+│  │  │  │ • Training Load    │  │ • Context        │  │   │    │
+│  │  │  │ • VO2 Max          │  │ • Memory         │  │   │    │
+│  │  │  │ • Weather Impact   │  │                  │  │   │    │
+│  │  │  │ • AI Insights      │  │                  │  │   │    │
+│  │  │  └─────────┬──────────┘  └────────┬─────────┘  │   │    │
+│  │  │            │                      │             │   │    │
+│  │  └────────────┼──────────────────────┼─────────────┘   │    │
+│  │               │                      │                  │    │
+│  │               └──────────┬───────────┘                  │    │
+│  │                          │                              │    │
+│  │  ┌───────────────────────▼─────────────────────────┐   │    │
+│  │  │              PostgreSQL                          │   │    │
+│  │  │                                                  │   │    │
+│  │  │  • activities (training data)                   │   │    │
+│  │  │  • athletes (profiles)                          │   │    │
+│  │  │  • chat_messages (conversation history)         │   │    │
+│  │  │  • daily_readiness (recovery scores)            │   │    │
+│  │  └──────────────────────────────────────────────────┘   │    │
+│  │                                                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                           │                                     │
+│                           ▼                                     │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                   Anthropic Claude API                   │   │
+│  │                                                          │   │
+│  │  • claude-3-5-sonnet (analysis & insights)              │   │
+│  │  • Streaming responses                                   │   │
+│  │  • Context-aware coaching                                │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**API Endpoints** (Python FastAPI):
-```
-GET  /                          - Health check
-POST /analyze                   - Full analysis workflow
-POST /analyze/performance       - Performance analysis only
-POST /analyze/goal              - Goal strategy only
-POST /analyze/pace              - Pace optimization only
-POST /analyze/workout           - Workout planning only
+---
+
+## Edge Functions
+
+### 1. comprehensive-analysis
+
+**Purpose**: Provide detailed training analysis with AI-powered insights
+
+**Endpoint**: `{SUPABASE_URL}/functions/v1/comprehensive-analysis`
+**Method**: GET
+**Auth**: Bearer token (Supabase JWT)
+
+**Calculations Performed**:
+
+```typescript
+// Training Load (ACWR)
+const acuteLoad = calculateWeeklyLoad(activities, 7);   // Last 7 days
+const chronicLoad = calculateWeeklyLoad(activities, 28); // Last 28 days
+const acwr = acuteLoad / chronicLoad;
+
+// Risk Classification
+const riskLevel = classifyRisk(acwr);
+// < 0.8  → "low" (undertrained)
+// 0.8-1.3 → "optimal" (sweet spot)
+// 1.3-1.5 → "moderate" (caution)
+// > 1.5  → "high" (injury risk)
+
+// VO2 Max Estimation
+const vo2max = estimateVO2Max(recentActivities);
+// Uses pace + heart rate data
+// Multiple estimation methods averaged
+
+// Weather Impact
+const weatherImpact = analyzeWeatherEffects(activities);
+// Temperature adjustment factors
+// Humidity impact on performance
+// Heat acclimation tracking
 ```
 
-**Analysis Output Structure**:
+**Response Structure**:
+
 ```json
 {
-    "performance_metrics": {
-        "weekly_mileage": 35.2,
-        "avg_pace": "8:30",
-        "consistency_score": 0.85,
-        "trends": { "mileage": "increasing", "pace": "stable" }
-    },
-    "goal_assessment": {
-        "current_goal": "Marathon under 4:00",
-        "feasibility": "achievable",
-        "progress": 0.65,
-        "recommendations": [...]
-    },
-    "pace_zones": {
-        "easy": "9:00-9:30",
-        "tempo": "8:00-8:20",
-        "interval": "7:00-7:30"
-    },
-    "workout_plan": {
-        "this_week": [...],
-        "next_week": [...],
-        "reasoning": "..."
-    },
-    "synthesis": {
-        "overall_assessment": "...",
-        "priorities": [...],
-        "action_items": [...]
+  "trainingLoad": {
+    "acuteLoad": 45.2,
+    "chronicLoad": 38.5,
+    "acwr": 1.17,
+    "riskLevel": "optimal",
+    "weeklyMileage": 35.2,
+    "weeklyDuration": 320,
+    "trend": "increasing",
+    "recommendation": "Your training load is in the optimal zone..."
+  },
+  "vo2max": {
+    "estimated": 48.5,
+    "confidence": 0.85,
+    "fitnessLevel": "good",
+    "trend": "improving",
+    "racePredictions": {
+      "5k": "22:30",
+      "10k": "47:00",
+      "halfMarathon": "1:45:00",
+      "marathon": "3:45:00"
+    }
+  },
+  "weatherImpact": {
+    "averageTemp": 72,
+    "averageHumidity": 65,
+    "heatAcclimation": 0.7,
+    "performanceAdjustment": -0.03,
+    "recommendation": "Consider early morning runs..."
+  },
+  "aiInsights": "Based on your recent training..."
+}
+```
+
+### 2. chat
+
+**Purpose**: AI-powered conversational coaching
+
+**Endpoint**: `{SUPABASE_URL}/functions/v1/chat`
+**Method**: POST
+**Auth**: Bearer token (Supabase JWT)
+
+**Request**:
+```json
+{
+  "message": "How should I prepare for my half marathon?",
+  "conversationId": "optional-uuid"
+}
+```
+
+**Context Building**:
+```typescript
+// Build context for Claude
+const context = {
+  athleteProfile: await getAthleteProfile(athleteId),
+  recentActivities: await getRecentActivities(athleteId, 30),
+  currentGoals: await getActiveGoals(athleteId),
+  readinessScore: await getTodaysReadiness(athleteId),
+  trainingLoad: await calculateTrainingLoad(athleteId),
+  conversationHistory: await getConversationHistory(conversationId)
+};
+```
+
+**Response**:
+```json
+{
+  "message": "Based on your current fitness level...",
+  "conversationId": "uuid",
+  "context": {
+    "activitiesReferenced": 5,
+    "goalsReferenced": 1
+  }
+}
+```
+
+---
+
+## iOS Integration
+
+### QuickWinsService
+
+```swift
+// Services/QuickWinsService.swift
+
+class QuickWinsService: ObservableObject {
+    private var edgeFunctionURL: String {
+        let baseURL = SupabaseConfiguration.supabaseURL ?? ""
+        return "\(baseURL)/functions/v1/comprehensive-analysis"
+    }
+
+    func fetchComprehensiveAnalysis() async throws -> QuickWinsResponse {
+        var request = URLRequest(url: URL(string: edgeFunctionURL)!)
+        request.httpMethod = "GET"
+
+        // Add JWT token
+        if let token = await getJWTToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return try JSONDecoder().decode(QuickWinsResponse.self, from: data)
+    }
+
+    private func getJWTToken() async -> String? {
+        let session = try? await supabase.auth.session
+        return session?.accessToken
+    }
+}
+```
+
+### ChatService
+
+```swift
+// Services/ChatService.swift
+
+class ChatService: ObservableObject {
+    func sendMessage(_ message: String) async throws -> ChatResponse {
+        let url = "\(SupabaseConfiguration.supabaseURL!)/functions/v1/chat"
+
+        var request = URLRequest(url: URL(string: url)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = await getJWTToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let body = ["message": message, "conversationId": currentConversationId]
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return try JSONDecoder().decode(ChatResponse.self, from: data)
     }
 }
 ```
 
 ---
 
-## Current Integration Points
+## AI Analysis Features
 
-### iOS App → Services
+### Training Load Analysis
+
+**ACWR (Acute:Chronic Workload Ratio)**:
+- Monitors training stress over time
+- Identifies injury risk zones
+- Provides load management recommendations
 
 ```
-┌─────────────────────────────┐
-│ Runaway iOS App             │
-│ (Swift/SwiftUI)             │
-└───────┬────────────┬────────┘
-        │            │
-        │            └──────────────────┐
-        │                               │
-        ▼                               ▼
-┌───────────────────┐         ┌─────────────────┐
-│ strava-data       │         │ runaway-coach   │
-│ (Node.js)         │         │ (Python)        │
-│                   │         │                 │
-│ Chat via:         │         │ Analysis via:   │
-│ ChatService.swift │         │ (Not integrated │
-│                   │         │  yet)           │
-└───────────────────┘         └─────────────────┘
-        │
-        ▼
-┌───────────────────┐
-│ Supabase          │
-│ - PostgreSQL      │
-│ - pgvector        │
-│ - Real-time       │
-└───────────────────┘
+Risk Zones:
+├── < 0.8   → Undertrained (increase load)
+├── 0.8-1.3 → Optimal (maintain)
+├── 1.3-1.5 → Moderate risk (caution)
+└── > 1.5   → High risk (reduce load)
 ```
 
-### Current Data Flow
+### VO2 Max Estimation
 
-**Chat Request Flow**:
-```
-1. User asks: "When did I last run over 10 miles?"
-   ↓
-2. iOS ChatService.swift
-   POST https://strava-sync-a2xd4ppmsq-uc.a.run.app/api/chat
-   { athlete_id: 94451852, message: "..." }
-   ↓
-3. strava-data ChatService.js
-   - Fetch recent activities (14 days)
-   - Semantic search for relevant activities
-   - Build context (stats, profile)
-   ↓
-4. Claude 3 Opus (via Anthropic API)
-   - Receives context + query
-   - Generates natural language response
-   ↓
-5. Response to iOS
-   {
-     "answer": "Your last 10+ mile run...",
-     "context": { recentActivitiesCount: 8, ... },
-     "timestamp": "..."
-   }
-```
+**Methods Used**:
+1. **Pace-based**: Using best recent efforts
+2. **HR-based**: Using heart rate reserve
+3. **Combined**: Weighted average for confidence
 
-**Analysis Request Flow (Conceptual - not yet implemented)**:
+**Race Predictions**:
+- Uses Riegel formula with adjustments
+- Accounts for training history
+- Considers recent performance trends
+
+### Weather Impact Analysis
+
+**Factors Tracked**:
+- Temperature (performance degrades above 60°F)
+- Humidity (affects cooling efficiency)
+- Heat index (combined effect)
+- Acclimation level (improves over 10-14 days)
+
+**Adjustment Formula**:
 ```
-1. User requests: "Analyze my performance"
-   ↓
-2. iOS → runaway-coach
-   POST /analyze
-   { athlete_id, timeframe, focus_area }
-   ↓
-3. runaway-coach workflow
-   - Performance Agent analyzes trends
-   - Goal Agent assesses progress
-   - Pace Agent recommends zones
-   - Workout Agent creates plan
-   - Supervisor synthesizes
-   ↓
-4. Structured response to iOS
-   { performance_metrics, goal_assessment, ... }
+Performance Adjustment = -0.5% per degree above 60°F
+                        -0.2% per 10% humidity above 50%
+                        +1% per week of heat acclimation (up to 8%)
 ```
 
 ---
 
-## Service Boundaries & Responsibilities
+## Data Flow
 
-### What Each Service Should Do
+### Analysis Request Flow
 
-#### strava-data (Data + Chat)
-**DO**:
-- ✅ Strava OAuth and data synchronization
-- ✅ Activity storage and management
-- ✅ Conversational Q&A about training history
-- ✅ Semantic search over activities
-- ✅ Simple insights ("how many miles this week?")
-- ✅ Chat history and conversation memory
+```
+1. User opens Training View
+   ↓
+2. TrainingViewModel.loadQuickWins()
+   ↓
+3. QuickWinsService.fetchComprehensiveAnalysis()
+   ↓
+4. HTTP GET → Supabase Edge Function
+   Authorization: Bearer {JWT}
+   ↓
+5. Edge Function:
+   a. Validate JWT, extract user_id
+   b. Query athlete_id from athletes table
+   c. Fetch last 60 days of activities
+   d. Calculate training load (ACWR)
+   e. Estimate VO2 max
+   f. Analyze weather impact
+   g. Generate AI insights via Claude
+   ↓
+6. Return JSON response
+   ↓
+7. iOS decodes to QuickWinsResponse
+   ↓
+8. UI updates with analysis
+```
 
-**DON'T**:
-- ❌ Complex multi-agent workflows
-- ❌ Structured analysis reports
-- ❌ Workout plan generation (let agents do this)
-- ❌ Goal feasibility calculations (let agents do this)
+### Chat Request Flow
 
-#### runaway-coach (Analysis + Recommendations)
-**DO**:
-- ✅ Performance trend analysis
-- ✅ Goal strategy and progress tracking
-- ✅ Pace zone optimization
-- ✅ Workout plan generation
-- ✅ Structured recommendations
-- ✅ Multi-agent workflows
-
-**DON'T**:
-- ❌ Strava data sync (let strava-data handle this)
-- ❌ Activity storage (query strava-data instead)
-- ❌ Conversational chat (let strava-data handle this)
-- ❌ OAuth flows
+```
+1. User sends message in ChatView
+   ↓
+2. ChatViewModel.sendMessage()
+   ↓
+3. ChatService.sendMessage()
+   ↓
+4. HTTP POST → Supabase Edge Function
+   Body: { message, conversationId }
+   ↓
+5. Edge Function:
+   a. Validate JWT
+   b. Load conversation history
+   c. Build athlete context
+   d. Call Claude API with context
+   e. Store message in chat_messages
+   ↓
+6. Return response
+   ↓
+7. UI displays coach response
+```
 
 ---
 
-## Future Integration Strategies
+## Deployment
 
-### Strategy 1: Tool Calling (Short-term, Easy)
+### Setting Up Edge Functions
 
-**How it works**:
-```javascript
-// In strava-data ChatService.js
+```bash
+# Navigate to edge functions project
+cd ~/projects/labs/runaway-edge
 
-const tools = [
-    {
-        name: "analyze_performance",
-        description: "Get detailed performance analysis with trends and metrics",
-        input_schema: {
-            type: "object",
-            properties: {
-                athlete_id: { type: "number" },
-                timeframe_days: { type: "number", default: 30 }
-            }
-        }
-    },
-    {
-        name: "create_workout_plan",
-        description: "Generate a personalized workout plan",
-        input_schema: {
-            type: "object",
-            properties: {
-                athlete_id: { type: "number" },
-                goal: { type: "string" },
-                weeks: { type: "number", default: 4 }
-            }
-        }
-    }
-];
+# Deploy a function
+supabase functions deploy comprehensive-analysis
 
-// When Claude wants analysis
-const response = await anthropic.messages.create({
-    model: "claude-3-opus-20240229",
-    max_tokens: 4096,
-    tools: tools,
-    messages: [{ role: "user", content: prompt }]
-});
-
-// If Claude calls a tool
-if (response.stop_reason === "tool_use") {
-    const toolCall = response.content.find(c => c.type === "tool_use");
-
-    if (toolCall.name === "analyze_performance") {
-        // Call runaway-coach
-        const analysis = await fetch('runaway-coach-url/analyze/performance', {
-            method: 'POST',
-            body: JSON.stringify(toolCall.input)
-        });
-
-        // Feed result back to Claude
-        const finalResponse = await anthropic.messages.create({
-            model: "claude-3-opus-20240229",
-            messages: [
-                { role: "user", content: prompt },
-                { role: "assistant", content: response.content },
-                { role: "user", content: [
-                    {
-                        type: "tool_result",
-                        tool_use_id: toolCall.id,
-                        content: JSON.stringify(analysis)
-                    }
-                ]}
-            ]
-        });
-
-        return finalResponse.content[0].text;
-    }
-}
+# Set secrets (via Supabase Dashboard or CLI)
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-**Benefits**:
-- ✅ Seamless integration from user perspective
-- ✅ Claude decides when to use structured analysis
-- ✅ Leverages both services' strengths
-- ✅ No iOS changes needed
+### Required Secrets
 
-**When to use**:
-- User asks: "How am I doing?" → Claude calls `analyze_performance`
-- User asks: "Create a plan for marathon" → Claude calls `create_workout_plan`
-- User asks: "When did I last run 10 miles?" → Just RAG, no tool call
+| Secret | Purpose |
+|--------|---------|
+| `ANTHROPIC_API_KEY` | Claude API access |
+| `SUPABASE_SERVICE_ROLE_KEY` | Admin database access |
+
+### Monitoring
+
+```bash
+# View function logs
+supabase functions logs comprehensive-analysis --follow
+
+# Check function status
+supabase functions list
+```
 
 ---
 
-### Strategy 2: Shared Embedding Store (Medium-term)
+## Cost Optimization
 
-**How it works**:
-```python
-# In runaway-coach agents
-from supabase import create_client
+### Current Costs (Estimated)
 
-class PerformanceAnalysisAgent:
-    def __init__(self):
-        # Connect to strava-data's Supabase
-        self.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+| Service | Cost/Month |
+|---------|------------|
+| Claude API (analysis) | $30-50 |
+| Supabase (Pro plan) | $25 |
+| Edge Function invocations | Included |
+| **Total** | **~$55-75** |
 
-    async def get_relevant_activities(self, query: str):
-        # Use strava-data's embeddings
-        embedding = await openai.embeddings.create(
-            input=query,
-            model="text-embedding-ada-002"
-        )
+### Optimization Strategies
 
-        # Search using match_activities function
-        result = await self.supabase.rpc(
-            'match_activities',
-            {
-                'query_embedding': embedding.data[0].embedding,
-                'match_threshold': 0.7,
-                'match_count': 10
-            }
-        ).execute()
-
-        return result.data
-```
-
-**Benefits**:
-- ✅ Agents can use semantic search
-- ✅ Single source of truth for embeddings
-- ✅ No duplicate embedding costs
-- ✅ Consistent activity retrieval
-
----
-
-### Strategy 3: Event-Driven Updates (Long-term)
-
-**Architecture**:
-```
-Strava Webhook → strava-data → Pub/Sub → runaway-coach
-                      ↓
-                  Supabase
-                      ↓
-                  (triggers)
-                      ↓
-              Update embeddings
-              Update agent memory
-```
-
-**Benefits**:
-- ✅ Real-time updates
-- ✅ Loosely coupled services
-- ✅ Scalable architecture
-- ✅ Event sourcing for debugging
-
----
-
-## API Keys & Costs
-
-### Current API Usage
-
-**Anthropic (Claude)**:
-- **strava-data**: Chat responses (~$0.015 per chat)
-- **runaway-coach**: Multi-agent analysis (~$0.10 per full analysis)
-- **Monthly estimate**: $50-200 depending on usage
-
-**OpenAI (Embeddings)**:
-- **strava-data**: Activity embeddings
-- **Cost**: ~$0.10 per 1000 activities (one-time)
-- **Ongoing**: ~$0.01 per new activity
-
-**Infrastructure**:
-- **Cloud Run (both services)**: ~$10-30/month
-- **Supabase**: Free tier (currently sufficient)
-
-### Optimization Opportunities
-
-1. **Caching**:
-   - Cache frequently asked questions
-   - Cache analysis results (24 hour TTL)
-   - Reduce duplicate Claude calls
+1. **Response Caching**:
+   - Cache analysis results for 1 hour
+   - Invalidate on new activity sync
 
 2. **Model Selection**:
-   - Use Claude Haiku for simple queries (~10x cheaper)
-   - Reserve Opus for complex analysis
-   - Use Claude Sonnet for medium complexity
+   - Use claude-3-5-sonnet for most analysis
+   - Reserve claude-3-opus for complex coaching
 
 3. **Batch Processing**:
-   - Batch embed new activities weekly instead of real-time
-   - Pre-generate common analyses during off-peak hours
+   - Pre-generate weekly summaries
+   - Background processing for non-urgent analysis
 
 ---
 
-## Deployment Architecture
+## Migration History
 
-### Current State
+### January 2026: Consolidation
 
+**Before**:
 ```
-┌────────────────────────────────────────────────┐
-│ Google Cloud Project: hermes-2024              │
-│                                                 │
-│  ┌──────────────────┐  ┌────────────────────┐ │
-│  │ strava-sync      │  │ runaway-coach      │ │
-│  │ (Cloud Run)      │  │ (Not deployed yet) │ │
-│  │                  │  │                    │ │
-│  │ • Node.js        │  │ • Python/FastAPI  │ │
-│  │ • 2Gi RAM        │  │ • TBD             │ │
-│  │ • 2 CPU          │  │                   │ │
-│  │ • Public access  │  │                   │ │
-│  └──────────────────┘  └────────────────────┘ │
-│                                                 │
-│  ┌──────────────────────────────────────────┐  │
-│  │ Secret Manager                            │  │
-│  │ • ANTHROPIC_API_KEY                       │  │
-│  │ • OPENAI_API_KEY                          │  │
-│  │ • SUPABASE_SERVICE_KEY                    │  │
-│  │ • STRAVA_CLIENT_ID/SECRET                 │  │
-│  └──────────────────────────────────────────┘  │
-└────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────┐
-│ Supabase (External)                             │
-│                                                  │
-│ • PostgreSQL + pgvector                         │
-│ • Real-time subscriptions                       │
-│ • Row-level security                            │
-│ • 712 activities + embeddings                   │
-└────────────────────────────────────────────────┘
+iOS App → RunawayCoachAPIService → Runaway Coach API (FastAPI/Python)
+                                        ↓
+                                   Claude API
 ```
 
-### Recommended Deployment
-
+**After**:
 ```
-Both services on Cloud Run:
-
-strava-data:
-  - Current setup ✅
-  - Public /api/chat endpoint
-  - IAM auth for /api/sync endpoints
-
-runaway-coach:
-  - Deploy as Cloud Run service
-  - Private (only accessible from strava-data)
-  - OR: Deploy as Cloud Function (for cost optimization)
-  - Use service-to-service authentication
+iOS App → QuickWinsService → Supabase Edge Function
+                                   ↓
+                              Claude API
 ```
+
+**Benefits**:
+- Eliminated Python service maintenance
+- Reduced infrastructure complexity
+- Lower latency (edge deployment)
+- Unified authentication (Supabase JWT)
+- Simplified deployment pipeline
+
+**Removed Components**:
+- `runaway-coach` Python service
+- `RunawayCoachAPIService.swift`
+- `EnhancedAnalysisService.swift`
+- `APIConfiguration.swift`
+- Multi-agent LangGraph workflows
 
 ---
 
-## Decision Log
+## Future Enhancements
 
-### 2025-12-01: Keep Services Separate
+### Planned Features
 
-**Decision**: Maintain two independent services with clear boundaries
+1. **Apple Foundation Models (iOS 26+)**
+   - On-device AI for basic insights
+   - Privacy-preserving analysis
+   - Offline capability
 
-**Rationale**:
-1. **Different tech stacks optimized for different tasks**:
-   - Node.js excellent for I/O-heavy operations (sync, API)
-   - Python better for ML/agent workflows (LangGraph, scikit-learn)
+2. **Streaming Responses**
+   - Real-time chat streaming
+   - Progressive analysis loading
 
-2. **Already working well**:
-   - strava-data handles sync + chat successfully
-   - runaway-coach has mature agent system
+3. **Proactive Coaching**
+   - Morning readiness notifications
+   - Post-run analysis push
+   - Weekly summary generation
 
-3. **Future flexibility**:
-   - Can integrate via tool calling when needed
-   - Can deploy/scale independently
-   - Can migrate gradually if needed
-
-**Trade-offs**:
-- ❌ Two services to maintain
-- ❌ Slightly more complex architecture
-- ✅ Clean separation of concerns
-- ✅ Best tool for each job
-- ✅ Independent deployment
-
----
-
-## Next Steps
-
-### Immediate (No Integration Required)
-1. ✅ Document architecture (this document)
-2. Deploy runaway-coach to Cloud Run
-3. Test both services independently
-4. Monitor costs and performance
-
-### Short-term (Basic Integration)
-1. Add tool calling to strava-data chat
-2. Enable Claude to invoke runaway-coach agents
-3. Test end-to-end flow:
-   - "How am I doing?" triggers performance analysis
-   - "Create a plan" triggers workout agent
-
-### Medium-term (Shared Resources)
-1. Have runaway-coach query strava-data's embeddings
-2. Implement shared caching layer
-3. Add event-driven updates
-
-### Long-term (Advanced Features)
-1. Multi-modal analysis (combine chat + structured)
-2. Proactive coaching (agents suggest workouts)
-3. Real-time feedback during runs
-
----
-
-## Summary
-
-**Current State**: Two complementary AI services
-- **strava-data**: Chat + data sync ✅ Production
-- **runaway-coach**: Analysis + agents ⏳ Ready to deploy
-
-**Integration Strategy**: Tool calling (Claude decides when to use agents)
-
-**Philosophy**: Best tool for each job, integrated when needed
-
-**Next Action**: Keep as-is, document clearly, integrate gradually
+4. **Multi-modal Analysis**
+   - Voice input for chat
+   - Image analysis (form feedback)
+   - Route analysis from maps
 
 ---
 
 ## References
 
-- [AI_COACHING_ROADMAP.md](./AI_COACHING_ROADMAP.md) - Overall AI features roadmap
-- [strava-data README](../strava-data/README.md) - Data sync service docs
-- [runaway-coach CLAUDE.md](../runaway-coach/CLAUDE.md) - Agent system docs
+- [ARCHITECTURE.md](../.claude/ARCHITECTURE.md) - System architecture
+- [CLAUDE.md](../CLAUDE.md) - Development guidelines
+- [QuickWinsService.swift](../Runaway%20iOS/Services/QuickWinsService.swift) - iOS implementation
+- [comprehensive-analysis](../../runaway-edge/supabase/functions/comprehensive-analysis) - Edge function code

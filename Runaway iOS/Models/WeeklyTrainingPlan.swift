@@ -188,6 +188,7 @@ enum WorkoutType: String, Codable, CaseIterable {
     case intervalRun = "interval_run"
     case hillRun = "hill_run"
     case recoveryRun = "recovery_run"
+    case rest = "rest"
     case strengthTraining = "strength_training"
     case upperBody = "upper_body"
     case lowerBody = "lower_body"
@@ -204,6 +205,7 @@ enum WorkoutType: String, Codable, CaseIterable {
         case .intervalRun: return "Intervals"
         case .hillRun: return "Hill Workout"
         case .recoveryRun: return "Recovery Run"
+        case .rest: return "Rest Day"
         case .strengthTraining: return "Strength"
         case .upperBody: return "Upper Body"
         case .lowerBody: return "Lower Body"
@@ -220,6 +222,7 @@ enum WorkoutType: String, Codable, CaseIterable {
         case .longRun: return "figure.run.circle"
         case .tempoRun, .intervalRun: return "speedometer"
         case .hillRun: return "mountain.2"
+        case .rest: return "moon.zzz.fill"
         case .strengthTraining, .upperBody, .lowerBody, .fullBody: return "dumbbell"
         case .yoga: return "figure.yoga"
         case .crossTraining: return "figure.mixed.cardio"
@@ -234,6 +237,7 @@ enum WorkoutType: String, Codable, CaseIterable {
         case .tempoRun: return .orange
         case .intervalRun: return .red
         case .hillRun: return .brown
+        case .rest: return .gray
         case .strengthTraining, .upperBody, .lowerBody, .fullBody: return .purple
         case .yoga, .stretchMobility: return .teal
         case .crossTraining: return .indigo

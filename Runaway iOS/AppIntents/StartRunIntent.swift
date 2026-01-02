@@ -54,7 +54,7 @@ struct StartRunConfirmationView: View {
 
             Text("GPS tracking enabled")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .padding()
     }

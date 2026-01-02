@@ -68,7 +68,7 @@ struct VO2MaxHeroCard: View {
 
             Text("ml/kg/min")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
 
             // Fitness Level Badge
             Text(vo2max.fitnessLevelDisplay)
@@ -85,7 +85,7 @@ struct VO2MaxHeroCard: View {
                     .foregroundColor(.green)
                 Text("Data Quality: \(Int(vo2max.dataQualityScore * 100))%")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -233,7 +233,7 @@ struct RacePredictionsList: View {
             if predictions.isEmpty {
                 Text("Complete more runs to get race predictions")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding()
             } else {
@@ -256,7 +256,7 @@ struct RacePredictionCard: View {
                         .font(.headline)
                     Text(String(format: "%.2f km", prediction.distanceKm))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -267,7 +267,7 @@ struct RacePredictionCard: View {
                         .fontWeight(.bold)
                     Text(prediction.pacePerMile + " /mi")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
 
@@ -275,7 +275,7 @@ struct RacePredictionCard: View {
             HStack(spacing: 8) {
                 Text("Confidence:")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {

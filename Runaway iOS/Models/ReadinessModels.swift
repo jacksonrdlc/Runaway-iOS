@@ -193,6 +193,7 @@ extension ReadinessFactor {
     static let hrvId = "hrv"
     static let restingHRId = "resting_hr"
     static let trainingLoadId = "training_load"
+    static let restDaysId = "rest_days"
 }
 
 // MARK: - Database Response

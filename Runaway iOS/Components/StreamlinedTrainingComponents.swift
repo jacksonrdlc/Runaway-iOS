@@ -183,6 +183,7 @@ struct ReadinessCalculationSheet: View {
 
 struct TodaysFocusCard: View {
     @EnvironmentObject var dataManager: DataManager
+    @StateObject private var restDayService = RestDayService.shared
     @State private var showingWorkoutDetail = false
 
     private var todaysWorkout: DailyWorkout? {
@@ -190,6 +191,49 @@ struct TodaysFocusCard: View {
         let today = Calendar.current.component(.weekday, from: Date())
         let todayDayOfWeek = DayOfWeek.allCases.first { $0.calendarWeekday == today }
         return plan.workouts.first { $0.dayOfWeek == todayDayOfWeek }
+    }
+
+    /// Check if there's an activity logged today
+    private var todaysActivity: Activity? {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        return dataManager.activities.first { activity in
+            guard let timestamp = activity.activity_date ?? activity.start_date else { return false }
+            let activityDate = calendar.startOfDay(for: Date(timeIntervalSince1970: timestamp))
+            return calendar.isDate(activityDate, inSameDayAs: today)
+        }
+    }
+
+    /// Check if yesterday was a rest day
+    private var hadRestYesterday: Bool {
+        let calendar = Calendar.current
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: Date()) else { return false }
+
+        return restDayService.recentRestDays.contains { restDay in
+            calendar.isDate(restDay.date, inSameDayAs: yesterday)
+        }
+    }
+
+    /// Determine what to show for today
+    private var todaysFocus: TodayFocusState {
+        // Priority 1: If there's an activity today, show "Completed"
+        if let activity = todaysActivity {
+            return .activityCompleted(activity)
+        }
+
+        // Priority 2: If there's a planned workout today, show it
+        if let workout = todaysWorkout {
+            return .plannedWorkout(workout)
+        }
+
+        // Priority 3: Check recovery status - if well rested and no plan, suggest a run
+        if hadRestYesterday {
+            return .readyToRun
+        }
+
+        // Default: Rest day
+        return .restDay
     }
 
     var body: some View {
@@ -203,7 +247,17 @@ struct TodaysFocusCard: View {
 
                 Spacer()
 
-                if let workout = todaysWorkout {
+                switch todaysFocus {
+                case .activityCompleted:
+                    Text("Completed")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.green.opacity(0.15))
+                        .cornerRadius(6)
+                case .plannedWorkout(let workout):
                     Text(workout.workoutType.rawValue.capitalized)
                         .font(.caption)
                         .fontWeight(.medium)
@@ -212,10 +266,63 @@ struct TodaysFocusCard: View {
                         .padding(.vertical, 4)
                         .background(workout.workoutType.color.opacity(0.15))
                         .cornerRadius(6)
+                case .readyToRun:
+                    Text("Ready")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.green.opacity(0.15))
+                        .cornerRadius(6)
+                case .restDay:
+                    Text("Rest")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.purple)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.purple.opacity(0.15))
+                        .cornerRadius(6)
                 }
             }
 
-            if let workout = todaysWorkout {
+            switch todaysFocus {
+            case .activityCompleted(let activity):
+                // Show completed activity
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.green)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(activity.name ?? "Activity Completed")
+                            .font(.headline)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                        HStack(spacing: 8) {
+                            if let distance = activity.distance {
+                                let miles = distance * 0.000621371
+                                Text(String(format: "%.1f mi", miles))
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            }
+                            if let elapsed = activity.elapsed_time {
+                                let minutes = Int(elapsed / 60)
+                                Text("\(minutes) min")
+                                    .font(.caption)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            }
+                        }
+                    }
+
+                    Spacer()
+                }
+                .padding()
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(12)
+
+            case .plannedWorkout(let workout):
                 // Workout content
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
@@ -262,8 +369,32 @@ struct TodaysFocusCard: View {
                 .onTapGesture {
                     showingWorkoutDetail = true
                 }
-            } else {
-                // Rest day or no plan
+
+            case .readyToRun:
+                // You rested yesterday, ready to go!
+                HStack {
+                    Image(systemName: "figure.run")
+                        .font(.title2)
+                        .foregroundColor(.green)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Ready to Run")
+                            .font(.headline)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                        Text("You rested yesterday - great time for a run!")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    }
+
+                    Spacer()
+                }
+                .padding()
+                .background(Color.green.opacity(0.1))
+                .cornerRadius(12)
+
+            case .restDay:
+                // Rest day
                 HStack {
                     Image(systemName: "moon.zzz.fill")
                         .font(.title2)
@@ -298,10 +429,19 @@ struct TodaysFocusCard: View {
     }
 }
 
+/// State for Today's Focus card
+private enum TodayFocusState {
+    case activityCompleted(Activity)
+    case plannedWorkout(DailyWorkout)
+    case readyToRun
+    case restDay
+}
+
 // MARK: - Week Progress Row
 
 struct WeekProgressRow: View {
     @EnvironmentObject var dataManager: DataManager
+    @StateObject private var restDayService = RestDayService.shared
 
     private var weekEntries: [WeekDayEntry] {
         guard let plan = dataManager.currentWeeklyPlan else {
@@ -309,6 +449,36 @@ struct WeekProgressRow: View {
             return buildEntriesFromActivitiesOnly()
         }
         return plan.mergedWithActivities(dataManager.activities)
+    }
+
+    /// Get rest days for this week from RestDayService
+    private var thisWeekRestDays: [RestDay] {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+            return []
+        }
+        guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) else {
+            return []
+        }
+
+        return restDayService.recentRestDays.filter { restDay in
+            restDay.date >= weekStart && restDay.date < weekEnd
+        }
+    }
+
+    /// Check if a specific day has a logged rest day
+    private func hasRestDay(for dayOfWeek: DayOfWeek) -> RestDay? {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+            return nil
+        }
+        guard let dayDate = calendar.date(byAdding: .day, value: dayOfWeek.calendarWeekday - 1, to: weekStart) else {
+            return nil
+        }
+
+        return thisWeekRestDays.first { calendar.isDate($0.date, inSameDayAs: dayDate) }
     }
 
     /// Build week entries from activities only (when no training plan exists)
@@ -389,9 +559,11 @@ struct WeekProgressRow: View {
             HStack(spacing: 4) {
                 ForEach(DayOfWeek.allCases, id: \.self) { day in
                     let entry = weekEntries.first { $0.dayOfWeek == day }
+                    let restDay = hasRestDay(for: day)
                     WeekDayActivityTile(
                         day: day,
-                        entry: entry
+                        entry: entry,
+                        restDay: restDay
                     )
                 }
             }
@@ -438,6 +610,7 @@ struct WeekProgressRow: View {
 struct WeekDayActivityTile: View {
     let day: DayOfWeek
     let entry: WeekDayEntry?
+    let restDay: RestDay?
 
     private var isToday: Bool {
         if let entryIsToday = entry?.isToday {
@@ -456,6 +629,10 @@ struct WeekDayActivityTile: View {
 
     private var hasPlannedWorkout: Bool {
         entry?.plannedWorkout != nil
+    }
+
+    private var hasRestDay: Bool {
+        restDay != nil
     }
 
     private var activityType: String? {
@@ -508,6 +685,9 @@ struct WeekDayActivityTile: View {
     private var backgroundColor: Color {
         if hasActivity {
             return activityColor.opacity(0.15)
+        } else if hasRestDay {
+            // Rest day - show purple background
+            return Color.purple.opacity(0.15)
         } else if isPast && hasPlannedWorkout {
             return Color.orange.opacity(0.1)
         } else if hasPlannedWorkout {
@@ -521,6 +701,9 @@ struct WeekDayActivityTile: View {
     private var iconName: String {
         if hasActivity {
             return activityIcon
+        } else if hasRestDay {
+            // Show rest day icon from the restDay reason
+            return restDay?.reason.icon ?? "moon.zzz.fill"
         } else if hasPlannedWorkout {
             return plannedWorkoutIcon
         } else if isPast {
@@ -562,6 +745,8 @@ struct WeekDayActivityTile: View {
             return "flame.fill"
         case .intervalRun:
             return "bolt.fill"
+        case .rest:
+            return "moon.zzz.fill"
         case .crossTraining:
             return "figure.mixed.cardio"
         case .strengthTraining, .upperBody, .lowerBody, .fullBody:
@@ -591,6 +776,8 @@ struct WeekDayActivityTile: View {
     private var iconColor: Color {
         if hasActivity {
             return activityColor
+        } else if hasRestDay {
+            return .purple
         } else if isPast && hasPlannedWorkout {
             return .orange
         } else if hasPlannedWorkout {

@@ -1,13 +1,15 @@
 # Runaway Ecosystem Architecture
 
-This document provides a comprehensive overview of how the 5 Runaway projects work together.
+This document provides a comprehensive overview of how the Runaway projects work together.
+
+**Last Updated**: January 2026
 
 ## Projects Overview
 
 ### 1. Runaway iOS (Swift/SwiftUI)
 **Path**: `/Users/jack.rudelic/projects/labs/Runaway iOS`
-**Purpose**: Native iOS app for running analytics
-**Key Tech**: SwiftUI, Supabase, Firebase (FCM), WidgetKit
+**Purpose**: Native iOS app for running analytics and AI coaching
+**Key Tech**: SwiftUI, Supabase, Firebase (FCM), WidgetKit, HealthKit
 
 ### 2. Runaway Web (Nuxt 3)
 **Path**: `~/projects/labs/runaway-web`
@@ -16,49 +18,57 @@ This document provides a comprehensive overview of how the 5 Runaway projects wo
 
 ### 3. Runaway Edge (Supabase Functions)
 **Path**: `~/projects/labs/runaway-edge`
-**Purpose**: Serverless edge functions for real-time notifications
-**Key Tech**: Deno, Supabase Functions, Firebase Cloud Messaging
+**Purpose**: Serverless edge functions for AI analysis, notifications, and background processing
+**Key Tech**: Deno, Supabase Edge Functions, Anthropic Claude API
 
 ### 4. Strava Webhooks (Express)
 **Path**: `~/projects/labs/strava-webhooks`
 **Purpose**: Webhook server for Strava activity synchronization
 **Key Tech**: Node.js, Express, Supabase Client
 
-### 5. Runaway Coach (FastAPI)
-**Path**: `~/projects/labs/runaway/runaway-coach`
-**Purpose**: AI-powered coaching and analytics backend
-**Key Tech**: Python, FastAPI, LangGraph, Claude 3.5 Sonnet, Google Cloud Run
-
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         RUNAWAY ECOSYSTEM                                │
-│                                                                          │
-│  ┌──────────────┐         ┌──────────────┐         ┌──────────────┐   │
-│  │   Runaway    │         │   Runaway    │         │   Runaway    │   │
-│  │     iOS      │◄────────┤     Web      │◄────────┤    Coach     │   │
-│  │   (Swift)    │         │   (Nuxt 3)   │         │  (FastAPI)   │   │
-│  └──────┬───────┘         └──────┬───────┘         └──────┬───────┘   │
-│         │                        │                         │            │
-│         │                        │                         │            │
-│         └────────────────────────┼─────────────────────────┘            │
-│                                  │                                      │
-│                          ┌───────▼────────┐                            │
-│                          │   SUPABASE     │                            │
-│                          │  (PostgreSQL   │                            │
-│                          │   + Realtime)  │                            │
-│                          └───────▲────────┘                            │
-│                                  │                                      │
-│         ┌────────────────────────┴─────────────────────┐               │
-│         │                                               │               │
-│  ┌──────▼───────┐                             ┌────────▼──────┐       │
-│  │    Strava    │                             │    Runaway    │       │
-│  │   Webhooks   │                             │     Edge      │       │
-│  │  (Express)   │                             │  (Supabase    │       │
-│  └──────────────┘                             │   Functions)  │       │
-│                                                └───────────────┘       │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           RUNAWAY ECOSYSTEM                                  │
+│                                                                              │
+│  ┌──────────────────┐                           ┌──────────────────┐        │
+│  │   Runaway iOS    │                           │   Runaway Web    │        │
+│  │   (SwiftUI)      │                           │   (Nuxt 3)       │        │
+│  └────────┬─────────┘                           └────────┬─────────┘        │
+│           │                                              │                   │
+│           │              ┌───────────────────┐          │                   │
+│           │              │   SUPABASE        │          │                   │
+│           └──────────────┤                   ├──────────┘                   │
+│                          │  ┌─────────────┐  │                              │
+│                          │  │ PostgreSQL  │  │                              │
+│                          │  │ + Realtime  │  │                              │
+│                          │  └─────────────┘  │                              │
+│                          │                   │                              │
+│                          │  ┌─────────────┐  │                              │
+│                          │  │ Edge        │  │                              │
+│                          │  │ Functions   │  │     ┌──────────────────┐    │
+│                          │  │             │◄─┼─────┤  Anthropic       │    │
+│                          │  │ • analysis  │  │     │  Claude API      │    │
+│                          │  │ • chat      │  │     └──────────────────┘    │
+│                          │  │ • notify    │  │                              │
+│                          │  └─────────────┘  │                              │
+│                          │                   │                              │
+│                          │  ┌─────────────┐  │                              │
+│                          │  │ Auth        │  │                              │
+│                          │  │ (JWT)       │  │                              │
+│                          │  └─────────────┘  │                              │
+│                          └─────────┬─────────┘                              │
+│                                    │                                        │
+│         ┌──────────────────────────┴──────────────────────┐                │
+│         │                                                  │                │
+│  ┌──────▼───────┐                                  ┌──────▼───────┐        │
+│  │   Strava     │                                  │   Firebase   │        │
+│  │   Webhooks   │                                  │   FCM        │        │
+│  │   (Express)  │                                  │   (Push)     │        │
+│  └──────────────┘                                  └──────────────┘        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Data Flow: Activity Sync Journey
@@ -98,20 +108,22 @@ Widget refreshes automatically
 ```
 
 ### Step 3: Client → AI Analysis
-**Service**: Runaway Coach API
+**Service**: Supabase Edge Functions (comprehensive-analysis)
 
 ```
-User opens insights view
+User opens Quick Wins / Training view
     ↓
-Client requests AI analysis
+iOS QuickWinsService calls Edge Function
     ↓
-Runaway Coach API:
+Edge Function (comprehensive-analysis):
   - Validates JWT token
-  - Fetches activities from Supabase
-  - Executes 8 AI agents (LangGraph)
-  - Returns comprehensive analysis
+  - Fetches activities from database
+  - Calculates training load (ACWR)
+  - Estimates VO2 max
+  - Analyzes weather impact
+  - Calls Claude API for insights
     ↓
-Client displays personalized insights
+Returns comprehensive analysis to client
 ```
 
 ## Authentication Flow
@@ -130,7 +142,7 @@ All API Requests:
     ↓
 Authorization: Bearer {JWT_TOKEN}
     ↓
-Services validate JWT
+Edge Functions validate JWT
     ↓
 Extract user_id → map to athlete_id
     ↓
@@ -155,9 +167,19 @@ Query data with RLS enforcement
 - `map_polyline`, `start_latitude`, `start_longitude`
 - `average_heart_rate`, `max_heart_rate`
 
-**activity_types**
-- `id` (integer)
-- `name` (text) - "Run", "Ride", "Walk", etc.
+**rest_days**
+- `id` (UUID)
+- `athlete_id` (integer) → athletes.id
+- `date` (date)
+- `rest_type` (text) - active_recovery, full_rest, injury, etc.
+- `notes` (text)
+
+**daily_readiness**
+- `id` (UUID)
+- `athlete_id` (integer) → athletes.id
+- `date` (date)
+- `score` (integer) - 0-100
+- `sleep_score`, `hrv_score`, `resting_hr_score`, `training_load_score`
 
 ### Row Level Security (RLS)
 ```sql
@@ -168,65 +190,142 @@ WHERE athlete_id IN (
 )
 ```
 
-## API Integration Points
+## Supabase Edge Functions
 
-### Runaway Coach API Endpoints
+### Available Functions
 
-**Production**: `https://runaway-coach-api-203308554831.us-central1.run.app`
+| Function | Purpose | Authentication |
+|----------|---------|----------------|
+| `comprehensive-analysis` | Training load, VO2max, weather analysis | JWT (Bearer token) |
+| `chat` | AI-powered conversational coaching | JWT (Bearer token) |
+| `send-notification` | FCM push notifications | Service role |
+| `daily-commitment-check` | Scheduled commitment reminders | Service role |
+
+### comprehensive-analysis Function
+
+**Endpoint**: `{SUPABASE_URL}/functions/v1/comprehensive-analysis`
+**Method**: GET
+**Auth**: Bearer token (Supabase JWT)
+
+**Response Structure**:
+```json
+{
+  "trainingLoad": {
+    "acuteLoad": 45.2,
+    "chronicLoad": 38.5,
+    "acwr": 1.17,
+    "riskLevel": "optimal",
+    "weeklyMileage": 35.2,
+    "weeklyDuration": 320,
+    "recommendation": "..."
+  },
+  "vo2max": {
+    "estimated": 48.5,
+    "fitnessLevel": "good",
+    "racePredictions": {
+      "5k": "22:30",
+      "10k": "47:00",
+      "halfMarathon": "1:45:00",
+      "marathon": "3:45:00"
+    }
+  },
+  "weatherImpact": {
+    "recentConditions": [...],
+    "heatAcclimation": 0.7,
+    "recommendation": "..."
+  },
+  "aiInsights": "..."
+}
+```
+
+## iOS App Architecture
+
+### Service Layer
 
 ```
-GET  /health
-GET  /quick-wins/comprehensive-analysis
-GET  /quick-wins/weather-impact?limit=30
-GET  /quick-wins/vo2max-estimate?limit=50
-GET  /quick-wins/training-load?limit=60
-POST /analysis/runner
-POST /feedback/workout
-POST /goals/assess
+┌─────────────────────────────────────────────────────────────┐
+│                     iOS Services                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐                   │
+│  │ QuickWinsService│  │ ChatService     │                   │
+│  │                 │  │                 │                   │
+│  │ • Comprehensive │  │ • AI coaching   │                   │
+│  │   analysis      │  │ • Conversation  │                   │
+│  │ • Training load │  │   history       │                   │
+│  │ • VO2 max       │  │                 │                   │
+│  └────────┬────────┘  └────────┬────────┘                   │
+│           │                    │                             │
+│           └────────┬───────────┘                             │
+│                    │                                         │
+│           ┌────────▼────────┐                               │
+│           │ Supabase Edge   │                               │
+│           │ Functions       │                               │
+│           └─────────────────┘                               │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐                   │
+│  │ ActivityService │  │ RealtimeService │                   │
+│  │                 │  │                 │                   │
+│  │ • CRUD ops      │  │ • Live sync     │                   │
+│  │ • Supabase DB   │  │ • Subscriptions │                   │
+│  └─────────────────┘  └─────────────────┘                   │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐                   │
+│  │ HealthKitManager│  │ GPSTrackingServ │                   │
+│  │                 │  │                 │                   │
+│  │ • Sleep data    │  │ • Live tracking │                   │
+│  │ • HRV, HR       │  │ • Route builder │                   │
+│  │ • Workout sync  │  │                 │                   │
+│  └─────────────────┘  └─────────────────┘                   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### AI Agent System (LangGraph)
+### Manager Layer (Singletons)
 
-**8 Specialized Agents**:
-1. **Supervisor** - Orchestrates workflow
-2. **Performance Analysis** - Trends, consistency
-3. **Weather Context** - Heat stress, acclimation
-4. **VO2 Max Estimation** - Fitness level, race predictions
-5. **Training Load** - ACWR, injury risk, recovery
-6. **Goal Strategy** - Goal feasibility, progress
-7. **Pace Optimization** - Zone recommendations
-8. **Workout Planning** - Personalized training
+- `DataManager.shared` - Central data store
+- `AuthManager.shared` - Authentication state
+- `UserManager.shared` - User preferences
+- `RealtimeService.shared` - Live data sync
+- `LocationManager.shared` - GPS services
 
-**Execution Flow**:
-```
-Performance Analysis
-    ↓
-[Weather, VO2 Max, Training Load, Goals] (Parallel)
-    ↓
-Pace Optimization
-    ↓
-Workout Planning
-    ↓
-Final Synthesis
-```
+## Key Features
+
+### Training Load (ACWR)
+- Acute:Chronic Workload Ratio calculation
+- Injury risk classification (low/optimal/moderate/high)
+- 7-day vs 28-day load comparison
+- Personalized training recommendations
+
+### VO2 Max Estimation
+- Multi-method estimation from running data
+- Race predictions: 5K, 10K, Half, Marathon
+- Fitness level classification
+- vVO2max pace calculations
+
+### Weather-Adjusted Training
+- Temperature/humidity impact analysis
+- Heat acclimation tracking
+- Performance adjustment factors
+- Optimal training time recommendations
+
+### Readiness Score (HealthKit Integration)
+- Daily recovery score (0-100)
+- Sleep quality analysis
+- HRV trend tracking
+- Training load integration
 
 ## Deployment
 
+### Supabase Edge Functions
+- Platform: Supabase Edge Functions (Deno)
+- Deploy: `supabase functions deploy <function-name>`
+- Secrets: Supabase Dashboard > Edge Functions > Secrets
+
 ### Strava Webhooks
-- Platform: Self-hosted (Cloud Run)
-- Port: 8080
-- Runtime: Node.js 16+
-
-### Runaway Edge
-- Platform: Supabase Edge Functions
-- Runtime: Deno
-- Trigger: Database events
-
-### Runaway Coach
 - Platform: Google Cloud Run
-- Memory: 2Gi, CPU: 2
-- Scaling: 0-10 instances
-- Secrets: Google Secret Manager
+- Port: 8080
+- Runtime: Node.js 18+
 
 ### Runaway iOS
 - Platform: iOS 15+
@@ -238,64 +337,27 @@ Final Synthesis
 - Hosting: Vercel/Netlify
 - Runtime: Node.js
 
-## Key Features
-
-### Weather-Adjusted Training ⭐ (Unique)
-- Analyzes temperature/humidity impact
-- Tracks heat acclimation
-- Recommends optimal training times
-- **Competitive advantage**: No other platform has this
-
-### Free VO2 Max & Race Predictions
-- Alternative to Strava Summit ($12/mo)
-- Multi-method VO2 max estimation
-- Race predictions: 5K, 10K, Half, Marathon
-- vVO2 max pace calculations
-
-### ACWR Injury Prevention
-- Alternative to WHOOP ($30/mo)
-- Acute:Chronic Workload Ratio
-- Training Stress Score (TSS)
-- Injury risk classification
-- 7-day personalized workout plans
-
-### AI-Powered Coaching
-- Claude 3.5 Sonnet powered
-- LangGraph multi-agent orchestration
-- Personalized recommendations
-- Real-time analysis
-
 ## Quick Start Commands
-
-### Load Full Ecosystem in Claude Code
-```bash
-claude --add-dir ~/projects/labs/Runaway\ iOS \
-       --add-dir ~/projects/labs/runaway-web \
-       --add-dir ~/projects/labs/runaway-edge \
-       --add-dir ~/projects/labs/strava-webhooks \
-       --add-dir ~/projects/labs/runaway/runaway-coach
-```
 
 ### iOS Build
 ```bash
 cd "/Users/jack.rudelic/projects/labs/Runaway iOS"
-xcodebuild -workspace "Runaway iOS.xcworkspace" \
+xcodebuild -project "Runaway iOS.xcodeproj" \
   -scheme "Runaway iOS" \
-  -destination "platform=iOS Simulator,name=iPhone 15" \
+  -destination "platform=iOS Simulator,name=iPhone 16" \
   build
+```
+
+### Deploy Edge Function
+```bash
+cd ~/projects/labs/runaway-edge
+supabase functions deploy comprehensive-analysis
 ```
 
 ### Web Dev Server
 ```bash
 cd ~/projects/labs/runaway-web
 npm run dev
-```
-
-### Coach API Local
-```bash
-cd ~/projects/labs/runaway/runaway-coach
-source .venv/bin/activate
-uvicorn api.main:app --reload
 ```
 
 ### Strava Webhooks
@@ -317,10 +379,10 @@ npm start
 - API keys or secrets
 - OAuth tokens
 
-### Use Templates
-- `Runaway-iOS-Info.plist.template`
-- `.env.example`
-- Always update `.gitignore`
+### Edge Function Secrets
+Set via Supabase Dashboard:
+- `ANTHROPIC_API_KEY` - Claude API access
+- `SUPABASE_SERVICE_ROLE_KEY` - Admin database access
 
 ## Troubleshooting
 
@@ -334,25 +396,30 @@ npm start
 - Check environment variables: `SUPABASE_URL`, `SUPABASE_KEY`
 - Ensure using anon key (not service role) in clients
 
-### API Authentication Errors
-- Confirm JWT token is valid and not expired
-- Check Authorization header format: `Bearer {token}`
-- Verify user_id → athlete_id mapping exists
+### Edge Function Errors
+- Check function logs: `supabase functions logs comprehensive-analysis`
+- Verify JWT token is valid
+- Check secrets are set in Supabase Dashboard
 
 ### Real-time Sync Not Working
 - Check RealtimeService subscription is active
 - Verify FCM token is registered
 - Test Edge Function manually with database insert
 
-## References
+## Migration History
 
-- iOS CLAUDE.md: `/Users/jack.rudelic/projects/labs/Runaway iOS/CLAUDE.md`
-- Web CLAUDE.md: `~/projects/labs/runaway-web/CLAUDE.md`
-- Coach CLAUDE.md: `~/projects/labs/runaway/runaway-coach/CLAUDE.md`
-- Strava CLAUDE.md: `~/projects/labs/strava-webhooks/CLAUDE.md`
+### January 2026: API Consolidation
+- **Removed**: Runaway Coach API (Python/FastAPI)
+- **Added**: `comprehensive-analysis` Supabase Edge Function
+- **Rationale**: Simplified architecture, reduced infrastructure costs, unified on Supabase platform
+
+### Deleted Services
+- `RunawayCoachAPIService.swift` - Replaced by edge functions
+- `EnhancedAnalysisService.swift` - Logic moved to edge functions
+- `APIConfiguration.swift` - No longer needed
+- `APIDebugUtils.swift` - No longer needed
 
 ---
 
-**Last Updated**: October 2025
-**Ecosystem Version**: 1.0
-**Total Projects**: 5
+**Ecosystem Version**: 2.0
+**Total Active Projects**: 4 (iOS, Web, Edge, Strava Webhooks)

@@ -136,6 +136,20 @@ struct SettingsView: View {
                 }
             }
             .buttonStyle(PlainButtonStyle())
+
+            if let athleteId = dataManager.athlete?.id {
+                NavigationLink(destination: RestDayHistoryView(athleteId: athleteId)) {
+                    SettingsRow(
+                        icon: "moon.zzz.fill",
+                        title: "Rest Days",
+                        subtitle: "View rest day history and recovery status",
+                        color: .blue
+                    ) {
+                        // Navigation handled by NavigationLink
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
         }
     }
 
@@ -199,7 +213,7 @@ struct SettingsView: View {
                 color: AppTheme.Colors.accent
             ) {
                 // Open email compose
-                if let url = URL(string: "mailto:support@runaway.app?subject=Runaway%20iOS%20Support") {
+                if let url = URL(string: "mailto:jack@runawayendurance.com?subject=Runaway%20iOS%20Support") {
                     UIApplication.shared.open(url)
                 }
             }
@@ -278,7 +292,7 @@ struct SettingsView: View {
     // MARK: - Helper Methods
 
     private func disconnectFromStrava() async {
-        guard let authUserId = await APIConfiguration.RunawayCoach.getCurrentAuthUserId() else {
+        guard let authUserId = await getCurrentAuthUserId() else {
             stravaError = "Unable to get user ID"
             return
         }
@@ -288,6 +302,15 @@ struct SettingsView: View {
             stravaError = nil
         } catch {
             stravaError = error.localizedDescription
+        }
+    }
+
+    private func getCurrentAuthUserId() async -> String? {
+        do {
+            let session = try await supabase.auth.session
+            return session.user.id.uuidString
+        } catch {
+            return nil
         }
     }
 }
@@ -434,7 +457,7 @@ struct StravaConnectSheet: View {
         isLoading = true
         defer { isLoading = false }
 
-        guard let authUserId = await APIConfiguration.RunawayCoach.getCurrentAuthUserId() else {
+        guard let authUserId = await getCurrentAuthUserId() else {
             #if DEBUG
             print("❌ Unable to get auth user ID for Strava connection")
             #endif
@@ -457,6 +480,15 @@ struct StravaConnectSheet: View {
 
         // Dismiss sheet - user will return via deep link
         dismiss()
+    }
+
+    private func getCurrentAuthUserId() async -> String? {
+        do {
+            let session = try await supabase.auth.session
+            return session.user.id.uuidString
+        } catch {
+            return nil
+        }
     }
 }
 

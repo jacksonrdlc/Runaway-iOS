@@ -424,7 +424,7 @@ struct GoalInputSheet: View {
                             .keyboardType(.decimalPad)
                         
                         Text(selectedType.unit(isMetric: isMetric))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                     
                     DatePicker("Deadline", selection: $deadline, displayedComponents: .date)
@@ -589,7 +589,7 @@ extension View {
         ZStack(alignment: .leading) {
             if shouldShow {
                 Text(text)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
             self
         }

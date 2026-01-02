@@ -17,9 +17,7 @@ import CreateML
 class RunningAnalyzer: ObservableObject {
     @Published var analysisResults: AnalysisResults?
     @Published var isAnalyzing = false
-    
-    private let apiService = RunawayCoachAPIService()
-    
+
     // MARK: - Main Analysis Function
     func analyzePerformance(activities: [Activity]) async {
         await MainActor.run {
@@ -52,17 +50,11 @@ class RunningAnalyzer: ObservableObject {
         }
     }
     
-    // MARK: - Enhanced Insights Generation with API
+    // MARK: - Enhanced Insights Generation (Local Only)
+    // Note: API insights are now handled by QuickWinsService to avoid duplicate calls
     private func generateEnhancedInsights(from activities: [Activity]) async -> RunningInsights {
-        // Try to get AI-powered insights first
-        do {
-            let quickInsights = try await apiService.getQuickInsights(activities: activities)
-            return convertAPIInsightsToRunningInsights(apiInsights: quickInsights.insights, activities: activities)
-        } catch {
-            print("API insights failed, falling back to local analysis: \(error)")
-            let processedData = preprocessActivities(activities)
-            return generateLocalInsights(from: processedData)
-        }
+        let processedData = preprocessActivities(activities)
+        return generateLocalInsights(from: processedData)
     }
     
     private func convertAPIInsightsToRunningInsights(

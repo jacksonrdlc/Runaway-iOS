@@ -87,7 +87,7 @@ struct ACWRCircularGauge: View {
 
                     Text("ACWR")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
 
@@ -255,12 +255,12 @@ struct StatBox: View {
             if !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
 
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -286,17 +286,17 @@ struct RecoveryStatusBanner: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Recovery Status")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
 
                     Text(trainingLoad.recoveryStatusDisplay)
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
             .padding()
             .background(recoveryColor.opacity(0.1))
@@ -403,7 +403,7 @@ struct TrendBox: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 Text(trend)
                     .font(.subheadline)
@@ -459,7 +459,7 @@ struct DayWorkoutCard: View {
 
                 Text(workoutType)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
 
             Spacer()

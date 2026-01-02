@@ -96,6 +96,13 @@ struct ActivityCommitmentCard: View {
         .background(Color.white)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .task {
+            // Refresh commitment data on appear
+            await dataManager.refreshTodaysCommitment()
+        }
+        .refreshable {
+            await dataManager.refreshTodaysCommitment()
+        }
     }
 
     private func createCommitment() {
@@ -177,7 +184,7 @@ struct NoCommitmentView: View {
 
 struct ActiveCommitmentView: View {
     @EnvironmentObject var dataManager: DataManager
-    let commitment: DailyCommitment
+    let initialCommitment: DailyCommitment
     @State private var currentTime = Date()
     @State private var showingEditSheet = false
     @State private var showingDeleteConfirmation = false
@@ -187,8 +194,13 @@ struct ActiveCommitmentView: View {
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
+    /// Use dataManager's commitment if available, fallback to initial
+    private var commitment: DailyCommitment {
+        dataManager.todaysCommitment ?? initialCommitment
+    }
+
     init(commitment: DailyCommitment) {
-        self.commitment = commitment
+        self.initialCommitment = commitment
         _selectedActivityType = State(initialValue: commitment.activityType)
     }
 
@@ -308,6 +320,12 @@ struct ActiveCommitmentView: View {
         } message: {
             Text("Are you sure you want to remove today's commitment? You can set a new one afterward.")
         }
+        .onChange(of: dataManager.todaysCommitment?.activityType) { _, newType in
+            // Sync selectedActivityType when commitment changes externally
+            if let newType = newType, newType != selectedActivityType {
+                selectedActivityType = newType
+            }
+        }
     }
 
     private func updateCommitment() {
@@ -375,7 +393,7 @@ struct FulfilledCommitmentView: View {
 
             // Main celebration message
             VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                Text("LET'S FUCKING GO! 🔥")
+                Text("LET'S GO! 🔥")
                     .font(.title2)
                     .fontWeight(.heavy)
                     .foregroundColor(AppTheme.Colors.LightMode.textPrimary)

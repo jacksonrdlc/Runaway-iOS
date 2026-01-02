@@ -30,6 +30,9 @@ class TrainingViewModel: ObservableObject {
     @Published var unifiedRecommendations: [String] = []
     @Published var lastUpdated: Date?
 
+    // Cache configuration
+    private let cacheValidityDuration: TimeInterval = 5 * 60 // 5 minutes
+
     // MARK: - Services
 
     private let quickWinsService: QuickWinsService
@@ -45,37 +48,55 @@ class TrainingViewModel: ObservableObject {
 
     // MARK: - Public Methods
 
-    /// Load all data sources in parallel
+    /// Load all data sources - local first, then API
     func loadAllData(activities: [Activity]) async {
         guard !activities.isEmpty else {
             #if DEBUG
-            print("🔄 UnifiedInsights: No activities to analyze")
+            print("🔄 TrainingViewModel: No activities to analyze")
+            #endif
+            return
+        }
+
+        // Check cache - skip full reload if data is fresh
+        if let lastUpdate = lastUpdated,
+           Date().timeIntervalSince(lastUpdate) < cacheValidityDuration,
+           hasData {
+            #if DEBUG
+            print("✅ TrainingViewModel: Using cached data (age: \(Int(Date().timeIntervalSince(lastUpdate)))s)")
             #endif
             return
         }
 
         #if DEBUG
-        print("🔄 UnifiedInsights: Loading all data sources")
+        print("🔄 TrainingViewModel: Loading data sources")
         #endif
 
-        // Load all data sources in parallel
+        // 1. Load local analysis FIRST (fast, no network)
+        await loadLocalAnalysis(activities: activities)
+        mergeRecommendations()
+
+        #if DEBUG
+        print("✅ TrainingViewModel: Local analysis ready")
+        #endif
+
+        // 2. Load API data in background (slower, but enhances local data)
         async let quickWinsTask = loadQuickWins()
-        async let localTask = loadLocalAnalysis(activities: activities)
         async let journalTask = loadCurrentJournal()
 
-        _ = await (quickWinsTask, localTask, journalTask)
+        _ = await (quickWinsTask, journalTask)
 
-        // Merge recommendations after both complete
+        // Merge again with API data
         mergeRecommendations()
         lastUpdated = Date()
 
         #if DEBUG
-        print("✅ UnifiedInsights: All data loaded")
+        print("✅ TrainingViewModel: All data loaded")
         #endif
     }
 
-    /// Refresh all data
+    /// Force refresh all data (ignores cache)
     func refresh(activities: [Activity]) async {
+        lastUpdated = nil // Invalidate cache
         await loadAllData(activities: activities)
     }
 

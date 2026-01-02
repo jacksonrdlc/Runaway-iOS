@@ -55,7 +55,7 @@ struct QuickWinsDashboardView: View {
                         if let lastUpdated = viewModel.lastUpdated {
                             Text("Last updated: \(lastUpdated, formatter: dateFormatter)")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                                 .padding(.top, 8)
                         }
                     } else {
@@ -210,7 +210,7 @@ struct QuickStatCard: View {
                     .foregroundColor(color)
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
 
             Text(value)
@@ -219,7 +219,7 @@ struct QuickStatCard: View {
 
             Text(subtitle)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .frame(width: 140)
         .padding()
@@ -244,7 +244,7 @@ struct PriorityRecommendationsBanner: View {
                 Spacer()
                 Button(action: { isExpanded.toggle() }) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
 
@@ -367,11 +367,11 @@ struct NavigationCard: View {
 
                 Text(title)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
@@ -399,7 +399,7 @@ struct QuickWinsErrorView: View {
 
             Text(error.localizedDescription)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
@@ -424,14 +424,14 @@ struct QuickWinsEmptyStateView: View {
         VStack(spacing: 16) {
             Image(systemName: "chart.bar.doc.horizontal")
                 .font(.system(size: 50))
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
 
             Text("No Insights Available")
                 .font(.headline)
 
             Text("Complete more runs to get AI-powered insights and recommendations.")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 

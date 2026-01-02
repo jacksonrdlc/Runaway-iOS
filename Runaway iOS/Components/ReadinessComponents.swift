@@ -45,7 +45,7 @@ struct ReadinessGauge: View {
 
                 Text(level.rawValue)
                     .font(.system(size: size * 0.12, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
         }
         .frame(width: size, height: size)
@@ -66,11 +66,11 @@ struct ReadinessCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Today's Readiness")
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                         Text(readiness.date.formatted(date: .abbreviated, time: .omitted))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
 
                     Spacer()
@@ -94,7 +94,7 @@ struct ReadinessCard: View {
             // Recommendation
             Text(readiness.recommendation)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 8)
         }
@@ -130,13 +130,13 @@ struct FactorPill: View {
                 Text(factor.name)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 HStack(spacing: 4) {
                     if !factor.value.isEmpty {
                         Text(factor.value)
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
 
                     if let change = factor.change {
@@ -184,7 +184,7 @@ struct CompactReadinessView: View {
 
                 Text(readiness.recommendation)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .lineLimit(2)
             }
 
@@ -192,7 +192,7 @@ struct CompactReadinessView: View {
 
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -215,7 +215,7 @@ struct ReadinessSection: View {
             HStack {
                 Label("Daily Readiness", systemImage: "heart.circle.fill")
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
 
@@ -304,7 +304,7 @@ struct ReadinessDetailView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Today's Recommendation")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
 
                         Text(readiness.recommendation)
                             .font(.body)
@@ -372,7 +372,7 @@ struct FactorDetailRow: View {
                     if !factor.value.isEmpty {
                         Text(factor.value)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
 
                     if let change = factor.change {
@@ -390,7 +390,7 @@ struct FactorDetailRow: View {
 
             Text("\(Int(factor.weight * 100))%")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
@@ -411,11 +411,11 @@ struct HealthKitUnavailableView: View {
     var body: some View {
         HStack {
             Image(systemName: "heart.slash")
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
 
             Text("HealthKit not available on this device")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .padding()
         .frame(maxWidth: .infinity)
@@ -431,15 +431,15 @@ struct NoReadinessDataView: View {
         VStack(spacing: 12) {
             Image(systemName: "heart.text.square")
                 .font(.largeTitle)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
 
             Text("No readiness data yet")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
 
             Text("Calculate your daily readiness score based on sleep, HRV, resting heart rate, and training load.")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
 
             Button {
@@ -473,11 +473,11 @@ struct ReadinessErrorView: View {
             Text("Unable to calculate readiness")
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
 
             Text(message)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
 
             Button {

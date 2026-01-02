@@ -105,6 +105,13 @@ struct Runaway_iOSApp: App {
                         }
                     }
 
+                    // Detect and log rest days (days without activities)
+                    Task {
+                        if let athleteId = UserSession.shared.userId {
+                            await RestDayService.shared.runDetectionIfNeeded(athleteId: athleteId)
+                        }
+                    }
+
                     // Track analytics session
                     AnalyticsService.shared.startSession()
                     AnalyticsService.shared.track(.appOpened, category: .engagement)

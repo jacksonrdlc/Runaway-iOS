@@ -398,7 +398,7 @@ struct AnalysisResultsView: View {
             // Last Updated
             Text("Last updated: \(results.lastUpdated, style: .relative) ago")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .padding(.top)
         }
     }
@@ -464,7 +464,7 @@ struct MetricBox: View {
             
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .padding(AppTheme.Spacing.md)
         .background(AppTheme.Colors.LightMode.cardBackground)
@@ -511,7 +511,7 @@ struct WeeklyVolumeChart: View {
                 }
             } else {
                 Text("Not enough data for weekly analysis")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .frame(height: 100)
             }
         }
@@ -542,7 +542,7 @@ struct PerformanceTrendCard: View {
                     
                     Text(trendDescription)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
                 
                 Spacer()
@@ -626,7 +626,7 @@ struct PredictionRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
             
             Text(formatPace(pace))
                 .font(.headline)
@@ -689,11 +689,11 @@ struct GoalReadinessCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Goal Readiness")
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                     
                     Text("Marathon Training Assessment")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
                 
                 Spacer()
@@ -765,7 +765,7 @@ struct GoalReadinessCard: View {
                             
                             Text(goalReadiness.riskFactors[index])
                                 .font(.caption)
-                                .foregroundColor(.primary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                         }
                     }
                 }
@@ -789,7 +789,7 @@ struct GoalReadinessCard: View {
                             
                             Text(goalReadiness.recommendations[index])
                                 .font(.caption)
-                                .foregroundColor(.primary)
+                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                         }
                     }
                 }
@@ -825,7 +825,7 @@ struct ReadinessRow: View {
             
             Text(title)
                 .font(.caption)
-                .foregroundColor(.primary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
             
             Spacer()
             
@@ -922,7 +922,7 @@ struct ProgressOverviewCard: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Monthly Distance Progress")
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
             
             ZStack {
                 // Background circle
@@ -963,7 +963,7 @@ struct ProgressOverviewCard: View {
                     
                     Text("Miles")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -976,11 +976,11 @@ struct ProgressOverviewCard: View {
                         .frame(width: 12, height: 12)
                     Text("Current Distance")
                         .font(.caption)
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                     Spacer()
                     Text(String(format: "%.1f mi", totalMiles))
                         .font(.caption.weight(.semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                 }
                 
                 HStack {
@@ -989,11 +989,11 @@ struct ProgressOverviewCard: View {
                         .frame(width: 12, height: 12)
                     Text("Monthly Goal")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                     Spacer()
                     Text("100.0 mi")
                         .font(.caption.weight(.semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
                 
                 let ratio = currentProgress / targetProgress

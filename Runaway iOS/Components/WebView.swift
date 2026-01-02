@@ -126,7 +126,7 @@ struct ArticleWebView: View {
                             .scaleEffect(0.8)
                         Text("Loading article...")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                     .frame(height: 44)
                     .frame(maxWidth: .infinity)
@@ -145,7 +145,7 @@ struct ArticleWebView: View {
                         
                         Text(errorMessage.isEmpty ? "The article failed to load. Please check your internet connection." : errorMessage)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                         
@@ -195,7 +195,7 @@ struct ArticleWebView: View {
                         
                         Text("The article URL appears to be invalid: \(article.url)")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
                         

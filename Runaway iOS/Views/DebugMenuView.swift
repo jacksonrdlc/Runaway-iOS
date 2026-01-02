@@ -26,7 +26,7 @@ struct DebugMenuView: View {
                         .font(.headline)
                     Text(fcmToken)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                         .lineLimit(3)
 
                     Button("Copy Token") {
@@ -97,7 +97,7 @@ struct DebugMenuView: View {
                             .font(.headline)
                         Spacer()
                         Text(lastUpdate.formatted(.dateTime.hour().minute().second()))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                 }
                 

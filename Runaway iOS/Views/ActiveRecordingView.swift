@@ -43,7 +43,7 @@ struct ActiveRecordingView: View {
                             .foregroundColor(.white)
                         Text("TIME")
                             .font(.caption2)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                     
                     Spacer()
@@ -56,7 +56,7 @@ struct ActiveRecordingView: View {
                             .foregroundColor(.white)
                         Text("MILES")
                             .font(.caption2)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                     
                     Spacer()
@@ -69,7 +69,7 @@ struct ActiveRecordingView: View {
                             .foregroundColor(.white)
                         Text("PACE")
                             .font(.caption2)
-                            .foregroundColor(.white.opacity(0.8))
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -133,7 +133,7 @@ struct ActiveRecordingView: View {
                                     .foregroundColor(.white)
                                 Text("Say how you're feeling or ask for stats")
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.8))
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
                             }
 
                             Spacer()
@@ -144,7 +144,7 @@ struct ActiveRecordingView: View {
                             }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .font(.title2)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundColor(AppTheme.Colors.iconSecondary)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -345,7 +345,7 @@ struct MetricDisplay: View {
                 .foregroundColor(.white)
             Text(label)
                 .font(.caption2)
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }

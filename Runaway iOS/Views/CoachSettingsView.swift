@@ -108,7 +108,7 @@ struct CoachSettingsView: View {
                         HStack {
                             Text("Slow")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
 
                             Slider(
                                 value: $store.settings.speechRate,
@@ -118,7 +118,7 @@ struct CoachSettingsView: View {
 
                             Text("Fast")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                     }
                     .padding(.vertical, 4)
@@ -130,7 +130,7 @@ struct CoachSettingsView: View {
                         HStack {
                             Image(systemName: "speaker.fill")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
 
                             Slider(
                                 value: $store.settings.volume,
@@ -140,7 +140,7 @@ struct CoachSettingsView: View {
 
                             Image(systemName: "speaker.wave.3.fill")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                     }
                     .padding(.vertical, 4)
@@ -254,7 +254,7 @@ private struct TargetPacePicker: View {
                 .clipped()
 
                 Text("/mi")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
         }
         .frame(height: 100)
@@ -290,7 +290,7 @@ private struct MaxHeartRateSettingsView: View {
                         Text("Estimated Max HR")
                         Spacer()
                         Text("\(estimatedMaxHR) bpm")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                 }
             } else {
@@ -313,7 +313,7 @@ private struct MaxHeartRateSettingsView: View {
                         .multilineTextAlignment(.trailing)
                         .frame(width: 60)
                     Text("bpm")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             } footer: {
                 Text("For more accurate zone calculations using heart rate reserve.")

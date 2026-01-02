@@ -11,11 +11,11 @@ import SwiftUI
 
 struct AwardsView: View {
     @EnvironmentObject private var dataManager: DataManager
+    @ObservedObject private var awardsService = AwardsService.shared
     @State private var awardsData: [(award: AwardDefinition, isEarned: Bool, progress: Double)] = []
     @State private var selectedCategory: AwardCategory? = nil
-    @State private var isLoading = true
-
-    private let awardsService = AwardsService.shared
+    @State private var selectedAward: AwardDefinition? = nil
+    @State private var showingDetail = false
 
     var body: some View {
         ZStack {
@@ -33,23 +33,45 @@ struct AwardsView: View {
                     CategoryFilterBar(selectedCategory: $selectedCategory)
 
                     // Awards Grid
-                    if isLoading {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                            .padding(.top, 50)
+                    if awardsService.isLoading {
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Loading stats...")
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        }
+                        .padding(.top, 50)
                     } else {
+                        // Stats summary
+                        if let stats = awardsService.lifetimeStats {
+                            Text("\(stats.totalRuns) runs • \(String(format: "%.0f", stats.totalDistanceMiles)) miles lifetime")
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        }
+
                         LazyVGrid(columns: [
                             GridItem(.flexible()),
                             GridItem(.flexible()),
                             GridItem(.flexible())
                         ], spacing: AppTheme.Spacing.md) {
                             ForEach(filteredAwards, id: \.award.id) { item in
-                                AwardBadgeView(
-                                    award: item.award,
-                                    isEarned: item.isEarned,
-                                    progress: item.progress,
-                                    showProgress: true
-                                )
+                                Button(action: {
+                                    // Only allow tap if stats are loaded
+                                    guard awardsService.lifetimeStats != nil else { return }
+                                    selectedAward = item.award
+                                    showingDetail = true
+                                }) {
+                                    AwardBadgeView(
+                                        award: item.award,
+                                        isEarned: item.isEarned,
+                                        progress: item.progress,
+                                        showProgress: true
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(awardsService.lifetimeStats == nil)
+                                .opacity(awardsService.lifetimeStats == nil ? 0.6 : 1.0)
                             }
                         }
                         .padding(.horizontal, AppTheme.Spacing.md)
@@ -60,8 +82,13 @@ struct AwardsView: View {
         }
         .navigationTitle("Awards")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear {
-            loadAwards()
+        .task {
+            await loadAwards()
+        }
+        .sheet(isPresented: $showingDetail) {
+            if let award = selectedAward {
+                AwardDetailSheetFromStats(award: award)
+            }
         }
     }
 
@@ -72,15 +99,14 @@ struct AwardsView: View {
         return awardsData
     }
 
-    private func loadAwards() {
-        isLoading = true
-        let activities = dataManager.activities
+    private func loadAwards() async {
         let athleteId = dataManager.athlete?.id ?? 0
 
-        awardsData = awardsService.getAllAwardsWithStatus(
-            activities: activities,
-            athleteId: athleteId
-        )
+        // Load lifetime stats with a single DB call (efficient!)
+        await awardsService.loadLifetimeStats(for: athleteId)
+
+        // Get awards using the cached stats
+        awardsData = awardsService.getAllAwardsWithStatusFromStats()
 
         // Sort: earned first, then by tier (platinum > gold > silver > bronze)
         awardsData.sort { a, b in
@@ -89,8 +115,6 @@ struct AwardsView: View {
             }
             return tierOrder(a.award.tier) > tierOrder(b.award.tier)
         }
-
-        isLoading = false
     }
 
     private func tierOrder(_ tier: AwardTier) -> Int {
@@ -232,32 +256,21 @@ struct AwardBadgeView: View {
     var body: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
             ZStack {
-                // Background circle with tier color
-                Circle()
-                    .fill(
-                        isEarned ?
-                        award.tier.color.opacity(0.2) :
-                        Color.gray.opacity(0.1)
-                    )
-                    .frame(width: size.frameSize, height: size.frameSize)
+                // Custom badge design
+                CustomAwardBadge(
+                    award: award,
+                    isEarned: isEarned,
+                    size: size.frameSize
+                )
 
                 // Progress ring (if showing progress and not earned)
                 if showProgress && !isEarned && progress > 0 {
                     Circle()
                         .trim(from: 0, to: progress)
-                        .stroke(award.tier.color.opacity(0.5), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .frame(width: size.frameSize - 6, height: size.frameSize - 6)
+                        .stroke(award.tier.color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                        .frame(width: size.frameSize + 8, height: size.frameSize + 8)
                         .rotationEffect(.degrees(-90))
                 }
-
-                // Icon
-                Image(systemName: award.icon)
-                    .font(.system(size: size.iconSize))
-                    .foregroundColor(
-                        isEarned ?
-                        award.tier.color :
-                        Color.gray.opacity(0.4)
-                    )
             }
 
             // Award name
@@ -298,9 +311,11 @@ struct AwardBadgeView: View {
 struct AwardsPreviewSection: View {
     @EnvironmentObject private var dataManager: DataManager
     @Environment(AppRouter.self) private var router
+    @ObservedObject private var awardsService = AwardsService.shared
     @State private var earnedAwards: [(award: AwardDefinition, earnedDate: Date?)] = []
+    @State private var selectedAward: AwardDefinition? = nil
+    @State private var showingDetail = false
 
-    private let awardsService = AwardsService.shared
     private let maxDisplayCount = 8
 
     var body: some View {
@@ -317,22 +332,30 @@ struct AwardsPreviewSection: View {
 
                 Spacer()
 
-                if !earnedAwards.isEmpty {
-                    Button(action: {
-                        router.navigate(to: .awards)
-                    }) {
-                        HStack(spacing: 4) {
-                            Text("View All")
-                                .font(AppTheme.Typography.subheadline)
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                        }
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                Button(action: {
+                    router.navigate(to: .awards)
+                }) {
+                    HStack(spacing: 4) {
+                        Text("View All")
+                            .font(AppTheme.Typography.subheadline)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
                     }
+                    .foregroundColor(AppTheme.Colors.LightMode.accent)
                 }
             }
 
-            if earnedAwards.isEmpty {
+            if awardsService.isLoading {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading awards...")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, AppTheme.Spacing.md)
+            } else if earnedAwards.isEmpty {
                 // Empty state
                 VStack(spacing: AppTheme.Spacing.sm) {
                     Image(systemName: "medal")
@@ -359,12 +382,18 @@ struct AwardsPreviewSection: View {
                     GridItem(.flexible())
                 ], spacing: AppTheme.Spacing.sm) {
                     ForEach(earnedAwards.prefix(maxDisplayCount), id: \.award.id) { item in
-                        AwardBadgeView(
-                            award: item.award,
-                            isEarned: true,
-                            progress: 1.0,
-                            size: .small
-                        )
+                        Button(action: {
+                            selectedAward = item.award
+                            showingDetail = true
+                        }) {
+                            AwardBadgeView(
+                                award: item.award,
+                                isEarned: true,
+                                progress: 1.0,
+                                size: .small
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -383,31 +412,28 @@ struct AwardsPreviewSection: View {
             }
         }
         .surfaceCard()
-        .onAppear {
-            loadEarnedAwards()
+        .task {
+            await loadEarnedAwards()
         }
-        .onChange(of: dataManager.activities) { _, _ in
-            loadEarnedAwards()
+        .sheet(isPresented: $showingDetail) {
+            if let award = selectedAward {
+                AwardDetailSheetFromStats(award: award)
+            }
         }
     }
 
-    private func loadEarnedAwards() {
-        let activities = dataManager.activities
+    private func loadEarnedAwards() async {
         let athleteId = dataManager.athlete?.id ?? 0
 
-        earnedAwards = awardsService.getEarnedAwardsWithDetails(
-            activities: activities,
-            athleteId: athleteId
-        )
+        // Load lifetime stats with a single DB call (efficient!)
+        await awardsService.loadLifetimeStats(for: athleteId)
 
-        // Sort by tier (platinum first) then by earned date (most recent first)
+        // Get earned awards from stats
+        earnedAwards = awardsService.getEarnedAwardsFromStats()
+
+        // Sort by tier (platinum first)
         earnedAwards.sort { a, b in
-            if tierOrder(a.award.tier) != tierOrder(b.award.tier) {
-                return tierOrder(a.award.tier) > tierOrder(b.award.tier)
-            }
-            let dateA = a.earnedDate ?? Date.distantPast
-            let dateB = b.earnedDate ?? Date.distantPast
-            return dateA > dateB
+            tierOrder(a.award.tier) > tierOrder(b.award.tier)
         }
     }
 
@@ -417,6 +443,425 @@ struct AwardsPreviewSection: View {
         case .gold: return 3
         case .silver: return 2
         case .bronze: return 1
+        }
+    }
+}
+
+// MARK: - Award Detail Sheet
+
+struct AwardDetailSheet: View {
+    let award: AwardDefinition
+    let activities: [Activity]
+    @Environment(\.dismiss) private var dismiss
+
+    private let awardsService = AwardsService.shared
+
+    private var progressDetails: (current: Double, target: Double, unit: String, formattedCurrent: String, formattedTarget: String) {
+        awardsService.getProgressDetails(for: award, activities: activities)
+    }
+
+    private var isEarned: Bool {
+        progressDetails.current >= progressDetails.target ||
+        (award.requirement.type == .fastestPace && progressDetails.current > 0 && progressDetails.current <= progressDetails.target)
+    }
+
+    private var progress: Double {
+        guard progressDetails.target > 0 else { return 0 }
+        if award.requirement.type == .fastestPace {
+            // For pace, lower is better
+            if progressDetails.current == 0 { return 0 }
+            return progressDetails.current <= progressDetails.target ? 1.0 : min(progressDetails.target / progressDetails.current, 0.99)
+        }
+        return min(progressDetails.current / progressDetails.target, 1.0)
+    }
+
+    private var earnedDate: Date? {
+        awardsService.getEarnedAwardsWithDetails(activities: activities, athleteId: 0)
+            .first { $0.award.id == award.id }?.earnedDate
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.Colors.LightMode.background.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: AppTheme.Spacing.xl) {
+                        // Award Icon
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    isEarned ?
+                                    award.tier.color.opacity(0.2) :
+                                    Color.gray.opacity(0.1)
+                                )
+                                .frame(width: 140, height: 140)
+
+                            if !isEarned && progress > 0 {
+                                Circle()
+                                    .trim(from: 0, to: progress)
+                                    .stroke(award.tier.color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                    .frame(width: 134, height: 134)
+                                    .rotationEffect(.degrees(-90))
+                            }
+
+                            Image(systemName: award.icon)
+                                .font(.system(size: 60))
+                                .foregroundColor(
+                                    isEarned ?
+                                    award.tier.color :
+                                    Color.gray.opacity(0.4)
+                                )
+                        }
+
+                        // Award Name & Tier
+                        VStack(spacing: AppTheme.Spacing.sm) {
+                            Text(award.name)
+                                .font(AppTheme.Typography.title)
+                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                            Text(award.tier.displayName)
+                                .font(AppTheme.Typography.subheadline)
+                                .foregroundColor(award.tier.color)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
+                                .background(award.tier.color.opacity(0.15))
+                                .clipShape(Capsule())
+
+                            Text(award.category.displayName)
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        }
+
+                        // Description
+                        Text(award.description)
+                            .font(AppTheme.Typography.body)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, AppTheme.Spacing.lg)
+
+                        // Progress Section
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            Text("Your Progress")
+                                .font(AppTheme.Typography.headline)
+                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                            // Progress Bar
+                            VStack(spacing: AppTheme.Spacing.sm) {
+                                GeometryReader { geometry in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(height: 16)
+
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(isEarned ? award.tier.color : AppTheme.Colors.LightMode.accent)
+                                            .frame(width: geometry.size.width * progress, height: 16)
+                                    }
+                                }
+                                .frame(height: 16)
+
+                                // Current / Target
+                                HStack {
+                                    Text(progressDetails.formattedCurrent)
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundColor(isEarned ? award.tier.color : AppTheme.Colors.LightMode.accent)
+
+                                    Text("/ \(progressDetails.formattedTarget) \(progressDetails.unit)")
+                                        .font(AppTheme.Typography.body)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                }
+                            }
+                            .padding(.horizontal, AppTheme.Spacing.lg)
+
+                            // Percentage
+                            Text("\(Int(progress * 100))% Complete")
+                                .font(AppTheme.Typography.subheadline)
+                                .foregroundColor(
+                                    isEarned ?
+                                    award.tier.color :
+                                    AppTheme.Colors.LightMode.textSecondary
+                                )
+
+                            // Remaining (if not earned)
+                            if !isEarned {
+                                let remaining = progressDetails.target - progressDetails.current
+                                if remaining > 0 {
+                                    Text(remainingText(remaining: remaining))
+                                        .font(AppTheme.Typography.caption)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(AppTheme.Colors.LightMode.cardBackground)
+                        .cornerRadius(AppTheme.CornerRadius.large)
+                        .padding(.horizontal, AppTheme.Spacing.md)
+
+                        // Earned Date (if earned)
+                        if isEarned, let date = earnedDate {
+                            HStack {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundColor(award.tier.color)
+                                Text("Earned on \(date.formatted(date: .long, time: .omitted))")
+                                    .font(AppTheme.Typography.subheadline)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            }
+                            .padding()
+                            .background(award.tier.color.opacity(0.1))
+                            .cornerRadius(AppTheme.CornerRadius.medium)
+                        }
+
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.top, AppTheme.Spacing.xl)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            .font(.title2)
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func remainingText(remaining: Double) -> String {
+        let unit = progressDetails.unit
+        switch award.requirement.type {
+        case .totalDistance, .singleRunDistance:
+            return String(format: "%.1f more %@ to go!", remaining, unit)
+        case .totalRuns:
+            return "\(Int(remaining)) more \(remaining == 1 ? "run" : "runs") to go!"
+        case .weeklyStreak:
+            return "\(Int(remaining)) more \(remaining == 1 ? "week" : "weeks") to go!"
+        case .totalTime:
+            return String(format: "%.1f more %@ to go!", remaining, unit)
+        case .elevationGain:
+            return String(format: "%.0f more %@ to go!", remaining, unit)
+        case .fastestPace:
+            return "Run faster to unlock this award!"
+        default:
+            return "Keep going to unlock this award!"
+        }
+    }
+}
+
+// MARK: - Award Detail Sheet (using lifetime stats - efficient)
+
+struct AwardDetailSheetFromStats: View {
+    let award: AwardDefinition
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var awardsService = AwardsService.shared
+
+    private var progressDetails: (current: Double, target: Double, unit: String, formattedCurrent: String, formattedTarget: String) {
+        awardsService.getProgressDetailsFromStats(for: award)
+    }
+
+    private var hasStats: Bool {
+        awardsService.lifetimeStats != nil
+    }
+
+    private var isEarned: Bool {
+        progressDetails.current >= progressDetails.target ||
+        (award.requirement.type == .fastestPace && progressDetails.current > 0 && progressDetails.current <= progressDetails.target)
+    }
+
+    private var progress: Double {
+        guard progressDetails.target > 0 else { return 0 }
+        if award.requirement.type == .fastestPace {
+            if progressDetails.current == 0 { return 0 }
+            return progressDetails.current <= progressDetails.target ? 1.0 : min(progressDetails.target / progressDetails.current, 0.99)
+        }
+        return min(progressDetails.current / progressDetails.target, 1.0)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AppTheme.Colors.LightMode.background.ignoresSafeArea()
+
+                if awardsService.isLoading || !hasStats {
+                    // Loading state - show while stats are loading
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Loading progress...")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: AppTheme.Spacing.xl) {
+                            // Award Icon
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        isEarned ?
+                                        award.tier.color.opacity(0.2) :
+                                        Color.gray.opacity(0.1)
+                                    )
+                                    .frame(width: 140, height: 140)
+
+                                if !isEarned && progress > 0 {
+                                    Circle()
+                                        .trim(from: 0, to: progress)
+                                        .stroke(award.tier.color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                        .frame(width: 134, height: 134)
+                                        .rotationEffect(.degrees(-90))
+                                }
+
+                                Image(systemName: award.icon)
+                                    .font(.system(size: 60))
+                                    .foregroundColor(
+                                        isEarned ?
+                                        award.tier.color :
+                                        Color.gray.opacity(0.4)
+                                    )
+                            }
+
+                            // Award Name & Tier
+                            VStack(spacing: AppTheme.Spacing.sm) {
+                                Text(award.name)
+                                    .font(AppTheme.Typography.title)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                                Text(award.tier.displayName)
+                                    .font(AppTheme.Typography.subheadline)
+                                    .foregroundColor(award.tier.color)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    .background(award.tier.color.opacity(0.15))
+                                    .clipShape(Capsule())
+
+                                Text(award.category.displayName)
+                                    .font(AppTheme.Typography.caption)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            }
+
+                            // Description
+                            Text(award.description)
+                                .font(AppTheme.Typography.body)
+                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                .multilineTextAlignment(.center)
+                            .padding(.horizontal, AppTheme.Spacing.lg)
+
+                        // Progress Section
+                        VStack(spacing: AppTheme.Spacing.md) {
+                            Text("Your Progress")
+                                .font(AppTheme.Typography.headline)
+                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+
+                            // Progress Bar
+                            VStack(spacing: AppTheme.Spacing.sm) {
+                                GeometryReader { geometry in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(height: 16)
+
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(isEarned ? award.tier.color : AppTheme.Colors.LightMode.accent)
+                                            .frame(width: geometry.size.width * progress, height: 16)
+                                    }
+                                }
+                                .frame(height: 16)
+
+                                // Current / Target
+                                HStack {
+                                    Text(progressDetails.formattedCurrent)
+                                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        .foregroundColor(isEarned ? award.tier.color : AppTheme.Colors.LightMode.accent)
+
+                                    Text("/ \(progressDetails.formattedTarget) \(progressDetails.unit)")
+                                        .font(AppTheme.Typography.body)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                }
+                            }
+                            .padding(.horizontal, AppTheme.Spacing.lg)
+
+                            // Percentage
+                            Text("\(Int(progress * 100))% Complete")
+                                .font(AppTheme.Typography.subheadline)
+                                .foregroundColor(
+                                    isEarned ?
+                                    award.tier.color :
+                                    AppTheme.Colors.LightMode.textSecondary
+                                )
+
+                            // Remaining (if not earned)
+                            if !isEarned {
+                                let remaining = progressDetails.target - progressDetails.current
+                                if remaining > 0 {
+                                    Text(remainingText(remaining: remaining))
+                                        .font(AppTheme.Typography.caption)
+                                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(AppTheme.Colors.LightMode.cardBackground)
+                        .cornerRadius(AppTheme.CornerRadius.large)
+                        .padding(.horizontal, AppTheme.Spacing.md)
+
+                        // Earned indicator
+                        if isEarned {
+                            HStack {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundColor(award.tier.color)
+                                Text("Award Earned!")
+                                    .font(AppTheme.Typography.subheadline)
+                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            }
+                            .padding()
+                            .background(award.tier.color.opacity(0.1))
+                            .cornerRadius(AppTheme.CornerRadius.medium)
+                        }
+
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.top, AppTheme.Spacing.xl)
+                    } // end ScrollView
+                } // end else (hasStats)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            .font(.title2)
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func remainingText(remaining: Double) -> String {
+        let unit = progressDetails.unit
+        switch award.requirement.type {
+        case .totalDistance, .singleRunDistance:
+            return String(format: "%.1f more %@ to go!", remaining, unit)
+        case .totalRuns:
+            return "\(Int(remaining)) more \(remaining == 1 ? "run" : "runs") to go!"
+        case .weeklyStreak:
+            return "\(Int(remaining)) more \(remaining == 1 ? "week" : "weeks") to go!"
+        case .totalTime:
+            return String(format: "%.1f more %@ to go!", remaining, unit)
+        case .elevationGain:
+            return String(format: "%.0f more %@ to go!", remaining, unit)
+        case .fastestPace:
+            return "Run faster to unlock this award!"
+        default:
+            return "Keep going to unlock this award!"
         }
     }
 }

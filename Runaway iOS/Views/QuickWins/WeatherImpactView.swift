@@ -142,13 +142,13 @@ struct WeatherMetricBox: View {
 
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
 
             if !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -175,7 +175,7 @@ struct PaceImpactCallout: View {
 
                 Text("~\(Int(weather.paceDegradationSecondsPerMile))s/mile slower in heat")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
 
             Spacer()
@@ -206,14 +206,14 @@ struct HeatAcclimationIndicator: View {
 
                 Text(weather.heatAcclimationLevel.replacingOccurrences(of: "_", with: " ").capitalized)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
 
                 Spacer()
             }
 
             Text(acclimationDescription)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .padding()
         .background(Color(.systemGray6))

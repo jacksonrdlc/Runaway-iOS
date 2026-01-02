@@ -2,8 +2,8 @@
 //  ReadinessService.swift
 //  Runaway iOS
 //
-//  Calculates daily readiness/recovery scores based on HealthKit data
-//  Formula: Sleep (30%) + HRV (25%) + Resting HR (20%) + Training Load (25%)
+//  Calculates daily readiness/recovery scores based on HealthKit data and rest days
+//  Formula: Sleep (25%) + HRV (20%) + Resting HR (15%) + Training Load (20%) + Rest Days (20%)
 //
 
 import Foundation
@@ -22,6 +22,7 @@ class ReadinessService: ObservableObject {
     // MARK: - Private Properties
 
     private let healthKitDataReader = HealthKitDataReader()
+    private let restDayService = RestDayService.shared
     private let cacheKey = "cached_daily_readiness"
     private let cacheDuration: TimeInterval = 4 * 60 * 60 // 4 hours
 
@@ -67,18 +68,22 @@ class ReadinessService: ObservableObject {
         // Calculate training load from recent activities
         let trainingLoad = await calculateTrainingLoadScore()
 
+        // Calculate rest day factor
+        let athleteId = UserSession.shared.userId ?? 0
+        let restDayFactor = await calculateRestDayFactor(athleteId: athleteId)
+
         // Build factors
         var factors: [ReadinessFactor] = []
         var totalWeightedScore = 0.0
         var totalWeight = 0.0
 
-        // Sleep factor (30%)
+        // Sleep factor (25%)
         if let sleep = sleep {
             let factor = ReadinessFactor(
                 id: ReadinessFactor.sleepId,
                 name: "Sleep",
                 score: sleep.qualityScore,
-                weight: 0.30,
+                weight: 0.25,
                 value: formatDuration(minutes: sleep.totalSleepMinutes),
                 change: nil,
                 trend: sleep.totalSleepMinutes >= 420 ? .improving : (sleep.totalSleepMinutes >= 360 ? .stable : .declining)
@@ -88,7 +93,7 @@ class ReadinessService: ObservableObject {
             totalWeight += factor.weight
         }
 
-        // HRV factor (25%)
+        // HRV factor (20%)
         if let hrv = hrv {
             let changeText = hrv.percentFromBaseline.map { String(format: "%+.0f%%", $0) }
             let trend: ReadinessFactor.FactorTrend = {
@@ -102,7 +107,7 @@ class ReadinessService: ObservableObject {
                 id: ReadinessFactor.hrvId,
                 name: "HRV",
                 score: hrv.score,
-                weight: 0.25,
+                weight: 0.20,
                 value: String(format: "%.0f ms", hrv.value),
                 change: changeText,
                 trend: trend
@@ -112,7 +117,7 @@ class ReadinessService: ObservableObject {
             totalWeight += factor.weight
         }
 
-        // Resting HR factor (20%)
+        // Resting HR factor (15%)
         if let restingHR = restingHR {
             let changeText = restingHR.deviationFromBaseline.map { String(format: "%+d bpm", $0) }
             let trend: ReadinessFactor.FactorTrend = {
@@ -126,7 +131,7 @@ class ReadinessService: ObservableObject {
                 id: ReadinessFactor.restingHRId,
                 name: "Resting HR",
                 score: restingHR.score,
-                weight: 0.20,
+                weight: 0.15,
                 value: "\(restingHR.value) bpm",
                 change: changeText,
                 trend: trend
@@ -136,19 +141,33 @@ class ReadinessService: ObservableObject {
             totalWeight += factor.weight
         }
 
-        // Training load factor (25%)
-        let trainingLoadFactor = ReadinessFactor(
+        // Training load factor (20%)
+        let trainingLoadFactorItem = ReadinessFactor(
             id: ReadinessFactor.trainingLoadId,
             name: "Training Load",
             score: trainingLoad.score,
-            weight: 0.25,
+            weight: 0.20,
             value: trainingLoad.description,
             change: nil,
             trend: trainingLoad.trend
         )
-        factors.append(trainingLoadFactor)
-        totalWeightedScore += Double(trainingLoadFactor.score) * trainingLoadFactor.weight
-        totalWeight += trainingLoadFactor.weight
+        factors.append(trainingLoadFactorItem)
+        totalWeightedScore += Double(trainingLoadFactorItem.score) * trainingLoadFactorItem.weight
+        totalWeight += trainingLoadFactorItem.weight
+
+        // Rest days factor (20%)
+        let restDaysFactorItem = ReadinessFactor(
+            id: ReadinessFactor.restDaysId,
+            name: "Rest Days",
+            score: restDayFactor.score,
+            weight: 0.20,
+            value: restDayFactor.description,
+            change: nil,
+            trend: restDayFactor.trend
+        )
+        factors.append(restDaysFactorItem)
+        totalWeightedScore += Double(restDaysFactorItem.score) * restDaysFactorItem.weight
+        totalWeight += restDaysFactorItem.weight
 
         // Calculate overall score
         let overallScore: Int
@@ -158,16 +177,14 @@ class ReadinessService: ObservableObject {
             overallScore = 50 // Default if no data
         }
 
-        // Get athlete ID
-        let athleteId = UserSession.shared.userId ?? 0
-
         // Generate personalized recommendation
         let recommendation = generateRecommendation(
             score: overallScore,
             sleep: sleep,
             hrv: hrv,
             restingHR: restingHR,
-            trainingLoad: trainingLoad
+            trainingLoad: trainingLoad,
+            restDays: restDayFactor
         )
 
         let readiness = DailyReadiness(
@@ -308,12 +325,26 @@ class ReadinessService: ObservableObject {
         return durationHours * intensityFactor * 100 // Arbitrary scale
     }
 
+    private func calculateRestDayFactor(athleteId: Int) async -> (score: Int, description: String, trend: ReadinessFactor.FactorTrend) {
+        // Use RestDayService to calculate the rest day factor
+        do {
+            return try await restDayService.calculateRestDayFactor(athleteId: athleteId)
+        } catch {
+            #if DEBUG
+            print("Failed to calculate rest day factor: \(error)")
+            #endif
+            // Default to adequate if we can't calculate
+            return (70, "Unknown", .stable)
+        }
+    }
+
     private func generateRecommendation(
         score: Int,
         sleep: HealthKitDataReader.SleepAnalysis?,
         hrv: HealthKitDataReader.HRVData?,
         restingHR: HealthKitDataReader.RestingHRData?,
-        trainingLoad: (score: Int, description: String, trend: ReadinessFactor.FactorTrend)
+        trainingLoad: (score: Int, description: String, trend: ReadinessFactor.FactorTrend),
+        restDays: (score: Int, description: String, trend: ReadinessFactor.FactorTrend)
     ) -> String {
         let level = DailyReadinessLevel.from(score: score)
 
@@ -336,10 +367,19 @@ class ReadinessService: ObservableObject {
             concerns.append("high training load")
         }
 
+        if restDays.score < 50 {
+            concerns.append("rest day overdue")
+        }
+
         // Generate specific recommendation
         if !concerns.isEmpty && score < 70 {
             let concernsText = concerns.joined(separator: ", ")
             return "Recovery compromised by \(concernsText). Consider an easy day or rest."
+        }
+
+        // If rest days are low but overall score is okay, still mention it
+        if restDays.score < 60 && score >= 70 {
+            return "\(level.recommendation) Consider scheduling a rest day soon."
         }
 
         return level.recommendation

@@ -3,6 +3,7 @@
 //  Runaway iOS
 //
 //  Service for fetching AI-powered Quick Wins insights
+//  Uses Supabase Edge Functions for analysis
 //
 
 import Foundation
@@ -18,72 +19,36 @@ class QuickWinsService: ObservableObject {
     @Published var isLoading = false
     @Published var error: QuickWinsError?
 
+    // Edge function configuration
+    private var edgeFunctionURL: String {
+        let baseURL = SupabaseConfiguration.supabaseURL ?? ""
+        return "\(baseURL)/functions/v1/comprehensive-analysis"
+    }
+
     // MARK: - Fetch Comprehensive Analysis
 
     /// Fetch comprehensive analysis including weather, VO2 max, and training load
     func fetchComprehensiveAnalysis() async throws -> QuickWinsResponse {
-        return try await performRequest(
-            endpoint: APIConfiguration.RunawayCoach.comprehensiveAnalysis,
-            method: "GET",
-            responseType: QuickWinsResponse.self
-        )
-    }
-
-    // MARK: - Individual Endpoints
-
-    /// Fetch weather impact analysis
-    func fetchWeatherImpact(limit: Int = 30) async throws -> WeatherAnalysis {
-        return try await performRequest(
-            endpoint: "\(APIConfiguration.RunawayCoach.weatherImpact)?limit=\(limit)",
-            method: "GET",
-            responseType: WeatherAnalysis.self
-        )
-    }
-
-    /// Fetch VO2 max estimate and race predictions
-    func fetchVO2MaxEstimate(limit: Int = 50) async throws -> VO2MaxEstimate {
-        return try await performRequest(
-            endpoint: "\(APIConfiguration.RunawayCoach.vo2maxEstimate)?limit=\(limit)",
-            method: "GET",
-            responseType: VO2MaxEstimate.self
-        )
-    }
-
-    /// Fetch training load analysis
-    func fetchTrainingLoad(limit: Int = 60) async throws -> TrainingLoadAnalysis {
-        return try await performRequest(
-            endpoint: "\(APIConfiguration.RunawayCoach.trainingLoad)?limit=\(limit)",
-            method: "GET",
-            responseType: TrainingLoadAnalysis.self
-        )
-    }
-
-    // MARK: - Private Helper Methods
-
-    private func performRequest<R: Codable>(
-        endpoint: String,
-        method: String,
-        responseType: R.Type
-    ) async throws -> R {
-        guard let url = URL(string: APIConfiguration.RunawayCoach.currentBaseURL + endpoint) else {
+        guard let url = URL(string: edgeFunctionURL) else {
             throw QuickWinsError.invalidResponse
         }
 
         var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.timeoutInterval = APIConfiguration.RunawayCoach.requestTimeout
+        request.httpMethod = "GET"
+        request.timeoutInterval = 30.0
 
-        // Add auth headers (JWT token)
-        let authHeaders = await APIConfiguration.RunawayCoach.getAuthHeaders()
-        for (key, value) in authHeaders {
-            request.setValue(value, forHTTPHeaderField: key)
+        // Add auth headers (JWT token from Supabase)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        if let token = await getJWTToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
         #if DEBUG
-        print("🏃 Quick Wins API Request:")
+        print("🏃 Quick Wins Request:")
         print("   URL: \(url)")
-        print("   Method: \(method)")
-        print("   Auth: Configured")
+        print("   Auth: JWT Token")
         #endif
 
         do {
@@ -112,16 +77,16 @@ class QuickWinsService: ObservableObject {
             }
 
             do {
-                let decodedResponse = try decoder.decode(responseType, from: data)
+                let decodedResponse = try decoder.decode(QuickWinsResponse.self, from: data)
                 #if DEBUG
-                print("   ✅ Successfully decoded \(String(describing: responseType))")
+                print("   Successfully decoded QuickWinsResponse")
                 #endif
                 return decodedResponse
             } catch {
                 #if DEBUG
-                print("   ❌ Decoding error: \(error)")
+                print("   Decoding error: \(error)")
                 if let jsonString = String(data: data, encoding: .utf8) {
-                    print("   Raw Response: \(jsonString.prefix(200))...")
+                    print("   Raw Response: \(jsonString.prefix(500))...")
                 }
                 #endif
                 throw QuickWinsError.decodingError(error)
@@ -131,6 +96,20 @@ class QuickWinsService: ObservableObject {
             throw error
         } catch {
             throw QuickWinsError.networkError(error)
+        }
+    }
+
+    // MARK: - Private Methods
+
+    private func getJWTToken() async -> String? {
+        do {
+            let session = try await supabase.auth.session
+            return session.accessToken
+        } catch {
+            #if DEBUG
+            print("Failed to get JWT token: \(error)")
+            #endif
+            return nil
         }
     }
 

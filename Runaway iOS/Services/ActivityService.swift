@@ -37,7 +37,8 @@ class ActivityService {
                 map_summary_polyline,
                 distance,
                 activity_date,
-                elapsed_time
+                elapsed_time,
+                elevation_gain
                 """
             )
             .order("activity_date", ascending: false)
@@ -56,9 +57,8 @@ class ActivityService {
 
     static let defaultPageSize = 50
 
-    // Function to get all activities for a user in a time range (with pagination)
+    // Function to get all activities for a user (with pagination)
     static func getAllActivitiesByUser(userId: Int, limit: Int = defaultPageSize, offset: Int = 0) async throws -> [Activity] {
-        let startOfThisYear = Date().startOfThisYear
         print("🔍 ActivityService: Fetching activities for user \(userId) (limit: \(limit), offset: \(offset))")
 
         let activities: [Activity] = try await supabase
@@ -73,11 +73,11 @@ class ActivityService {
                 map_summary_polyline,
                 distance,
                 activity_date,
-                elapsed_time
+                elapsed_time,
+                elevation_gain
                 """
             )
             .eq("athlete_id", value: userId)
-            .gte("activity_date", value: startOfThisYear)
             .order("activity_date", ascending: false)
             .range(from: offset, to: offset + limit - 1)
             .execute()
@@ -132,7 +132,8 @@ class ActivityService {
                 map_summary_polyline,
                 distance,
                 activity_date,
-                elapsed_time
+                elapsed_time,
+                elevation_gain
                 """
             )
             .eq("id", value: id)
@@ -156,7 +157,8 @@ class ActivityService {
                 map_summary_polyline,
                 distance,
                 activity_date,
-                elapsed_time
+                elapsed_time,
+                elevation_gain
                 """
             )
             .single()
@@ -183,7 +185,8 @@ class ActivityService {
                 map_summary_polyline,
                 distance,
                 activity_date,
-                elapsed_time
+                elapsed_time,
+                elevation_gain
                 """
             )
             .single()
@@ -293,7 +296,8 @@ class ActivityService {
                 map_summary_polyline,
                 distance,
                 activity_date,
-                elapsed_time
+                elapsed_time,
+                elevation_gain
                 """
             )
             .eq("athlete_id", value: userId)
@@ -318,7 +322,8 @@ class ActivityService {
                 map_summary_polyline,
                 distance,
                 activity_date,
-                elapsed_time
+                elapsed_time,
+                elevation_gain
                 """
             )
             .eq("athlete_id", value: userId)

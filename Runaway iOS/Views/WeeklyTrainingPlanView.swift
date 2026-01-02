@@ -97,7 +97,7 @@ struct WeeklyTrainingPlanView: View {
                 if let focus = plan.focusArea {
                     Text(focus)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Color.blue.opacity(0.1))
@@ -115,7 +115,7 @@ struct WeeklyTrainingPlanView: View {
             if let notes = plan.notes {
                 Text(notes)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -129,7 +129,7 @@ struct WeeklyTrainingPlanView: View {
             ProgressView()
                 .scaleEffect(1.5)
             Text("Loading plan...")
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(60)
@@ -147,7 +147,7 @@ struct WeeklyTrainingPlanView: View {
 
             Text("Generate a personalized weekly plan based on your goals. Includes running, strength training, and active recovery.")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
@@ -232,7 +232,7 @@ struct WorkoutDayCard: View {
                     Text(workout.dayOfWeek.shortName)
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                     Text(dayNumber)
                         .font(.title3)
                         .fontWeight(.bold)
@@ -249,24 +249,24 @@ struct WorkoutDayCard: View {
                             .foregroundColor(workout.workoutType.color)
                         Text(workout.title)
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
                     }
 
                     HStack(spacing: 12) {
                         if let distance = workout.formattedDistance {
                             Label(distance, systemImage: "ruler")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                         if let duration = workout.formattedDuration {
                             Label(duration, systemImage: "clock")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                         if let pace = workout.targetPace {
                             Label(pace, systemImage: "speedometer")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                         }
                     }
                 }
@@ -280,7 +280,7 @@ struct WorkoutDayCard: View {
                         .font(.title2)
                 } else {
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
             .padding()
@@ -317,7 +317,7 @@ struct StatPill: View {
                 .fontWeight(.bold)
             Text(title)
                 .font(.caption2)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -341,7 +341,7 @@ struct WorkoutDetailSheet: View {
                                 .foregroundColor(workout.workoutType.color)
                             Text(workout.workoutType.displayName)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background(workout.workoutType.color.opacity(0.1))
@@ -354,7 +354,7 @@ struct WorkoutDetailSheet: View {
 
                         Text(workout.dayOfWeek.fullName + ", " + formattedDate)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
 
                     // Workout Details
@@ -376,7 +376,7 @@ struct WorkoutDetailSheet: View {
                             .font(.headline)
                         Text(workout.description)
                             .font(.body)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
                     }
 
                     // Exercises (for strength workouts)
@@ -426,7 +426,7 @@ struct DetailBox: View {
                 .fontWeight(.semibold)
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppTheme.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding()
@@ -450,7 +450,7 @@ struct ExerciseRow: View {
                 if let notes = exercise.notes {
                     Text(notes)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
                 }
             }
 
@@ -459,11 +459,11 @@ struct ExerciseRow: View {
             if let sets = exercise.sets, let reps = exercise.reps {
                 Text("\(sets) x \(reps)")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             } else if let reps = exercise.reps {
                 Text(reps)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
             }
         }
         .padding()

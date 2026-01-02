@@ -3,6 +3,7 @@
 //  Runaway iOS
 //
 //  Service for generating and managing weekly training plans
+//  Includes rest day awareness for adaptive planning
 //
 
 import Foundation
@@ -11,6 +12,58 @@ class TrainingPlanService {
 
     // MARK: - Supabase Edge Function URL
     private static let baseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co"
+
+    // MARK: - Rest Day Integration
+
+    /// Check if today should be a rest day based on recovery status
+    static func shouldTakeRestDay(athleteId: Int) async -> (shouldRest: Bool, reason: String) {
+        do {
+            let restDayService = await RestDayService.shared
+            let recoveryStatus = try await restDayService.calculateRecoveryStatus(athleteId: athleteId)
+            let daysSinceRest = try await restDayService.getDaysSinceLastRest(athleteId: athleteId)
+
+            switch recoveryStatus {
+            case .overdue:
+                return (true, "You haven't had a rest day in \(daysSinceRest) days. Rest is strongly recommended.")
+            case .needsRest:
+                return (true, "Recovery indicators suggest you need a rest day today.")
+            case .adequate:
+                if daysSinceRest >= 5 {
+                    return (true, "Consider taking a rest day - it's been \(daysSinceRest) days since your last one.")
+                }
+                return (false, "Recovery is adequate. You can train today, but listen to your body.")
+            case .wellRested, .fullyRecovered:
+                return (false, "You're well rested and ready to train!")
+            }
+        } catch {
+            #if DEBUG
+            print("📋 TrainingPlan: Failed to check rest day status: \(error)")
+            #endif
+            return (false, "Unable to determine recovery status.")
+        }
+    }
+
+    /// Get today's recommendation considering rest days
+    static func getTodaysRecommendation(
+        athleteId: Int,
+        currentPlan: WeeklyTrainingPlan?
+    ) async -> String {
+        let (shouldRest, restReason) = await shouldTakeRestDay(athleteId: athleteId)
+
+        if shouldRest {
+            return restReason
+        }
+
+        // If not a rest day, check what's planned
+        if let plan = currentPlan {
+            let today = DayOfWeek.from(date: Date())
+            if let workout = plan.workout(for: today) {
+                return "Today's planned workout: \(workout.title). \(workout.description ?? "")"
+            }
+        }
+
+        return "No workout planned for today. Consider an easy run or active recovery."
+    }
 
     // MARK: - Cache Keys
     private static let cacheKey = "cached_weekly_training_plan"
@@ -587,6 +640,64 @@ class TrainingPlanService {
             totalMileage: totalMileage,
             focusArea: currentPlan.focusArea,
             notes: "Plan adjusted based on your actual training load this week.",
+            generatedAt: Date(),
+            goalId: currentPlan.goalId
+        )
+    }
+
+    /// Adjust plan based on rest day status
+    /// If user needs rest, convert today's workout to a rest day
+    static func adjustPlanForRestDays(
+        currentPlan: WeeklyTrainingPlan,
+        athleteId: Int
+    ) async -> WeeklyTrainingPlan {
+        let (shouldRest, reason) = await shouldTakeRestDay(athleteId: athleteId)
+
+        guard shouldRest else {
+            return currentPlan
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let todayDayOfWeek = DayOfWeek.from(date: today)
+
+        var adjustedWorkouts: [DailyWorkout] = []
+
+        for workout in currentPlan.workouts {
+            if workout.dayOfWeek == todayDayOfWeek && workout.date >= today {
+                // Convert today's workout to rest
+                let restWorkout = DailyWorkout(
+                    id: workout.id,
+                    date: workout.date,
+                    dayOfWeek: workout.dayOfWeek,
+                    workoutType: .rest,
+                    title: "Rest Day (Recovery)",
+                    description: reason,
+                    duration: nil,
+                    distance: nil,
+                    targetPace: nil,
+                    exercises: nil,
+                    isCompleted: false,
+                    completedActivityId: nil
+                )
+                adjustedWorkouts.append(restWorkout)
+            } else {
+                adjustedWorkouts.append(workout)
+            }
+        }
+
+        let totalMileage = adjustedWorkouts.compactMap { $0.distance }.reduce(0, +)
+
+        return WeeklyTrainingPlan(
+            id: currentPlan.id,
+            athleteId: currentPlan.athleteId,
+            weekStartDate: currentPlan.weekStartDate,
+            weekEndDate: currentPlan.weekEndDate,
+            workouts: adjustedWorkouts,
+            weekNumber: currentPlan.weekNumber,
+            totalMileage: totalMileage,
+            focusArea: currentPlan.focusArea,
+            notes: "Plan adjusted: \(reason)",
             generatedAt: Date(),
             goalId: currentPlan.goalId
         )
