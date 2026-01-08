@@ -406,11 +406,11 @@ struct RunawayWidgetEntryView : View {
                 }.frame(minWidth: 140).padding(.bottom,8)
                 Spacer()
                 VStack{
-                    PieChartView(current: weeklyMileage, goalRemaining: max(0, 20.0 - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
+                    PieChartView(current: weeklyMileage, goalRemaining: max(0, 50.0 - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
                     Text("Weekly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
                 VStack{
-                    PieChartView(current: entry.monthlyMiles, goalRemaining: max(0, 100.0 - entry.monthlyMiles), color: Color(red: 0.4, green: 0.8, blue: 0.4)).padding(.bottom,2)
+                    PieChartView(current: entry.monthlyMiles, goalRemaining: max(0, 200.0 - entry.monthlyMiles), color: Color(red: 0.4, green: 0.8, blue: 0.4)).padding(.bottom,2)
                     Text("Monthly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
             }.padding(.top, 16)

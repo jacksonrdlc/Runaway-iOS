@@ -30,17 +30,17 @@ struct PerformanceDashboardCard: View {
                     Text("Performance Dashboard")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     Text("This week vs last week")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                     .font(.title2)
             }
 
@@ -83,7 +83,7 @@ struct PerformanceDashboardCard: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -164,7 +164,7 @@ struct PerformanceMetricCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
             HStack {
                 Image(systemName: icon)
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                     .font(.title3)
 
                 Spacer()
@@ -179,13 +179,13 @@ struct PerformanceMetricCard: View {
             Text(thisWeek)
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(title)
                 .font(.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 .lineLimit(1)
 
             HStack {
@@ -198,7 +198,7 @@ struct PerformanceMetricCard: View {
         }
         .padding(AppTheme.Spacing.sm)
         .frame(minHeight: AppTheme.Layout.metricCardMinHeight)
-        .background(AppTheme.Colors.LightMode.surfaceBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
@@ -243,17 +243,17 @@ struct ActivityHeatmapCard: View {
                     Text("Activity Heatmap")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     Text("Last 50 days of activity intensity")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "calendar.badge.clock")
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                     .font(.title2)
             }
 
@@ -275,7 +275,7 @@ struct ActivityHeatmapCard: View {
             HStack {
                 Text("Less")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                 HStack(spacing: 2) {
                     ForEach(0..<5, id: \.self) { intensity in
@@ -287,13 +287,13 @@ struct ActivityHeatmapCard: View {
 
                 Text("More")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                 Spacer()
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -303,11 +303,11 @@ struct ActivityHeatmapCard: View {
     }
 
     private func heatmapColor(for intensity: Double) -> Color {
-        if intensity == 0 { return AppTheme.Colors.LightMode.textTertiary.opacity(0.2) }
-        if intensity <= 0.25 { return AppTheme.Colors.LightMode.accent.opacity(0.4) }
-        if intensity <= 0.5 { return AppTheme.Colors.LightMode.accent.opacity(0.6) }
-        if intensity <= 0.75 { return AppTheme.Colors.LightMode.accent.opacity(0.8) }
-        return AppTheme.Colors.LightMode.accent
+        if intensity == 0 { return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary.opacity(0.2) }
+        if intensity <= 0.25 { return AppTheme.Colors.accent.opacity(0.4) }
+        if intensity <= 0.5 { return AppTheme.Colors.accent.opacity(0.6) }
+        if intensity <= 0.75 { return AppTheme.Colors.accent.opacity(0.8) }
+        return AppTheme.Colors.accent
     }
 }
 
@@ -349,17 +349,17 @@ struct PaceTrendsChart: View {
                     Text("Pace Trends")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     Text("Last 20 runs - lower is better")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "waveform.path.ecg")
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                     .font(.title2)
             }
 
@@ -369,14 +369,14 @@ struct PaceTrendsChart: View {
                         x: .value("Run", dataPoint.date),
                         y: .value("Pace", dataPoint.pace)
                     )
-                    .foregroundStyle(AppTheme.Colors.LightMode.accent)
+                    .foregroundStyle(AppTheme.Colors.accent)
                     .lineStyle(StrokeStyle(lineWidth: 3))
 
                     PointMark(
                         x: .value("Run", dataPoint.date),
                         y: .value("Pace", dataPoint.pace)
                     )
-                    .foregroundStyle(AppTheme.Colors.LightMode.accent)
+                    .foregroundStyle(AppTheme.Colors.accent)
                     .symbolSize(40)
                 }
                 .frame(height: 200)
@@ -403,7 +403,7 @@ struct PaceTrendsChart: View {
 
                     Text("Need at least 2 runs to show pace trends")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 200)
@@ -411,7 +411,7 @@ struct PaceTrendsChart: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -447,7 +447,7 @@ struct MonthlyProgressRing: View {
 
         let totalDistance = monthlyActivities.reduce(0) { $0 + (($1.distance ?? 0) * 0.000621371) }
         let totalRuns = monthlyActivities.count
-        let goal = 100.0 // miles
+        let goal = 200.0 // miles (50 miles/week)
         let progress = min(totalDistance / goal, 1.0)
 
         print("📊 MonthlyProgressRing: Distance: \(totalDistance) miles, Runs: \(totalRuns), Progress: \(progress)")
@@ -460,7 +460,7 @@ struct MonthlyProgressRing: View {
             Text("Monthly Goal")
                 .font(AppTheme.Typography.title)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             ZStack {
                 // Background ring
@@ -472,7 +472,7 @@ struct MonthlyProgressRing: View {
                 Circle()
                     .trim(from: 0, to: animateProgress ? monthlyStats.progress : 0)
                     .stroke(
-                        AppTheme.Colors.LightMode.accent,
+                        AppTheme.Colors.accent,
                         style: StrokeStyle(lineWidth: 20, lineCap: .round)
                     )
                     .frame(width: 180, height: 180)
@@ -483,11 +483,11 @@ struct MonthlyProgressRing: View {
                 VStack(spacing: 4) {
                     Text("\(Int(monthlyStats.progress * 100))%")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     Text("\(String(format: "%.1f", monthlyStats.distance)) / \(Int(monthlyStats.goal)) mi")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                     Text("\(monthlyStats.runs) runs")
                         .font(AppTheme.Typography.caption)
@@ -496,7 +496,7 @@ struct MonthlyProgressRing: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)

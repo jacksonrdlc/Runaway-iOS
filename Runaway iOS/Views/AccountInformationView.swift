@@ -23,7 +23,7 @@ struct AccountInformationView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.Colors.LightMode.background.ignoresSafeArea()
+                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.xl) {
@@ -48,7 +48,7 @@ struct AccountInformationView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -89,7 +89,7 @@ struct AccountInformationView: View {
                         .scaledToFill()
                         .frame(width: 120, height: 120)
                         .clipShape(Circle())
-                        .overlay(Circle().stroke(AppTheme.Colors.LightMode.accent, lineWidth: 3))
+                        .overlay(Circle().stroke(AppTheme.Colors.accent, lineWidth: 3))
                 } else if let profileURL = dataManager.athlete?.profile {
                     AsyncImage(url: profileURL) { image in
                         image
@@ -100,7 +100,7 @@ struct AccountInformationView: View {
                     }
                     .frame(width: 120, height: 120)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(AppTheme.Colors.LightMode.accent, lineWidth: 3))
+                    .overlay(Circle().stroke(AppTheme.Colors.accent, lineWidth: 3))
                 } else {
                     placeholderImage
                 }
@@ -108,7 +108,7 @@ struct AccountInformationView: View {
 
             Text("Tap to change photo")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
         }
         .padding(.top, AppTheme.Spacing.lg)
     }
@@ -116,12 +116,12 @@ struct AccountInformationView: View {
     private var placeholderImage: some View {
         ZStack {
             Circle()
-                .fill(AppTheme.Colors.LightMode.accent.opacity(0.1))
+                .fill(AppTheme.Colors.accent.opacity(0.1))
                 .frame(width: 120, height: 120)
 
             Image(systemName: "person.circle.fill")
                 .font(.system(size: 60))
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
         }
     }
 
@@ -129,18 +129,18 @@ struct AccountInformationView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Personal Information")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             // First Name
             VStack(alignment: .leading, spacing: 8) {
                 Text("First Name")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                 TextField("First name", text: $firstname)
                     .textFieldStyle(.plain)
                     .padding()
-                    .background(AppTheme.Colors.LightMode.surfaceBackground)
+                    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
                     .cornerRadius(AppTheme.CornerRadius.medium)
                     .autocapitalization(.words)
             }
@@ -149,12 +149,12 @@ struct AccountInformationView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Last Name")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                 TextField("Last name", text: $lastname)
                     .textFieldStyle(.plain)
                     .padding()
-                    .background(AppTheme.Colors.LightMode.surfaceBackground)
+                    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
                     .cornerRadius(AppTheme.CornerRadius.medium)
                     .autocapitalization(.words)
             }
@@ -165,7 +165,7 @@ struct AccountInformationView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Account Details")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             InfoRow(label: "Email", value: dataManager.athlete?.email ?? "Not available")
             InfoRow(label: "Athlete ID", value: "\(dataManager.athlete?.id ?? 0)")
@@ -255,16 +255,16 @@ struct InfoRow: View {
         HStack {
             Text(label)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
             Spacer()
 
             Text(value)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.surfaceBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
 }

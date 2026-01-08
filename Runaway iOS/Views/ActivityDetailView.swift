@@ -16,7 +16,7 @@ struct ActivityDetailView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.LightMode.background.ignoresSafeArea()
+            (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: 0) {
@@ -44,7 +44,7 @@ struct ActivityDetailView: View {
                         Spacer(minLength: 50)
                     }
                     .padding(AppTheme.Spacing.lg)
-                    .background(AppTheme.Colors.LightMode.background)
+                    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
                 }
             }
         }
@@ -56,7 +56,7 @@ struct ActivityDetailView: View {
                 Button("Done") {
                     dismiss()
                 }
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
             }
         }
     }
@@ -70,17 +70,17 @@ struct ActivityDetailHeader: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
                 Image(systemName: activityIcon)
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                     .font(.title)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(activity.name ?? "Unknown Activity")
                         .font(AppTheme.Typography.title)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     Text(activity.type ?? "Unknown Type")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 Spacer()
@@ -90,21 +90,21 @@ struct ActivityDetailHeader: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Date & Time")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                         .textCase(.uppercase)
 
                     Text(startDate, style: .date)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     Text(startDate, style: .time)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
     
@@ -130,7 +130,7 @@ struct ActivityMetricsGrid: View {
                     value: String(format: "%.2f", distance * 0.000621371),
                     unit: "miles",
                     icon: "road.lanes.curved.right",
-                    color: AppTheme.Colors.LightMode.accent
+                    color: AppTheme.Colors.accent
                 )
             }
 
@@ -140,7 +140,7 @@ struct ActivityMetricsGrid: View {
                     value: formatDetailedTime(seconds: time),
                     unit: "",
                     icon: "clock",
-                    color: AppTheme.Colors.LightMode.accent
+                    color: AppTheme.Colors.accent
                 )
             }
 
@@ -150,7 +150,7 @@ struct ActivityMetricsGrid: View {
                     value: calculateDetailedPace(distance: distance * 0.000621371, time: time),
                     unit: "/mile",
                     icon: "speedometer",
-                    color: AppTheme.Colors.LightMode.accent
+                    color: AppTheme.Colors.accent
                 )
             }
 
@@ -161,7 +161,7 @@ struct ActivityMetricsGrid: View {
                     value: String(format: "%.1f", avgSpeed),
                     unit: "mph",
                     icon: "gauge.high",
-                    color: AppTheme.Colors.LightMode.accent
+                    color: AppTheme.Colors.accent
                 )
             }
         }
@@ -211,23 +211,23 @@ struct DetailMetricCard: View {
                     Text(value)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     if !unit.isEmpty {
                         Text(unit)
                             .font(.caption)
-                            .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                     }
                 }
 
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                     .textCase(.uppercase)
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
 }
@@ -240,7 +240,7 @@ struct ActivityDetailInfo: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Activity Details")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             VStack(spacing: AppTheme.Spacing.sm) {
                 DetailInfoRow(label: "Activity ID", value: "\(activity.id)")
@@ -261,7 +261,7 @@ struct ActivityDetailInfo: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
     
@@ -281,13 +281,13 @@ struct DetailInfoRow: View {
         HStack {
             Text(label)
                 .font(.subheadline)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
             Spacer()
 
             Text(value)
                 .font(.subheadline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
         }
     }
 }
@@ -360,7 +360,7 @@ struct ActivityDetailMapView: UIViewRepresentable {
 
         // Create line layer for the route
         var lineLayer = LineLayer(id: "route-layer", source: "route-source")
-        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.LightMode.accent)))
+        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.accent)))
         lineLayer.lineWidth = .constant(5)
         lineLayer.lineCap = .constant(.round)
         lineLayer.lineJoin = .constant(.round)

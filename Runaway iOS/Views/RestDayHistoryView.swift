@@ -337,7 +337,7 @@ struct MarkRestDaySheet: View {
 
                                 VStack(alignment: .leading) {
                                     Text(reason.displayName)
-                                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                                 }
 
                                 Spacer()

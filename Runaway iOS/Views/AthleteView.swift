@@ -20,7 +20,7 @@ struct AthleteView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.LightMode.background.ignoresSafeArea()
+            (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
@@ -28,7 +28,11 @@ struct AthleteView: View {
                     ProfileHeader(athlete: athlete)
                     
                     // Quick Stats Grid
-                    QuickStatsGrid(runs: String(stats.count!), miles: String(format: "%.1f", stats.distance! * Double(0.000621371)), minutes: String(format: "%.0f", stats.elapsedTime! / 60))
+                    QuickStatsGrid(
+                        runs: (stats.count ?? 0).formatted(.number),
+                        miles: (stats.distance! * 0.000621371).formatted(.number.precision(.fractionLength(1))),
+                        minutes: (stats.elapsedTime! / 60).formatted(.number.precision(.fractionLength(0)))
+                    )
                     
                     // Detailed Stats Cards
                     LazyVStack(spacing: AppTheme.Spacing.md) {
@@ -74,11 +78,11 @@ struct ProfileHeader: View {
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text("\(athlete.firstname ?? "Unknown") \(athlete.lastname ?? "Athlete")")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                 Text("Runner • Athlete")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
             }
         }
     }
@@ -96,14 +100,14 @@ struct QuickStatsGrid: View {
                 icon: "figure.run",
                 value: runs,
                 label: "Total Runs",
-                color: AppTheme.Colors.LightMode.accent
+                color: AppTheme.Colors.accent
             )
 
             QuickStatItem(
                 icon: "road.lanes",
                 value: miles,
                 label: "Miles",
-                color: AppTheme.Colors.LightMode.accent
+                color: AppTheme.Colors.accent
             )
             
             QuickStatItem(
@@ -137,11 +141,11 @@ struct QuickStatItem: View {
             
             Text(value)
                 .font(AppTheme.Typography.title.weight(.bold))
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             Text(label)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .surfaceCard()
@@ -153,28 +157,54 @@ struct WeeklyStatsCard: View {
     let stats: AthleteStats
     @EnvironmentObject private var dataManager: DataManager
     @State private var weeklyRuns = 0
-    @State private var weeklyDistance = "0.0 mi"
+    @State private var weeklyDistanceValue: Double = 0.0
     @State private var weeklyTime = "0h 0m"
-    
+
+    private let weeklyGoal: Double = 50.0
+
+    private var weeklyProgress: Double {
+        min(weeklyDistanceValue / weeklyGoal, 1.0)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
                 Image(systemName: "calendar.badge.clock")
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                     .font(.title2)
 
                 Text("This Week")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
             }
 
             HStack(spacing: AppTheme.Spacing.lg) {
-                StatPair(label: "Runs", value: String(weeklyRuns), color: AppTheme.Colors.LightMode.accent)
-                StatPair(label: "Distance", value: weeklyDistance, color: AppTheme.Colors.LightMode.accent)
+                StatPair(label: "Runs", value: String(weeklyRuns), color: AppTheme.Colors.accent)
+                StatPair(label: "Distance", value: String(format: "%.1f / %.0f mi", weeklyDistanceValue, weeklyGoal), color: AppTheme.Colors.accent)
                 StatPair(label: "Time", value: weeklyTime, color: AppTheme.Colors.warning)
                 Spacer()
+            }
+
+            // Progress bar
+            VStack(alignment: .leading, spacing: 4) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                            .frame(height: 8)
+
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(AppTheme.Colors.accent)
+                            .frame(width: geometry.size.width * weeklyProgress, height: 8)
+                    }
+                }
+                .frame(height: 8)
+
+                Text(String(format: "%.0f%% of weekly goal", weeklyProgress * 100))
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
             }
         }
         .surfaceCard()
@@ -185,7 +215,7 @@ struct WeeklyStatsCard: View {
             loadWeeklyStats()
         }
     }
-    
+
     private func loadWeeklyStats() {
         guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
             print("❌ WeeklyStatsCard: Failed to access shared UserDefaults")
@@ -193,7 +223,7 @@ struct WeeklyStatsCard: View {
         }
 
         print("🔍 WeeklyStatsCard: Loading weekly stats from UserDefaults")
-        
+
         let dayArrays = [
             userDefaults.stringArray(forKey: "sunArray") ?? [],
             userDefaults.stringArray(forKey: "monArray") ?? [],
@@ -203,14 +233,14 @@ struct WeeklyStatsCard: View {
             userDefaults.stringArray(forKey: "friArray") ?? [],
             userDefaults.stringArray(forKey: "satArray") ?? []
         ]
-        
+
         var totalRuns = 0
         var totalDistance = 0.0
         var totalTime = 0.0
-        
+
         for dayArray in dayArrays {
             totalRuns += dayArray.count
-            
+
             for activityJson in dayArray {
                 if let data = activityJson.data(using: .utf8),
                    let activity = try? JSONDecoder().decode(RAActivity.self, from: data) {
@@ -219,9 +249,9 @@ struct WeeklyStatsCard: View {
                 }
             }
         }
-        
+
         weeklyRuns = totalRuns
-        weeklyDistance = String(format: "%.1f mi", totalDistance)
+        weeklyDistanceValue = totalDistance
         weeklyTime = formatTime(minutes: totalTime)
 
         print("✅ WeeklyStatsCard: Loaded - Runs: \(totalRuns), Distance: \(totalDistance) mi, Time: \(totalTime) min")
@@ -233,28 +263,54 @@ struct MonthlyStatsCard: View {
     let stats: AthleteStats
     @EnvironmentObject private var dataManager: DataManager
     @State private var monthlyRuns = 0
-    @State private var monthlyDistance = "0.0 mi"
+    @State private var monthlyDistanceValue: Double = 0.0
     @State private var averagePace = "0:00"
-    
+
+    private let monthlyGoal: Double = 200.0
+
+    private var monthlyProgress: Double {
+        min(monthlyDistanceValue / monthlyGoal, 1.0)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
                 Image(systemName: "calendar")
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                     .font(.title2)
 
                 Text("This Month")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
             }
 
             HStack(spacing: AppTheme.Spacing.lg) {
-                StatPair(label: "Runs", value: String(monthlyRuns), color: AppTheme.Colors.LightMode.accent)
-                StatPair(label: "Distance", value: monthlyDistance, color: AppTheme.Colors.LightMode.accent)
+                StatPair(label: "Runs", value: String(monthlyRuns), color: AppTheme.Colors.accent)
+                StatPair(label: "Distance", value: String(format: "%.1f / %.0f mi", monthlyDistanceValue, monthlyGoal), color: AppTheme.Colors.accent)
                 StatPair(label: "Avg Pace", value: averagePace, color: AppTheme.Colors.warning)
                 Spacer()
+            }
+
+            // Progress bar
+            VStack(alignment: .leading, spacing: 4) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                            .frame(height: 8)
+
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(AppTheme.Colors.accent)
+                            .frame(width: geometry.size.width * monthlyProgress, height: 8)
+                    }
+                }
+                .frame(height: 8)
+
+                Text(String(format: "%.0f%% of monthly goal", monthlyProgress * 100))
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
             }
         }
         .surfaceCard()
@@ -308,9 +364,9 @@ struct MonthlyStatsCard: View {
         
         // Use the stored monthly miles if available, otherwise use calculated value
         let displayDistance = monthlyMiles > 0 ? monthlyMiles : totalMonthlyDistance
-        
+
         monthlyRuns = totalMonthlyRuns
-        monthlyDistance = String(format: "%.1f mi", displayDistance)
+        monthlyDistanceValue = displayDistance
 
         // Calculate average pace (minutes per mile)
         if displayDistance > 0 && totalMonthlyTime > 0 {
@@ -339,16 +395,16 @@ struct AllTimeStatsCard: View {
 
                 Text("All Time")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                 Spacer()
             }
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: AppTheme.Spacing.md) {
-                StatPair(label: "Total Runs", value: "\(stats.count ?? 0)", color: AppTheme.Colors.LightMode.accent)
-                StatPair(label: "Total Distance", value: String(format: "%.1f mi", (stats.distance ?? 0.0) * 0.000621371), color: AppTheme.Colors.LightMode.accent)
+                StatPair(label: "Total Runs", value: "\(stats.count ?? 0)", color: AppTheme.Colors.accent)
+                StatPair(label: "Total Distance", value: String(format: "%.1f mi", (stats.distance ?? 0.0) * 0.000621371), color: AppTheme.Colors.accent)
                 StatPair(label: "Total Time", value: formatTime(minutes: (stats.elapsedTime ?? 0.0) / 60), color: AppTheme.Colors.warning)
-                StatPair(label: "Best Pace", value: "6:45/mi", color: AppTheme.Colors.LightMode.accent)
+                StatPair(label: "Best Pace", value: "6:45/mi", color: AppTheme.Colors.accent)
             }
         }
         .surfaceCard()
@@ -369,7 +425,7 @@ struct StatPair: View {
 
             Text(label)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
         }
     }
 }

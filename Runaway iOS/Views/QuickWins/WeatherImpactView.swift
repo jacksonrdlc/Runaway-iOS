@@ -45,7 +45,7 @@ struct WeatherImpactView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 }
             }
         }

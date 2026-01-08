@@ -90,6 +90,6 @@ To enable the widget, long press on your home screen and add the "Runaway" widge
 
 ## Contact
 
-Your Name - [@your_twitter](https://twitter.com/your_twitter) - email@example.com
+Your Name - [@jacksonrdlc](https://twitter.com/jacksonrdlc) - jack@runawayendurance.com
 
-Project Link: [https://github.com/yourusername/Runaway-iOS](https://github.com/yourusername/Runaway-iOS)
+Project Link: [https://github.com/runaway-labs/Runaway-iOS](https://github.com/runaway-labs/Runaway-iOS)

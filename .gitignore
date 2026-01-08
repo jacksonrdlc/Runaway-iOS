@@ -31,6 +31,10 @@ fastlane/test_output
 Runaway-iOS-Info.plist
 GoogleService-Info.plist
 
+# Product Mission (sacred, not for source control)
+**/mission.json
+!**/mission.json.template
+
 # Environment variables
 .env
 .env.local
@@ -38,3 +42,4 @@ GoogleService-Info.plist
 
 # Swift Package Manager
 .build/Runaway-iOS-Info.plist
+build/

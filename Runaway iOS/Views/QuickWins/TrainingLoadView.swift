@@ -51,7 +51,7 @@ struct TrainingLoadView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 }
             }
         }
@@ -290,7 +290,7 @@ struct RecoveryStatusBanner: View {
 
                     Text(trainingLoad.recoveryStatusDisplay)
                         .font(.headline)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                 }
 
                 Spacer()

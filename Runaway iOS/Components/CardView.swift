@@ -19,6 +19,24 @@ struct CardView: View {
     @State var image: UIImage?
     @State private var isPressed = false
 
+    private var colors: (cardBg: Color, textPrimary: Color, textSecondary: Color, textTertiary: Color) {
+        if ThemeManager.shared.isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.cardBackground,
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.textSecondary,
+                AppTheme.Colors.DarkMode.textTertiary
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+            )
+        }
+    }
+
     init(activity: LocalActivity, previousActivities: [LocalActivity] = [], onTap: (() -> Void)? = nil) {
         self.activity = activity
         self.previousActivities = previousActivities
@@ -43,11 +61,11 @@ struct CardView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(activity.name ?? "Unknown Activity")
                                     .font(AppTheme.Typography.headline)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                                    .foregroundColor(colors.textPrimary)
 
                                 Text(activity.type ?? "Unknown Type")
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(colors.textSecondary)
                             }
                         }
 
@@ -57,15 +75,15 @@ struct CardView: View {
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(startDate, style: .date)
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(colors.textSecondary)
 
                                 Text(startDate, style: .time)
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                    .foregroundColor(colors.textTertiary)
 
                                 Text(timeAgoString(from: startDate))
                                     .font(.caption2)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                    .foregroundColor(colors.textTertiary)
                             }
                         }
                     }
@@ -85,7 +103,7 @@ struct CardView: View {
                                 icon: AppIcons.distance,
                                 value: String(format: "%.2f", distance * 0.000621371),
                                 unit: "mi",
-                                color: AppTheme.Colors.LightMode.accent
+                                color: AppTheme.Colors.accent
                             )
                         }
 
@@ -94,7 +112,7 @@ struct CardView: View {
                                 icon: AppIcons.time,
                                 value: formatTime(seconds: time),
                                 unit: "",
-                                color: AppTheme.Colors.LightMode.accent
+                                color: AppTheme.Colors.accent
                             )
                         }
 
@@ -103,7 +121,7 @@ struct CardView: View {
                                 icon: AppIcons.pace,
                                 value: calculatePace(distance: distance * 0.000621371, time: time),
                                 unit: "/mi",
-                                color: AppTheme.Colors.LightMode.accent
+                                color: AppTheme.Colors.accent
                             )
                         }
 
@@ -123,9 +141,9 @@ struct CardView: View {
         .accessibilityLabel(accessibilityCardLabel)
         .accessibilityHint("Double tap to view activity details")
         .accessibilityAddTraits(.isButton)
-        .background(Color.white)
+        .background(colors.cardBg)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .shadow(color: ThemeManager.shared.isDarkMode ? .black.opacity(0.3) : .black.opacity(0.08), radius: ThemeManager.shared.isDarkMode ? 8 : 4, x: 0, y: ThemeManager.shared.isDarkMode ? 4 : 2)
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
@@ -294,6 +312,22 @@ struct ActivityInsight {
 struct AIInsightsBanner: View {
     let insights: ActivityInsight
 
+    private var colors: (cardBg: Color, textPrimary: Color, surface: Color) {
+        if ThemeManager.shared.isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.cardBackground,
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.surfaceBackground
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+            )
+        }
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             // Left section - Label
@@ -301,18 +335,18 @@ struct AIInsightsBanner: View {
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(colors.textPrimary)
 
                     Text("AI INSIGHTS")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(colors.textPrimary)
                         .textCase(.uppercase)
                 }
 
                 if let firstInsight = insights.messages.first {
                     Text(firstInsight)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(colors.textPrimary)
                 }
             }
 
@@ -323,20 +357,20 @@ struct AIInsightsBanner: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("PERFORMANCE")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(colors.textPrimary)
                         .textCase(.uppercase)
 
                     ForEach(insights.messages.dropFirst(), id: \.self) { message in
                         Text(message)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(colors.textPrimary)
                     }
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(colors.surface)
         .clipShape(
             UnevenRoundedRectangle(
                 topLeadingRadius: 0,
@@ -413,7 +447,7 @@ struct ActivityMapView: UIViewRepresentable {
 
         // Create line layer for the route
         var lineLayer = LineLayer(id: "route-layer", source: "route-source")
-        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.LightMode.accent)))
+        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.accent)))
         lineLayer.lineWidth = .constant(4)
         lineLayer.lineCap = .constant(.round)
         lineLayer.lineJoin = .constant(.round)

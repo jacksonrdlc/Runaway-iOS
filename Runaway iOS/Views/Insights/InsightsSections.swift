@@ -17,7 +17,7 @@ struct HeroStatsSection: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("At a Glance")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                 .padding(.horizontal)
 
             if let data = quickWinsData {
@@ -64,7 +64,7 @@ struct PerformanceStatusBadge: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Performance Trend")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                 Text(trend.description)
                     .font(AppTheme.Typography.headline)
@@ -75,7 +75,7 @@ struct PerformanceStatusBadge: View {
             Spacer()
 
             Image(systemName: "chevron.right")
-                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
         }
         .padding()
         .background(trendColor.opacity(0.1))
@@ -111,14 +111,14 @@ struct UnifiedRecommendationsBanner: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
                 Image(systemName: "lightbulb.fill")
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 Text("Recommendations")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                 Spacer()
                 Button(action: { isExpanded.toggle() }) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
             }
 
@@ -129,12 +129,12 @@ struct UnifiedRecommendationsBanner: View {
                         .fontWeight(.bold)
                         .foregroundColor(.white)
                         .frame(width: 20, height: 20)
-                        .background(AppTheme.Colors.LightMode.accent)
+                        .background(AppTheme.Colors.accent)
                         .clipShape(Circle())
 
                     Text(recommendation)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
@@ -145,12 +145,12 @@ struct UnifiedRecommendationsBanner: View {
                 Button(action: { isExpanded = true }) {
                     Text("See \(recommendations.count - 3) more")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                        .foregroundColor(AppTheme.Colors.accent)
                 }
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -187,7 +187,7 @@ struct DeepDiveNavigationGrid: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Deep Dive Analysis")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: AppTheme.Spacing.md) {
                 if let weather = quickWinsData?.analyses.weatherContext {
@@ -271,11 +271,11 @@ struct DeepDiveCard: View {
 
                 Text(title)
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                 Text(subtitle)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
             }
             .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
             .padding()
@@ -368,10 +368,10 @@ struct WeeklyPlanSection: View {
             // Header
             HStack {
                 Image(systemName: "calendar")
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 Text("This Week's Plan")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                 // Show regenerating indicator
                 if dataManager.isRegeneratingPlan {
@@ -380,7 +380,7 @@ struct WeeklyPlanSection: View {
                             .scaleEffect(0.6)
                         Text("Adapting...")
                             .font(.caption2)
-                            .foregroundColor(AppTheme.Colors.LightMode.accent)
+                            .foregroundColor(AppTheme.Colors.accent)
                     }
                 }
 
@@ -389,7 +389,7 @@ struct WeeklyPlanSection: View {
                 if let plan = weeklyPlan {
                     Text(plan.weekRangeString)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
             }
             .padding(.horizontal)
@@ -410,21 +410,21 @@ struct WeeklyPlanSection: View {
                             HStack(spacing: 4) {
                                 Text(String(format: "%.1f", stats.actualMiles))
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                                    .foregroundColor(AppTheme.Colors.accent)
                                 Text("/")
                                     .font(.caption)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                                 Text(String(format: "%.0f mi", stats.plannedMiles))
                                     .font(.caption)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                             }
                             Text("Miles")
                                 .font(.caption2)
-                                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(AppTheme.Colors.LightMode.surfaceBackground)
+                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
                         .cornerRadius(8)
 
                         // Completed Workouts
@@ -435,18 +435,18 @@ struct WeeklyPlanSection: View {
                                     .foregroundColor(.green)
                                 Text("/")
                                     .font(.caption)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                                 Text("\(stats.plannedWorkouts)")
                                     .font(.caption)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                             }
                             Text("Completed")
                                 .font(.caption2)
-                                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(AppTheme.Colors.LightMode.surfaceBackground)
+                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
                         .cornerRadius(8)
 
                         // Progress Ring
@@ -458,17 +458,17 @@ struct WeeklyPlanSection: View {
                                     .frame(width: 28, height: 28)
                                 Circle()
                                     .trim(from: 0, to: progress)
-                                    .stroke(AppTheme.Colors.LightMode.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                    .stroke(AppTheme.Colors.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                                     .frame(width: 28, height: 28)
                                     .rotationEffect(.degrees(-90))
                             }
                             Text("\(Int(progress * 100))%")
                                 .font(.caption2)
-                                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(AppTheme.Colors.LightMode.surfaceBackground)
+                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
                         .cornerRadius(8)
                     }
                     .padding(.horizontal)
@@ -488,7 +488,7 @@ struct WeeklyPlanSection: View {
                 if let notes = weeklyPlan?.notes {
                     Text(notes)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                         .padding(.horizontal)
                         .padding(.top, 4)
                 }
@@ -497,11 +497,11 @@ struct WeeklyPlanSection: View {
                 VStack(spacing: AppTheme.Spacing.md) {
                     Image(systemName: "calendar.badge.plus")
                         .font(.system(size: 40))
-                        .foregroundColor(AppTheme.Colors.LightMode.accent.opacity(0.6))
+                        .foregroundColor(AppTheme.Colors.accent.opacity(0.6))
 
                     Text("No plan for this week")
                         .font(AppTheme.Typography.subheadline)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                     Button(action: { Task { await generatePlan() } }) {
                         HStack {
@@ -519,7 +519,7 @@ struct WeeklyPlanSection: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 10)
-                        .background(AppTheme.Colors.LightMode.accent)
+                        .background(AppTheme.Colors.accent)
                         .cornerRadius(AppTheme.CornerRadius.medium)
                     }
                     .disabled(isGenerating)
@@ -529,7 +529,7 @@ struct WeeklyPlanSection: View {
             }
         }
         .padding(.vertical, AppTheme.Spacing.sm)
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -609,7 +609,7 @@ struct WeekDayRow: View {
                     HStack {
                         Text(entry.displayTitle)
                             .font(AppTheme.Typography.subheadline)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                             .lineLimit(1)
                             .strikethrough(entry.isPast && !entry.isCompleted && entry.plannedWorkout != nil)
 
@@ -629,7 +629,7 @@ struct WeekDayRow: View {
                     if let pace = entry.formattedPace {
                         Text(pace)
                             .font(.caption2)
-                            .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                     }
                 }
 
@@ -640,17 +640,17 @@ struct WeekDayRow: View {
                     Text(distance)
                         .font(AppTheme.Typography.caption)
                         .fontWeight(entry.isCompleted ? .semibold : .regular)
-                        .foregroundColor(entry.isCompleted ? .green : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(entry.isCompleted ? .green : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 } else if let duration = entry.formattedDuration {
                     Text(duration)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 if entry.plannedWorkout != nil || entry.actualActivity != nil {
                     Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                 }
             }
             .padding(.vertical, 8)
@@ -668,17 +668,17 @@ struct WeekDayRow: View {
         if entry.isCompleted {
             return .green
         }
-        return AppTheme.Colors.LightMode.textSecondary
+        return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
     }
 
     private var dayBackgroundColor: Color {
         if entry.isToday {
-            return AppTheme.Colors.LightMode.accent
+            return AppTheme.Colors.accent
         }
         if entry.isCompleted {
             return Color.green.opacity(0.15)
         }
-        return AppTheme.Colors.LightMode.surfaceBackground
+        return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
     }
 
     private var rowBackgroundColor: Color {
@@ -688,7 +688,7 @@ struct WeekDayRow: View {
         if entry.isPast && entry.plannedWorkout != nil {
             return Color.orange.opacity(0.05)
         }
-        return AppTheme.Colors.LightMode.surfaceBackground
+        return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
     }
 
     private var statusColor: Color {
@@ -699,7 +699,7 @@ struct WeekDayRow: View {
             return .orange
         }
         if entry.isToday {
-            return AppTheme.Colors.LightMode.accent
+            return AppTheme.Colors.accent
         }
         return .gray
     }
@@ -719,10 +719,10 @@ struct CompactWorkoutRow: View {
                     Text(workout.dayOfWeek.shortName)
                         .font(.caption2)
                         .fontWeight(.medium)
-                        .foregroundColor(isToday ? .white : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(isToday ? .white : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
                 .frame(width: 36, height: 36)
-                .background(isToday ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.surfaceBackground)
+                .background(isToday ? AppTheme.Colors.accent : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
                 .cornerRadius(8)
 
                 // Workout type icon
@@ -734,7 +734,7 @@ struct CompactWorkoutRow: View {
                 // Title
                 Text(workout.title)
                     .font(AppTheme.Typography.subheadline)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                     .lineLimit(1)
 
                 Spacer()
@@ -743,20 +743,20 @@ struct CompactWorkoutRow: View {
                 if let distance = workout.formattedDistance {
                     Text(distance)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 } else if let duration = workout.formattedDuration {
                     Text(duration)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(AppTheme.Colors.LightMode.surfaceBackground)
+            .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
             .cornerRadius(AppTheme.CornerRadius.small)
         }
         .buttonStyle(PlainButtonStyle())
@@ -778,14 +778,14 @@ struct PlanStatPill: View {
         VStack(spacing: 2) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
             Text(value)
                 .font(AppTheme.Typography.headline)
                 .fontWeight(.bold)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
             Text(label)
                 .font(.caption2)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -825,22 +825,22 @@ struct JournalStatBox: View {
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
             Image(systemName: icon)
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
                 .font(.title3)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 Text(value)
                     .font(AppTheme.Typography.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
             }
             Spacer()
         }
         .padding(AppTheme.Spacing.sm)
-        .background(AppTheme.Colors.LightMode.surfaceBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
         .cornerRadius(AppTheme.CornerRadius.small)
     }
 }
@@ -857,7 +857,7 @@ struct InsightRow: View {
 
             Text(insight.text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer()

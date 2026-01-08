@@ -28,7 +28,7 @@ struct PostRecordingView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Route")
                                 .font(.headline)
-                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                             
                             RoutePreviewMap(
                                 routePoints: recordingService.gpsService.routePoints
@@ -42,7 +42,7 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Activity Summary")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                         
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                             SummaryMetricCard(
@@ -83,14 +83,14 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Activity Details")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                         VStack(spacing: 12) {
                             // Activity name input
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Activity Name")
                                     .font(.subheadline)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                                 
                                 TextField("Enter activity name", text: $activityName)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -106,10 +106,10 @@ struct PostRecordingView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Type")
                                         .font(.caption)
-                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                                     Text(recordingService.currentSession?.activityType ?? "Run")
                                         .font(.subheadline)
-                                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                                 }
 
                                 Spacer()
@@ -117,16 +117,16 @@ struct PostRecordingView: View {
                                 VStack(alignment: .trailing, spacing: 4) {
                                     Text("Date")
                                         .font(.caption)
-                                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                                     Text(formatDate(recordingService.currentSession?.startTime ?? Date()))
                                         .font(.subheadline)
-                                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                                 }
                             }
                             .padding(.vertical, 8)
                         }
                         .padding()
-                        .background(AppTheme.Colors.LightMode.cardBackground)
+                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
                         .cornerRadius(12)
                     }
                     
@@ -134,7 +134,7 @@ struct PostRecordingView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Route Statistics")
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                         HStack {
                             StatItem(
@@ -160,13 +160,13 @@ struct PostRecordingView: View {
                             )
                         }
                         .padding()
-                        .background(AppTheme.Colors.LightMode.cardBackground)
+                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
                         .cornerRadius(12)
                     }
                 }
                 .padding()
             }
-            .background(AppTheme.Colors.LightMode.surfaceBackground)
+            .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
             .navigationTitle("Activity Summary")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.light, for: .navigationBar)
@@ -296,22 +296,22 @@ struct SummaryMetricCard: View {
                     Text(value)
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     if !unit.isEmpty {
                         Text(unit)
                             .font(.caption)
-                            .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                     }
                 }
 
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
 }
@@ -325,17 +325,17 @@ struct StatItem: View {
     var body: some View {
         VStack(spacing: 4) {
             Image(systemName: icon)
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
                 .font(.title3)
 
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             Text(title)
                 .font(.caption2)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -404,7 +404,7 @@ struct RoutePreviewMap: UIViewRepresentable {
 
         // Create line layer for the route
         var lineLayer = LineLayer(id: "route-layer", source: "route-source")
-        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.LightMode.accent)))
+        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.accent)))
         lineLayer.lineWidth = .constant(4)
         lineLayer.lineCap = .constant(.round)
         lineLayer.lineJoin = .constant(.round)

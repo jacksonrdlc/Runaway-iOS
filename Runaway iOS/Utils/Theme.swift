@@ -40,9 +40,17 @@ struct AppTheme {
         static let tealDark = Color(red: 0.0, green: 0.35, blue: 0.30) // Darker variant
 
         // MARK: - Primary Brand Colors
-        // Using Royal Blue as the primary accent
-        static let accent = royalBlue
-        static let accentLight = royalBlueLight
+        // Using Royal Blue as the primary accent (light mode)
+        // Theme-aware accent that returns correct color based on current theme
+        private static var isDarkModeFromDefaults: Bool {
+            UserDefaults.standard.string(forKey: "app_theme_mode") != "light"
+        }
+        static var accent: Color {
+            isDarkModeFromDefaults ? DarkMode.accent : royalBlue
+        }
+        static var accentLight: Color {
+            isDarkModeFromDefaults ? DarkMode.accentBright : royalBlueLight
+        }
         static let accentDark = royalBlueDark
 
         // Secondary accent - Deep Purple for variety
@@ -272,6 +280,35 @@ struct AppTheme {
             static let accent = royalBlue
             static let accentBright = royalBlueLight
         }
+
+        // MARK: - Dark Mode Colors (Audible-Inspired)
+        // Deep blue-gray palette for comfortable dark reading
+        struct DarkMode {
+            // Dark backgrounds - Audible-inspired deep navy blue
+            static let background = Color(red: 0.051, green: 0.106, blue: 0.165) // #0D1B2A - Very dark navy
+            static let backgroundElevated = Color(red: 0.067, green: 0.125, blue: 0.188) // #112030 - Slightly elevated
+
+            // Dark cards - Slate blue for card surfaces
+            static let cardBackground = Color(red: 0.106, green: 0.157, blue: 0.220) // #1B2838 - Card surface
+            static let cardBackgroundElevated = Color(red: 0.125, green: 0.180, blue: 0.251) // #202E40 - Elevated card
+
+            // Dark surface - For nested content within cards
+            static let surfaceBackground = Color(red: 0.145, green: 0.200, blue: 0.275) // #253346 - Surface
+            static let surfaceElevated = Color(red: 0.165, green: 0.224, blue: 0.302) // #2A394D - Elevated surface
+
+            // Dark text - Bright white primary, muted blue-gray secondary
+            static let textPrimary = Color.white // #FFFFFF
+            static let textSecondary = Color(red: 0.533, green: 0.600, blue: 0.651) // #8899A6 - Muted blue-gray
+            static let textTertiary = Color(red: 0.420, green: 0.475, blue: 0.525) // #6B7986 - More muted
+            static let textQuaternary = Color(red: 0.333, green: 0.380, blue: 0.420) // #55616B - Very muted
+
+            // Accent - Lighter blue for better visibility on dark backgrounds
+            static let accent = Color(red: 0.40, green: 0.58, blue: 1.0) // #6694FF - Light sky blue
+            static let accentBright = Color(red: 0.55, green: 0.70, blue: 1.0) // #8CB3FF - Even lighter
+
+            // Tab bar background
+            static let tabBarBackground = Color(red: 0.051, green: 0.106, blue: 0.165) // Match main background
+        }
     }
 
     // MARK: - Typography
@@ -479,17 +516,18 @@ extension View {
             )
     }
 
-    /// Surface card for nested content (Light mode)
+    /// Surface card for nested content (theme-aware)
     func surfaceCard() -> some View {
-        self
+        let isDark = ThemeManager.shared.isDarkMode
+        return self
             .padding(AppTheme.Spacing.md)
-            .background(AppTheme.Colors.LightMode.cardBackground)
+            .background(isDark ? AppTheme.Colors.DarkMode.cardBackground : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
             .cornerRadius(AppTheme.CornerRadius.medium)
             .shadow(
-                color: Color.black.opacity(0.08),
-                radius: 4,
+                color: isDark ? Color.black.opacity(0.3) : Color.black.opacity(0.08),
+                radius: isDark ? 8 : 4,
                 x: 0,
-                y: 2
+                y: isDark ? 4 : 2
             )
     }
 

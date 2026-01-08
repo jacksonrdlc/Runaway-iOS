@@ -15,9 +15,29 @@ import SwiftUI
 
 struct TrainingView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var themeManager: ThemeManager
     @Environment(AppRouter.self) private var router
     @StateObject private var viewModel = TrainingViewModel()
     @State private var selectedDetailView: DetailViewType?
+    @State private var showingCoachChat = false
+
+    private var colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color) {
+        if themeManager.isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.background,
+                AppTheme.Colors.DarkMode.cardBackground,
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.textSecondary
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+            )
+        }
+    }
 
     enum DetailViewType: Identifiable {
         case weather, vo2max, trainingLoad, activityTrends
@@ -34,7 +54,7 @@ struct TrainingView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            colors.background.ignoresSafeArea()
 
             if dataManager.activities.isEmpty {
                 EmptyInsightsStateView()
@@ -74,8 +94,32 @@ struct TrainingView: View {
                     .padding(.vertical, 8)
                 }
             }
+
+            // Floating Action Button for AI Coach
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        showingCoachChat = true
+                    }) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(width: AppTheme.Layout.fabSize, height: AppTheme.Layout.fabSize)
+                            .background(AppTheme.Colors.accentGradient)
+                            .clipShape(Circle())
+                            .themeShadow(.accentGlow)
+                    }
+                    .accessibilityLabel("Open AI Coach")
+                    .accessibilityHint("Double tap to chat with your AI running coach")
+                    .padding(.trailing, AppTheme.Layout.fabOffset)
+                    .padding(.bottom, AppTheme.Layout.fabOffset)
+                }
+            }
         }
-        .navigationTitle("Training")
+        .navigationTitle("Performance")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             #if DEBUG
@@ -86,7 +130,7 @@ struct TrainingView: View {
                     }
                 }) {
                     Image(systemName: "arrow.clockwise")
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                        .foregroundColor(AppTheme.Colors.accent)
                 }
             }
             #endif
@@ -120,11 +164,17 @@ struct TrainingView: View {
         .task {
             await viewModel.loadAllData(activities: dataManager.activities)
         }
+        .sheet(isPresented: $showingCoachChat) {
+            NavigationView {
+                ChatView()
+                    .environmentObject(dataManager)
+            }
+        }
     }
 
     private func navigateToCoach() {
-        // Navigate to Coach tab
-        NotificationCenter.default.post(name: .navigateToCoachTab, object: nil)
+        // Open Coach chat sheet
+        showingCoachChat = true
     }
 }
 
@@ -137,20 +187,28 @@ extension Notification.Name {
 // MARK: - Empty State
 
 struct EmptyInsightsStateView: View {
+    private var colors: (textPrimary: Color, textSecondary: Color) {
+        if ThemeManager.shared.isDarkMode {
+            return (AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
+        } else {
+            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+        }
+    }
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.xl) {
             Image(systemName: "chart.bar.doc.horizontal")
                 .font(.system(size: 80))
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
 
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Insights Available")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(colors.textPrimary)
 
                 Text("Start logging activities to see AI-powered insights and performance analytics.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -164,6 +222,14 @@ struct EmptyInsightsStateView: View {
 struct LoadingInsightsStateView: View {
     @State private var animationPhase = 0.0
 
+    private var colors: (textPrimary: Color, textSecondary: Color) {
+        if ThemeManager.shared.isDarkMode {
+            return (AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
+        } else {
+            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+        }
+    }
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
             ZStack {
@@ -173,7 +239,7 @@ struct LoadingInsightsStateView: View {
 
                 Circle()
                     .trim(from: 0, to: 0.7)
-                    .stroke(AppTheme.Colors.LightMode.accent, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(AppTheme.Colors.accent, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(animationPhase))
                     .animation(.linear(duration: 2).repeatForever(autoreverses: false), value: animationPhase)
@@ -182,11 +248,11 @@ struct LoadingInsightsStateView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("Loading Insights")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(colors.textPrimary)
 
                 Text("Analyzing your performance data...")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }

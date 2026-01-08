@@ -56,6 +56,138 @@ class ChatViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Proactive Greeting (Fitness Concierge)
+
+    @Published var hasGeneratedGreeting = false
+
+    /// Generate a proactive, inspiring greeting based on recent activities
+    /// Called when the coach tab is opened and there are no messages
+    /// This is INSTANT - no API call, just local personalization
+    func generateProactiveGreeting() async {
+        // Don't generate if we already have messages or already generated
+        guard messages.isEmpty && !hasGeneratedGreeting && !requiresUpgrade else { return }
+
+        hasGeneratedGreeting = true
+
+        // Instant greeting - no waiting, no loading state
+        let greeting = buildFallbackGreeting()
+        let greetingMessage = ChatMessage(
+            role: "assistant",
+            content: greeting
+        )
+        messages.append(greetingMessage)
+
+        #if DEBUG
+        print("✨ Generated instant proactive greeting")
+        #endif
+    }
+
+    /// Build context for the proactive greeting
+    private func buildGreetingContext(from activities: [Activity]) -> (prompt: String, athleteContext: ChatContext) {
+        let athleteContext = ChatService.buildContext(
+            from: dataManager.activities,
+            goal: dataManager.currentGoal,
+            athlete: dataManager.athlete
+        )
+
+        // Build a prompt that asks the AI to be a proactive fitness concierge
+        var prompt = """
+        [SYSTEM: You are greeting the user as they open the coach tab. You are not just a coach — you're a mirror that believes in them before they do.
+
+        Your purpose: \(MissionProvider.shared.mission)
+
+        Core belief: \(MissionProvider.shared.beliefs)
+
+        Your role: You reflect back who they're becoming, especially when they can't see it themselves. You see their trajectory, their patterns, the gap between what they believe about themselves and what their own data proves is possible.
+
+        Generate a personalized greeting that:
+        1. Reflects positively on their recent training — see what they might not see in themselves
+        2. Offers an observation about their progress that shows you believe in their potential
+        3. Ends with an invitation to talk, not just "how can I help" but genuine curiosity about where they're at
+
+        Keep it concise (2-3 short paragraphs). Be warm and authentic. Don't be generic or overly enthusiastic — be real.]
+
+        """
+
+        // Add recent activity summary
+        if !activities.isEmpty {
+            let thisWeek = activities.filter { activity in
+                guard let timestamp = activity.activity_date ?? activity.start_date else { return false }
+                let activityDate = Date(timeIntervalSince1970: timestamp)
+                return Calendar.current.isDate(activityDate, equalTo: Date(), toGranularity: .weekOfYear)
+            }
+
+            let totalMiles = thisWeek.reduce(0.0) { sum, activity in
+                sum + (activity.distance ?? 0) * 0.000621371
+            }
+
+            let activityCount = thisWeek.count
+
+            if activityCount > 0 {
+                prompt += "\n\nThis week: \(activityCount) activities, \(String(format: "%.1f", totalMiles)) miles total."
+            }
+
+            // Add last activity details
+            if let lastActivity = activities.first {
+                let miles = (lastActivity.distance ?? 0) * 0.000621371
+                let name = lastActivity.name ?? "Activity"
+                prompt += "\nMost recent: \(name) - \(String(format: "%.1f", miles)) miles"
+
+                if let timestamp = lastActivity.activity_date ?? lastActivity.start_date {
+                    let date = Date(timeIntervalSince1970: timestamp)
+                    let formatter = RelativeDateTimeFormatter()
+                    formatter.unitsStyle = .short
+                    prompt += " (\(formatter.localizedString(for: date, relativeTo: Date())))"
+                }
+            }
+        } else {
+            prompt += "\n\nNo recent activities found - this might be a new user or someone returning after a break."
+        }
+
+        prompt += "\n\nGenerate your greeting now:"
+
+        return (prompt, athleteContext)
+    }
+
+    /// Fallback greeting when API fails
+    private func buildFallbackGreeting() -> String {
+        let activities = dataManager.activities.prefix(5)
+
+        if activities.isEmpty {
+            return """
+            Hey. 👋
+
+            I'm here — not just as a coach, but as a mirror. My job is to reflect back who you're becoming, especially when you can't see it yourself.
+
+            Whether you're just starting out or finding your way back, every step forward is an act of self-definition. What's on your mind today?
+            """
+        } else {
+            let thisWeekCount = activities.filter { activity in
+                guard let timestamp = activity.activity_date ?? activity.start_date else { return false }
+                let activityDate = Date(timeIntervalSince1970: timestamp)
+                return Calendar.current.isDate(activityDate, equalTo: Date(), toGranularity: .weekOfYear)
+            }.count
+
+            if thisWeekCount > 0 {
+                return """
+                Hey. 👋
+
+                \(thisWeekCount) \(thisWeekCount == 1 ? "run" : "runs") this week. You're showing up — and that's not nothing. That's exactly how you become someone different than who you thought you were.
+
+                I've been looking at your recent training. What are you feeling? What's working, what's not? I'm curious where your head is at.
+                """
+            } else {
+                return """
+                Hey. 👋
+
+                It's been a minute since your last run. That's okay — sometimes life gets in the way, sometimes we need the break. What matters is you're here now.
+
+                When you're ready, I'm ready. What's going on? Want to ease back in, or talk through what's been holding you back?
+                """
+            }
+        }
+    }
+
     // MARK: - Public Methods
 
     /// Send a message to the AI coach
@@ -220,10 +352,16 @@ class ChatViewModel: ObservableObject {
         conversationId = nil
         error = nil
         triggeredAnalysis = nil
+        hasGeneratedGreeting = false  // Allow new greeting
 
         #if DEBUG
         print("🆕 Started new conversation")
         #endif
+
+        // Generate a fresh greeting for the new conversation
+        Task {
+            await generateProactiveGreeting()
+        }
     }
 
     /// Delete current conversation

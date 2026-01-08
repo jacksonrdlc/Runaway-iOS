@@ -13,15 +13,15 @@ public struct LoaderView: View {
         NavigationView {
             VStack {
                 ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.LightMode.accent))
+                    .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
                     .scaleEffect(2)
                 Text("Loading...")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                     .padding(.top, 20)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(AppTheme.Colors.LightMode.background.ignoresSafeArea())
+            .background((ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea())
             .navigationTitle("Loading")
             .navigationBarTitleDisplayMode(.inline)
         }

@@ -38,7 +38,7 @@ struct ActivityTrendsView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 }
             }
         }
@@ -75,7 +75,7 @@ struct ConsistencyCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Consistency Score")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             HStack {
                 // Circular progress
@@ -103,14 +103,14 @@ struct ConsistencyCard: View {
 
                     Text("Based on activity frequency over the last 30 days")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
 
                 Spacer()
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
     }
 
@@ -159,7 +159,7 @@ struct BestWorstRunsCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Best & Worst Runs")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             if let best = bestRun {
                 RunSummaryRow(
@@ -180,7 +180,7 @@ struct BestWorstRunsCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
     }
 }
@@ -207,20 +207,20 @@ struct RunSummaryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                 if let speed = activity.average_speed {
                     let pace = calculatePace(from: speed)
                     Text(formatPace(pace))
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                 }
 
                 if let distance = activity.distance {
                     Text(String(format: "%.2f mi", distance * 0.000621371))
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                 }
             }
 
@@ -230,7 +230,7 @@ struct RunSummaryRow: View {
                 let date = Date(timeIntervalSince1970: dateInterval)
                 Text(date, style: .date)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
             }
         }
         .padding()

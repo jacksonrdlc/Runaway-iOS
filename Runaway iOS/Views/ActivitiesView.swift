@@ -7,9 +7,18 @@ struct ActivitiesView: View {
     @EnvironmentObject var userSession: UserSession
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var realtimeService: RealtimeService
+    @EnvironmentObject var themeManager: ThemeManager
     @State private var selectedActivity: LocalActivity?
     @State private var showingRecording = false
-    
+
+    private var colors: (background: Color, textPrimary: Color, textSecondary: Color) {
+        if themeManager.isDarkMode {
+            return (AppTheme.Colors.DarkMode.background, AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
+        } else {
+            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+        }
+    }
+
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
         return LocalActivity(
             id: activity.id,
@@ -28,18 +37,18 @@ struct ActivitiesView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.LightMode.background.ignoresSafeArea()
-            
+            colors.background.ignoresSafeArea()
+
             VStack {
                 if dataManager.activities.isEmpty {
                     if dataManager.isLoadingActivities {
                         VStack(spacing: AppTheme.Spacing.md) {
                             ProgressView()
                                 .scaleEffect(1.2)
-                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.LightMode.accent))
+                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
                             Text("Loading activities...")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(colors.textSecondary)
                         }
                     } else {
                         ScrollView {
@@ -125,7 +134,7 @@ struct ActivitiesView: View {
                         }
                     }) {
                         Image(systemName: AppIcons.refresh)
-                            .foregroundColor(AppTheme.Colors.LightMode.accent)
+                            .foregroundColor(AppTheme.Colors.accent)
                     }
                     .disabled(dataManager.isLoadingActivities)
                 }
@@ -138,20 +147,28 @@ struct ActivitiesView: View {
 
 // MARK: - Empty Activities View
 struct EmptyActivitiesView: View {
+    private var colors: (textPrimary: Color, textSecondary: Color) {
+        if ThemeManager.shared.isDarkMode {
+            return (AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
+        } else {
+            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+        }
+    }
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.lg) {
             Image(systemName: "figure.run.circle")
                 .font(.system(size: 80))
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
 
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("No Activities Yet")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(colors.textPrimary)
 
                 Text("Your running activities will appear here once you start tracking your workouts.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
         }

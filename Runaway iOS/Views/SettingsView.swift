@@ -6,20 +6,57 @@
 //
 
 import SwiftUI
+import AuthenticationServices
+
+// MARK: - Garmin Auth Presentation Context
+class GarminAuthPresentationContext: NSObject, ASWebAuthenticationPresentationContextProviding {
+    static let shared = GarminAuthPresentationContext()
+
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first else {
+            return ASPresentationAnchor()
+        }
+        return window
+    }
+}
 
 struct SettingsView: View {
     @EnvironmentObject var userSession: UserSession
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var themeManager: ThemeManager
     @Environment(\.dismiss) private var dismiss
     @StateObject private var stravaService = StravaService()
+    @StateObject private var garminService = GarminService()
     @State private var showingStravaSheet = false
+    @State private var showingGarminSheet = false
     @State private var showingDisconnectAlert = false
+    @State private var showingGarminDisconnectAlert = false
     @State private var stravaError: String?
+    @State private var garminError: String?
+
+    private var colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color) {
+        if themeManager.isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.background,
+                AppTheme.Colors.DarkMode.cardBackground,
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.textSecondary
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+            )
+        }
+    }
 
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.Colors.LightMode.background.ignoresSafeArea()
+                colors.background.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.lg) {
@@ -36,18 +73,21 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
-            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarColorScheme(themeManager.isDarkMode ? .dark : .light, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 }
             }
             .sheet(isPresented: $showingStravaSheet) {
                 StravaConnectSheet(stravaService: stravaService)
+            }
+            .sheet(isPresented: $showingGarminSheet) {
+                GarminConnectSheet(garminService: garminService)
             }
             .alert("Disconnect from Strava", isPresented: $showingDisconnectAlert) {
                 Button("Cancel", role: .cancel) {}
@@ -58,6 +98,16 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("Are you sure you want to disconnect from Strava? Your activities will no longer sync automatically.")
+            }
+            .alert("Disconnect from Garmin", isPresented: $showingGarminDisconnectAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Disconnect", role: .destructive) {
+                    Task {
+                        await disconnectFromGarmin()
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to disconnect from Garmin Connect?")
             }
             .task {
                 await stravaService.checkConnectionStatus()
@@ -79,14 +129,14 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Profile")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             NavigationLink(destination: AccountInformationView()) {
                 SettingsRow(
-                    icon: "person.circle",
+                    icon: "person.circle.fill",
                     title: "Account Information",
                     subtitle: "Manage your profile details",
-                    color: AppTheme.Colors.primary
+                    color: AppTheme.Colors.accent
                 ) {
                     // Navigation handled by NavigationLink
                 }
@@ -99,7 +149,10 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("App Settings")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(colors.textPrimary)
+
+            // Theme Toggle
+            ThemeToggleRow(themeManager: themeManager, colors: colors)
 
             SettingsRow(
                 icon: "bell",
@@ -157,7 +210,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Integrations")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             StravaIntegrationRow(
                 stravaService: stravaService,
@@ -185,6 +238,19 @@ struct SettingsView: View {
                     .foregroundColor(AppTheme.Colors.error)
                     .padding(.horizontal, AppTheme.Spacing.md)
             }
+
+            GarminIntegrationRow(
+                garminService: garminService,
+                onConnect: { showingGarminSheet = true },
+                onDisconnect: { showingGarminDisconnectAlert = true }
+            )
+
+            if let error = garminError {
+                Text(error)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+            }
         }
     }
 
@@ -192,22 +258,10 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Support")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             SettingsRow(
-                icon: "questionmark.circle",
-                title: "Help & FAQ",
-                subtitle: "Get help and find answers",
-                color: AppTheme.Colors.primary
-            ) {
-                // Open help website
-                if let url = URL(string: "https://runaway.app/help") {
-                    UIApplication.shared.open(url)
-                }
-            }
-
-            SettingsRow(
-                icon: "envelope",
+                icon: "envelope.fill",
                 title: "Contact Support",
                 subtitle: "Get in touch with our team",
                 color: AppTheme.Colors.accent
@@ -219,13 +273,23 @@ struct SettingsView: View {
             }
 
             SettingsRow(
-                icon: "star",
-                title: "Rate the App",
-                subtitle: "Help us improve with your feedback",
-                color: AppTheme.Colors.warning
+                icon: "doc.text.fill",
+                title: "Privacy Policy",
+                subtitle: "View our privacy policy",
+                color: AppTheme.Colors.teal
             ) {
-                // Open App Store review
-                if let url = URL(string: "https://apps.apple.com/app/id123456789?action=write-review") {
+                if let url = URL(string: "https://runawayendurance.com/privacy") {
+                    UIApplication.shared.open(url)
+                }
+            }
+
+            SettingsRow(
+                icon: "doc.plaintext.fill",
+                title: "Terms of Service",
+                subtitle: "View our terms of service",
+                color: AppTheme.Colors.deepPurple
+            ) {
+                if let url = URL(string: "https://runawayendurance.com/terms") {
                     UIApplication.shared.open(url)
                 }
             }
@@ -238,7 +302,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Debug")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             NavigationLink(destination: DebugMenuView()) {
                 SettingsRow(
@@ -259,7 +323,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Account")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             SettingsRow(
                 icon: "rectangle.portrait.and.arrow.right",
@@ -280,11 +344,11 @@ struct SettingsView: View {
         VStack(spacing: AppTheme.Spacing.sm) {
             Text("Runaway iOS")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
 
             Text("Version 1.0.0")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
         }
         .padding(.top, AppTheme.Spacing.xl)
     }
@@ -302,6 +366,20 @@ struct SettingsView: View {
             stravaError = nil
         } catch {
             stravaError = error.localizedDescription
+        }
+    }
+
+    private func disconnectFromGarmin() async {
+        guard let authUserId = await getCurrentAuthUserId() else {
+            garminError = "Unable to get user ID"
+            return
+        }
+
+        do {
+            try await garminService.disconnectGarmin(authUserId: authUserId)
+            garminError = nil
+        } catch {
+            garminError = error.localizedDescription
         }
     }
 
@@ -342,11 +420,11 @@ struct SettingsRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(AppTheme.Typography.body.weight(.medium))
-                        .foregroundColor(isDestructive ? AppTheme.Colors.error : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(isDestructive ? AppTheme.Colors.error : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     Text(subtitle)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
                 
                 Spacer()
@@ -355,7 +433,7 @@ struct SettingsRow: View {
                 if !isDestructive {
                     Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                 }
             }
             .padding(AppTheme.Spacing.md)
@@ -374,7 +452,7 @@ struct StravaConnectSheet: View {
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.Colors.LightMode.background.ignoresSafeArea()
+                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
 
                 VStack(spacing: AppTheme.Spacing.xl) {
                     // Strava Logo/Icon
@@ -393,11 +471,11 @@ struct StravaConnectSheet: View {
                     VStack(spacing: AppTheme.Spacing.md) {
                         Text("Connect to Strava")
                             .font(AppTheme.Typography.title)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                         Text("Sync your Strava activities automatically. You can disconnect at any time.")
                             .font(AppTheme.Typography.body)
-                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, AppTheme.Spacing.lg)
                     }
@@ -447,7 +525,7 @@ struct StravaConnectSheet: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 }
             }
         }
@@ -500,12 +578,12 @@ struct BenefitRow: View {
     var body: some View {
         HStack(spacing: AppTheme.Spacing.md) {
             Image(systemName: icon)
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
                 .frame(width: 24)
 
             Text(text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             Spacer()
         }
@@ -543,9 +621,9 @@ struct StravaIntegrationRow: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.97))
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 1)
+        .shadow(color: ThemeManager.shared.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 4, x: 0, y: 1)
     }
 
     private var stravaIcon: some View {
@@ -564,11 +642,11 @@ struct StravaIntegrationRow: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Strava")
                 .font(AppTheme.Typography.body.weight(.medium))
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             Text(stravaService.isConnected ? "Connected" : "Not connected")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(stravaService.isConnected ? AppTheme.Colors.success : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(stravaService.isConnected ? AppTheme.Colors.success : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
         }
     }
 
@@ -583,20 +661,20 @@ struct StravaIntegrationRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(stravaService.isSyncing ? "Syncing..." : "Data Sync")
                         .font(AppTheme.Typography.caption.weight(.medium))
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                     if let progress = stravaService.syncProgress {
                         Text(progress)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                     } else if let lastSync = stravaService.lastSyncDate {
                         Text("Last synced: \(lastSync, style: .relative) ago")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                     } else {
                         Text("Never synced")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                     }
                 }
 
@@ -611,10 +689,10 @@ struct StravaIntegrationRow: View {
                     } else {
                         Text("Sync Beta")
                             .font(AppTheme.Typography.caption.weight(.medium))
-                            .foregroundColor(AppTheme.Colors.LightMode.accent)
+                            .foregroundColor(AppTheme.Colors.accent)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(AppTheme.Colors.LightMode.accent.opacity(0.1))
+                            .background(AppTheme.Colors.accent.opacity(0.1))
                             .cornerRadius(8)
                     }
                 }
@@ -637,10 +715,10 @@ struct StravaIntegrationRow: View {
         Button(action: onConnect) {
             Text("Connect")
                 .font(AppTheme.Typography.caption.weight(.medium))
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(AppTheme.Colors.LightMode.accent.opacity(0.1))
+                .background(AppTheme.Colors.accent.opacity(0.1))
                 .cornerRadius(8)
         }
     }
@@ -658,10 +736,316 @@ struct StravaIntegrationRow: View {
     }
 }
 
+// MARK: - Theme Toggle Row
+struct ThemeToggleRow: View {
+    @ObservedObject var themeManager: ThemeManager
+    let colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color)
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Colors.deepPurple.opacity(0.2))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: themeManager.isDarkMode ? "moon.fill" : "sun.max.fill")
+                    .font(.title3)
+                    .foregroundColor(AppTheme.Colors.deepPurple)
+            }
+
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Appearance")
+                    .font(AppTheme.Typography.body.weight(.medium))
+                    .foregroundColor(colors.textPrimary)
+
+                Text(themeManager.isDarkMode ? "Dark Mode" : "Light Mode")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(colors.textSecondary)
+            }
+
+            Spacer()
+
+            // Theme Toggle
+            HStack(spacing: AppTheme.Spacing.xs) {
+                ForEach(ThemeMode.allCases, id: \.self) { mode in
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            themeManager.currentTheme = mode
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: mode.iconName)
+                                .font(.caption)
+                            Text(mode.displayName)
+                                .font(AppTheme.Typography.caption)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            themeManager.currentTheme == mode
+                                ? AppTheme.Colors.accent
+                                : colors.cardBg
+                        )
+                        .foregroundColor(
+                            themeManager.currentTheme == mode
+                                ? .white
+                                : colors.textSecondary
+                        )
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(colors.cardBg)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(
+            color: themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.08),
+            radius: 4,
+            x: 0,
+            y: 2
+        )
+    }
+}
+
+// MARK: - Garmin Connect Sheet
+struct GarminConnectSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var garminService: GarminService
+    @State private var isLoading = false
+    @State private var webAuthSession: ASWebAuthenticationSession?
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+
+                VStack(spacing: AppTheme.Spacing.xl) {
+                    // Garmin Logo/Icon
+                    ZStack {
+                        Circle()
+                            .fill(Color.blue.opacity(0.2))
+                            .frame(width: 100, height: 100)
+
+                        Image(systemName: "applewatch")
+                            .font(.system(size: 50))
+                            .foregroundColor(.blue)
+                    }
+                    .padding(.top, AppTheme.Spacing.xl)
+
+                    // Title and Description
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        Text("Connect to Garmin")
+                            .font(AppTheme.Typography.title)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+                        Text("Sync your Garmin Connect activities automatically. You can disconnect at any time.")
+                            .font(AppTheme.Typography.body)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, AppTheme.Spacing.lg)
+                    }
+
+                    // Benefits List
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                        BenefitRow(icon: "arrow.triangle.2.circlepath", text: "Automatic activity sync")
+                        BenefitRow(icon: "heart.fill", text: "Heart rate & health metrics")
+                        BenefitRow(icon: "lock.shield", text: "Secure OAuth connection")
+                    }
+                    .padding(.horizontal, AppTheme.Spacing.xl)
+
+                    Spacer()
+
+                    // Connect Button
+                    Button(action: {
+                        Task {
+                            await connectToGarmin()
+                        }
+                    }) {
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: "applewatch")
+                                Text("Connect with Garmin")
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(AppTheme.Spacing.md)
+                    }
+                    .disabled(isLoading)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.bottom, AppTheme.Spacing.lg)
+                }
+            }
+            .navigationTitle("Garmin Integration")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.light, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(AppTheme.Colors.accent)
+                }
+            }
+        }
+    }
+
+    private func connectToGarmin() async {
+        isLoading = true
+
+        guard let authUserId = await getCurrentAuthUserId() else {
+            #if DEBUG
+            print("❌ Unable to get auth user ID for Garmin connection")
+            #endif
+            isLoading = false
+            return
+        }
+
+        guard let garminURL = await garminService.getGarminConnectURL(authUserId: authUserId) else {
+            #if DEBUG
+            print("❌ Unable to generate Garmin OAuth URL")
+            #endif
+            isLoading = false
+            return
+        }
+
+        #if DEBUG
+        print("🔗 Opening Garmin OAuth URL: \(garminURL)")
+        #endif
+
+        // Use ASWebAuthenticationSession for proper OAuth handling
+        await MainActor.run {
+            let session = ASWebAuthenticationSession(
+                url: garminURL,
+                callbackURLScheme: "runaway"
+            ) { callbackURL, error in
+                isLoading = false
+
+                if let error = error {
+                    #if DEBUG
+                    print("❌ Garmin OAuth error: \(error.localizedDescription)")
+                    #endif
+                    // User cancelled or error occurred
+                    if (error as NSError).code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                        // User cancelled - just dismiss
+                    }
+                    return
+                }
+
+                if let callbackURL = callbackURL {
+                    #if DEBUG
+                    print("✅ Garmin OAuth callback received: \(callbackURL)")
+                    #endif
+
+                    // Parse the callback URL
+                    let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)
+                    let success = components?.queryItems?.first(where: { $0.name == "success" })?.value == "true"
+
+                    // Update service state
+                    garminService.handleOAuthCallback(success: success)
+
+                    // Dismiss the sheet
+                    dismiss()
+                }
+            }
+
+            // Set presentation context
+            session.presentationContextProvider = GarminAuthPresentationContext.shared
+            session.prefersEphemeralWebBrowserSession = false
+
+            // Start the session
+            session.start()
+            webAuthSession = session
+        }
+    }
+
+    private func getCurrentAuthUserId() async -> String? {
+        do {
+            let session = try await supabase.auth.session
+            return session.user.id.uuidString
+        } catch {
+            return nil
+        }
+    }
+}
+
+// MARK: - Garmin Integration Row
+struct GarminIntegrationRow: View {
+    @ObservedObject var garminService: GarminService
+    let onConnect: () -> Void
+    let onDisconnect: () -> Void
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.2))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: "applewatch")
+                    .font(.title3)
+                    .foregroundColor(.blue)
+            }
+
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Garmin Connect")
+                    .font(AppTheme.Typography.body.weight(.medium))
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+                Text(garminService.isConnected ? "Connected" : "Not connected")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(garminService.isConnected ? AppTheme.Colors.success : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+            }
+
+            Spacer()
+
+            // Action Button
+            if garminService.isConnected {
+                Button(action: onDisconnect) {
+                    Text("Disconnect")
+                        .font(AppTheme.Typography.caption.weight(.medium))
+                        .foregroundColor(AppTheme.Colors.error)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(AppTheme.Colors.error.opacity(0.1))
+                        .cornerRadius(8)
+                }
+            } else {
+                Button(action: onConnect) {
+                    Text("Connect")
+                        .font(AppTheme.Typography.caption.weight(.medium))
+                        .foregroundColor(AppTheme.Colors.accent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(AppTheme.Colors.accent.opacity(0.1))
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(color: ThemeManager.shared.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 4, x: 0, y: 1)
+    }
+}
+
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         SettingsView()
             .environmentObject(UserSession.shared)
             .environmentObject(DataManager.shared)
+            .environmentObject(ThemeManager.shared)
     }
 }

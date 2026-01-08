@@ -220,7 +220,7 @@ struct ArticleWebView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
                 }
 
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -229,18 +229,18 @@ struct ArticleWebView: View {
                             Image(systemName: "chevron.left")
                         }
                         .disabled(!canGoBack)
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                        .foregroundColor(AppTheme.Colors.accent)
 
                         Button(action: goForward) {
                             Image(systemName: "chevron.right")
                         }
                         .disabled(!canGoForward)
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                        .foregroundColor(AppTheme.Colors.accent)
 
                         Button(action: openInSafari) {
                             Image(systemName: "safari")
                         }
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                        .foregroundColor(AppTheme.Colors.accent)
                     }
                 }
             }

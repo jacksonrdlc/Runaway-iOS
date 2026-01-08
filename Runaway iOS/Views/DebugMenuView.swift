@@ -36,7 +36,7 @@ struct DebugMenuView: View {
                             showingTokenCopied = false
                         }
                     }
-                    .foregroundColor(AppTheme.Colors.LightMode.accent)
+                    .foregroundColor(AppTheme.Colors.accent)
 
                     if showingTokenCopied {
                         Text("Copied!")
@@ -56,12 +56,12 @@ struct DebugMenuView: View {
                 Button("Test Local Notification (3s delay)") {
                     scheduleTestNotification()
                 }
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
 
                 Button("Test Activity Sync Notification") {
                     simulateActivitySyncNotification()
                 }
-                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                .foregroundColor(AppTheme.Colors.accent)
 
                 Button("Request Notification Permission") {
                     requestNotificationPermission()

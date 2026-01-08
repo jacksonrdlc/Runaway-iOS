@@ -249,7 +249,7 @@ struct WorkoutDayCard: View {
                             .foregroundColor(workout.workoutType.color)
                         Text(workout.title)
                             .font(.headline)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
                     }
 
                     HStack(spacing: 12) {

@@ -81,7 +81,7 @@ struct MapSnapshotView: View {
 
                 // Create line layer for the route
                 var lineLayer = LineLayer(id: "snapshot-route-layer", source: "snapshot-route-source")
-                lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.LightMode.accent)))
+                lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.accent)))
                 lineLayer.lineWidth = .constant(6)
                 lineLayer.lineCap = .constant(.round)
                 lineLayer.lineJoin = .constant(.round)

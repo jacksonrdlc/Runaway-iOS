@@ -9,11 +9,34 @@ import SwiftUI
 import CoreLocation
 
 struct ResearchView: View {
+    @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var researchService = ResearchService()
     @ObservedObject private var locationManager = LocationManager.shared
     @State private var selectedCategory: ArticleCategory? = nil
     @State private var selectedArticle: ResearchArticle?
     @State private var filteredArticles: [ResearchArticle] = []
+
+    private var colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color, textTertiary: Color, surface: Color) {
+        if themeManager.isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.background,
+                AppTheme.Colors.DarkMode.cardBackground,
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.textSecondary,
+                AppTheme.Colors.DarkMode.textTertiary,
+                AppTheme.Colors.DarkMode.surfaceBackground
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+            )
+        }
+    }
     
     private func updateFilteredArticles() {
         if let category = selectedCategory {
@@ -44,8 +67,8 @@ struct ResearchView: View {
     
     var body: some View {
         ZStack {
-            AppTheme.Colors.LightMode.background.ignoresSafeArea()
-            
+            colors.background.ignoresSafeArea()
+
             ScrollView {
             LazyVStack(spacing: 0) {
                 // Category Filter Pills
@@ -55,15 +78,17 @@ struct ResearchView: View {
                             title: "All",
                             count: researchService.articles.count,
                             isSelected: selectedCategory == nil,
+                            isDarkMode: themeManager.isDarkMode,
                             action: { selectedCategory = nil }
                         )
-                        
+
                         ForEach(ArticleCategory.allCases, id: \.self) { category in
                             let categoryCount = researchService.articles.filter { $0.category == category }.count
                             CategoryPill(
                                 title: category.displayName,
                                 count: categoryCount,
                                 isSelected: selectedCategory == category,
+                                isDarkMode: themeManager.isDarkMode,
                                 action: { selectedCategory = category }
                             )
                         }
@@ -91,29 +116,30 @@ struct ResearchView: View {
                 // Mixed Articles and Videos
                 if !filteredArticles.isEmpty {
                     ForEach(Array(filteredArticles.enumerated()), id: \.offset) { index, article in
-                        ArticleCard(article: article) {
+                        ArticleCard(article: article, isDarkMode: themeManager.isDarkMode) {
                             selectedArticle = article
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 12)
                     }
                 } else if !researchService.isLoading {
-                    EmptyStateView()
+                    EmptyStateView(isDarkMode: themeManager.isDarkMode)
                         .padding()
                 }
-                
+
                 // Last Updated
                 if let lastUpdated = researchService.lastUpdated {
                     Text("Last updated: \(lastUpdated, formatter: RelativeDateTimeFormatter())")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(colors.textSecondary)
                         .padding(.vertical)
                 }
             }
         }
         .navigationTitle("Research")
-        
+
         .navigationBarTitleDisplayMode(.large)
+        .toolbarColorScheme(themeManager.isDarkMode ? .dark : .light, for: .navigationBar)
         .refreshable {
             await loadArticles()
         }
@@ -172,8 +198,25 @@ struct CategoryPill: View {
     let title: String
     let count: Int
     let isSelected: Bool
+    var isDarkMode: Bool = false
     let action: () -> Void
-    
+
+    private var colors: (cardBg: Color, textPrimary: Color, textSecondary: Color) {
+        if isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.cardBackground,
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.textSecondary
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+            )
+        }
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
@@ -185,21 +228,21 @@ struct CategoryPill: View {
                     Text("\(count)")
                         .font(AppTheme.Typography.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(isSelected ? .white : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(isSelected ? .white : colors.textSecondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(isSelected ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.textSecondary.opacity(AppTheme.Opacity.medium))
+                                .fill(isSelected ? AppTheme.Colors.accent : colors.textSecondary.opacity(AppTheme.Opacity.medium))
                         )
                 }
             }
-            .foregroundColor(isSelected ? .white : AppTheme.Colors.LightMode.textPrimary)
+            .foregroundColor(isSelected ? .white : colors.textPrimary)
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? AppTheme.Colors.LightMode.accent : AppTheme.Colors.LightMode.cardBackground)
+                    .fill(isSelected ? AppTheme.Colors.accent : colors.cardBg)
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -209,43 +252,85 @@ struct CategoryPill: View {
 // MARK: - Article Card
 struct ArticleCard: View {
     let article: ResearchArticle
+    var isDarkMode: Bool = false
     let onTap: () -> Void
-    
+
+    private var colors: (cardBg: Color, textPrimary: Color, textSecondary: Color, textTertiary: Color, surface: Color) {
+        if isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.cardBackground,
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.textSecondary,
+                AppTheme.Colors.DarkMode.textTertiary,
+                AppTheme.Colors.DarkMode.surfaceBackground
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+            )
+        }
+    }
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        let calendar = Calendar.current
+
+        // Handle missing/invalid dates
+        if article.publishedDate == Date.distantPast ||
+           article.publishedDate.timeIntervalSince1970 < 0 {
+            return ""
+        }
+
+        if calendar.isDateInToday(article.publishedDate) {
+            return "Today"
+        } else if calendar.isDateInYesterday(article.publishedDate) {
+            return "Yesterday"
+        } else if calendar.isDate(article.publishedDate, equalTo: Date(), toGranularity: .year) {
+            formatter.dateFormat = "MMM d"
+        } else {
+            formatter.dateFormat = "MMM d, yyyy"
+        }
+        return formatter.string(from: article.publishedDate)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with category, mock indicator, and time
+            // Header with category and published date
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: article.category.iconName)
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                        .foregroundColor(AppTheme.Colors.accent)
                         .font(AppTheme.Typography.caption)
                     Text(article.category.displayName)
                         .font(AppTheme.Typography.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(AppTheme.Colors.LightMode.accent)
+                        .foregroundColor(AppTheme.Colors.accent)
                 }
-
 
                 Spacer()
 
-                Text(article.timeAgo)
+                Text(formattedDate)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(colors.textSecondary)
             }
-            
+
             // Main content
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(article.title)
                         .font(AppTheme.Typography.headline)
                         .fontWeight(.semibold)
-                        .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(colors.textPrimary)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
 
                     Text(article.summary)
                         .font(AppTheme.Typography.subheadline)
-                        .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(colors.textSecondary)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
 
@@ -254,18 +339,18 @@ struct ArticleCard: View {
                         Text(article.source)
                             .font(AppTheme.Typography.caption)
                             .fontWeight(.medium)
-                            .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(colors.textPrimary)
 
                         if let location = article.location, article.isLocalEvent {
                             Text("• \(location.displayLocation)")
                                 .font(AppTheme.Typography.caption)
-                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(colors.textSecondary)
                         }
 
                         Spacer()
                     }
                 }
-                
+
                 // Article image
                 if let imageUrl = article.imageUrl {
                     AsyncImage(url: URL(string: imageUrl)) { image in
@@ -274,17 +359,17 @@ struct ArticleCard: View {
                             .aspectRatio(contentMode: .fill)
                     } placeholder: {
                         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
-                            .fill(AppTheme.Colors.LightMode.surfaceBackground)
+                            .fill(colors.surface)
                             .overlay(
                                 Image(systemName: "photo")
-                                    .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                                    .foregroundColor(colors.textTertiary)
                             )
                     }
                     .frame(width: 80, height: 80)
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
                 }
             }
-            
+
             // Tags
             if !article.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -292,10 +377,10 @@ struct ArticleCard: View {
                         ForEach(article.tags.prefix(3), id: \.self) { tag in
                             Text(tag)
                                 .font(AppTheme.Typography.caption2)
-                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(colors.textSecondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(AppTheme.Colors.LightMode.surfaceBackground)
+                                .background(colors.surface)
                                 .clipShape(Capsule())
                         }
                     }
@@ -303,13 +388,13 @@ struct ArticleCard: View {
             }
         }
         .padding()
-        .background(AppTheme.Colors.LightMode.cardBackground)
+        .background(colors.cardBg)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
         .shadow(
-            color: AppTheme.Shadows.light.color,
-            radius: AppTheme.Shadows.light.radius,
-            x: AppTheme.Shadows.light.x,
-            y: AppTheme.Shadows.light.y
+            color: isDarkMode ? Color.black.opacity(0.3) : AppTheme.Shadows.light.color,
+            radius: isDarkMode ? 8 : AppTheme.Shadows.light.radius,
+            x: 0,
+            y: isDarkMode ? 4 : AppTheme.Shadows.light.y
         )
         .onTapGesture {
             onTap()
@@ -323,10 +408,10 @@ struct LoadingView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.2)
-                .tint(AppTheme.Colors.LightMode.accent)
+                .tint(AppTheme.Colors.accent)
             Text("Loading articles...")
                 .font(AppTheme.Typography.subheadline)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
         }
     }
 }
@@ -344,11 +429,11 @@ struct ErrorView: View {
 
             Text("Unable to load articles")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             Text(message)
                 .font(AppTheme.Typography.subheadline)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 .multilineTextAlignment(.center)
 
             Button("Try Again", action: retryAction)
@@ -356,7 +441,7 @@ struct ErrorView: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.sm)
-                .background(AppTheme.Colors.LightMode.accent)
+                .background(AppTheme.Colors.accent)
                 .cornerRadius(AppTheme.CornerRadius.medium)
         }
         .padding()
@@ -365,19 +450,37 @@ struct ErrorView: View {
 
 // MARK: - Empty State View
 struct EmptyStateView: View {
+    var isDarkMode: Bool = false
+
+    private var colors: (textPrimary: Color, textSecondary: Color, textTertiary: Color) {
+        if isDarkMode {
+            return (
+                AppTheme.Colors.DarkMode.textPrimary,
+                AppTheme.Colors.DarkMode.textSecondary,
+                AppTheme.Colors.DarkMode.textTertiary
+            )
+        } else {
+            return (
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary,
+                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+            )
+        }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "newspaper")
                 .font(AppTheme.Typography.largeTitle)
-                .foregroundColor(AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(colors.textTertiary)
 
             Text("No articles found")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(colors.textPrimary)
 
             Text("Try adjusting your filters or check back later for new content.")
                 .font(AppTheme.Typography.subheadline)
-                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(colors.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding()

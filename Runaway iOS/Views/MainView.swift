@@ -12,12 +12,15 @@ struct MainView: View {
     @EnvironmentObject var userSession: UserSession
     @EnvironmentObject var realtimeService: RealtimeService
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var themeManager: ThemeManager
     @Environment(AppRouter.self) private var router
     @State var selectedTab = 0
     @State var isDataReady: Bool = false
-    @State private var showingSettings = false
-    
-    
+
+    private var toolbarScheme: ColorScheme {
+        themeManager.isDarkMode ? .dark : .light
+    }
+
     var body: some View {
         if isDataReady {
             TabView(selection: $selectedTab) {
@@ -25,18 +28,8 @@ struct MainView: View {
                     ActivitiesView()
                         .navigationTitle("Log Book")
                         .navigationBarTitleDisplayMode(.large)
-                        .toolbarColorScheme(.light, for: .navigationBar)
+                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
                         .toolbarBackground(.visible, for: .navigationBar)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: {
-                                    router.navigate(to: .settings)
-                                }) {
-                                    Image(systemName: "gearshape.fill")
-                                        .foregroundColor(AppTheme.Colors.LightMode.accent)
-                                }
-                            }
-                        }
                         .navigationDestination(for: AppRouter.Route.self) { route in
                             router.destination(for: route)
                         }
@@ -48,55 +41,35 @@ struct MainView: View {
 
                 NavigationStack(path: Bindable(router).path) {
                     TrainingView()
-                        .toolbarColorScheme(.light, for: .navigationBar)
+                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
                         .toolbarBackground(.visible, for: .navigationBar)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: {
-                                    router.navigate(to: .settings)
-                                }) {
-                                    Image(systemName: "gearshape.fill")
-                                        .foregroundColor(AppTheme.Colors.LightMode.accent)
-                                }
-                            }
-                        }
                         .navigationDestination(for: AppRouter.Route.self) { route in
                             router.destination(for: route)
                         }
                 }
                 .tabItem {
-                    Label("Training", systemImage: "chart.bar.fill")
+                    Label("Performance", systemImage: "chart.bar.fill")
                 }
                 .tag(1)
 
                 NavigationStack(path: Bindable(router).path) {
-                    ChatView()
+                    PlanView()
                         .environmentObject(dataManager)
-                        .toolbarColorScheme(.light, for: .navigationBar)
+                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
                         .toolbarBackground(.visible, for: .navigationBar)
                         .navigationDestination(for: AppRouter.Route.self) { route in
                             router.destination(for: route)
                         }
                 }
                 .tabItem {
-                    Label("Coach", systemImage: "apple.intelligence")
+                    Label("Plan", systemImage: "calendar.badge.clock")
                 }
                 .tag(2)
 
                 NavigationStack(path: Bindable(router).path) {
                     ResearchView()
-                        .toolbarColorScheme(.light, for: .navigationBar)
+                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
                         .toolbarBackground(.visible, for: .navigationBar)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: {
-                                    router.navigate(to: .settings)
-                                }) {
-                                    Image(systemName: "gearshape.fill")
-                                        .foregroundColor(AppTheme.Colors.LightMode.accent)
-                                }
-                            }
-                        }
                         .navigationDestination(for: AppRouter.Route.self) { route in
                             router.destination(for: route)
                         }
@@ -118,7 +91,7 @@ struct MainView: View {
                                             router.navigate(to: .settings)
                                         }) {
                                             Image(systemName: "gearshape.fill")
-                                                .foregroundColor(AppTheme.Colors.LightMode.accent)
+                                                .foregroundColor(AppTheme.Colors.accent)
                                         }
                                     }
                                 }
@@ -126,13 +99,13 @@ struct MainView: View {
                             VStack(spacing: AppTheme.Spacing.md) {
                                 ProgressView()
                                     .scaleEffect(1.2)
-                                    .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.LightMode.accent))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
                                 Text("Loading profile...")
                                     .font(AppTheme.Typography.body)
-                                    .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(AppTheme.Colors.LightMode.background)
+                            .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
                             .navigationTitle("Profile")
                             .navigationBarTitleDisplayMode(.large)
                             .toolbar {
@@ -141,13 +114,13 @@ struct MainView: View {
                                         router.navigate(to: .settings)
                                     }) {
                                         Image(systemName: "gearshape.fill")
-                                            .foregroundColor(AppTheme.Colors.LightMode.accent)
+                                            .foregroundColor(AppTheme.Colors.accent)
                                     }
                                 }
                             }
                         }
                     }
-                    .toolbarColorScheme(.light, for: .navigationBar)
+                    .toolbarColorScheme(toolbarScheme, for: .navigationBar)
                     .toolbarBackground(.visible, for: .navigationBar)
                     .navigationDestination(for: AppRouter.Route.self) { route in
                         router.destination(for: route)
@@ -158,10 +131,10 @@ struct MainView: View {
                 }
                 .tag(4)
             }
-            .accentColor(AppTheme.Colors.LightMode.accent)
+            .accentColor(AppTheme.Colors.accent)
             .onChange(of: selectedTab) { oldTab, newTab in
                 // Track tab selection analytics
-                let tabNames = ["Feed", "Training", "Coach", "Research", "Profile"]
+                let tabNames = ["Feed", "Performance", "Plan", "Research", "Profile"]
                 let tabName = newTab < tabNames.count ? tabNames[newTab] : "Unknown"
                 AnalyticsService.shared.track(.tabSelected, category: .navigation, properties: [
                     "tab_name": tabName,
@@ -169,47 +142,39 @@ struct MainView: View {
                     "previous_tab": oldTab
                 ])
             }
-            .onReceive(NotificationCenter.default.publisher(for: .navigateToCoachTab)) { _ in
-                selectedTab = 2 // Coach tab
-            }
             .task {
                 await loadInitialData()
                 realtimeService.startRealtimeSubscription()
             }
-            .background(AppTheme.Colors.LightMode.background.ignoresSafeArea())
+            .background((themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea())
         } else {
             ZStack {
-                AppTheme.Colors.LightMode.background
+                (themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
                     .ignoresSafeArea()
 
                 VStack(spacing: AppTheme.Spacing.xl) {
                     // App Logo/Title
                     VStack(spacing: AppTheme.Spacing.md) {
-                        Image(systemName: "figure.run")
-                            .font(.system(size: 80, weight: .light))
-                            .foregroundColor(AppTheme.Colors.LightMode.accent)
-                            .shadow(color: AppTheme.Colors.LightMode.accent.opacity(0.3), radius: 10, x: 0, y: 5)
-
-                        Text("Runaway")
-                            .font(.system(size: 48, weight: .heavy, design: .rounded))
-                            .foregroundColor(AppTheme.Colors.LightMode.accent)
-                            .italic()
+                        Image("LaunchLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 120, height: 120)
                     }
 
                     // Loading indicator and text
                     VStack(spacing: AppTheme.Spacing.lg) {
                         ProgressView()
                             .scaleEffect(1.5)
-                            .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.LightMode.accent))
+                            .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
 
                         VStack(spacing: AppTheme.Spacing.sm) {
                             Text("Loading your data...")
                                 .font(AppTheme.Typography.headline)
-                                .foregroundColor(AppTheme.Colors.LightMode.textPrimary)
+                                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
                             Text("Syncing activities and performance metrics")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                                 .multilineTextAlignment(.center)
                         }
                     }

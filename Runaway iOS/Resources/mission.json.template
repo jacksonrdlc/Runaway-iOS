@@ -1,0 +1,14 @@
+{
+  "name": "Your App Name",
+  "nameExplanation": "What does your name mean? Why did you choose it?",
+  "audience": "Who is your app for? What are they struggling with?",
+  "beliefs": "What do you believe about your users and their potential?",
+  "whatWeDo": "What does your app actually do? How does it help?",
+  "mission": "Your one-sentence mission statement.",
+  "tagline": "Your tagline here.",
+  "encouragements": [
+    "Encouragement 1",
+    "Encouragement 2",
+    "Encouragement 3"
+  ]
+}

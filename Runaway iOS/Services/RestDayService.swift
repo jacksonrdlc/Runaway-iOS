@@ -237,37 +237,63 @@ class RestDayService: ObservableObject {
     }
 
     /// Calculate recovery status based on rest days and training
+    /// Includes both logged rest days AND implicit rest days (past days without activities)
     func calculateRecoveryStatus(athleteId: Int) async throws -> RecoveryStatus {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
         // Get last 14 days of data
-        let restDays = try await getRestDays(athleteId: athleteId, days: 14)
+        let loggedRestDays = try await getRestDays(athleteId: athleteId, days: 14)
         let activities = try await ActivityService.getAllActivitiesByUser(userId: athleteId, limit: 30)
 
-        // Count rest days in last 7 days
         let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: today)!
-        let recentRestDays = restDays.filter { $0.date >= sevenDaysAgo }
-        let restDaysThisWeek = recentRestDays.count
 
-        // Count training days in last 7 days
-        let recentActivities = activities.filter {
-            guard let ts = $0.activity_date ?? $0.start_date else { return false }
-            return Date(timeIntervalSince1970: ts) >= sevenDaysAgo
+        // Build set of dates with activities in last 7 days
+        var activityDates: Set<Date> = []
+        for activity in activities {
+            guard let ts = activity.activity_date ?? activity.start_date else { continue }
+            let activityDate = calendar.startOfDay(for: Date(timeIntervalSince1970: ts))
+            if activityDate >= sevenDaysAgo && activityDate < today {
+                activityDates.insert(activityDate)
+            }
         }
-        let trainingDates: [Date] = recentActivities.compactMap {
-            guard let ts = $0.activity_date ?? $0.start_date else { return nil }
-            return calendar.startOfDay(for: Date(timeIntervalSince1970: ts))
-        }
-        let trainingDaysThisWeek = Set(trainingDates).count
 
-        // Calculate days since last rest day
-        let daysSinceRest: Int
-        if let lastRestDay = restDays.first {
-            daysSinceRest = calendar.dateComponents([.day], from: lastRestDay.date, to: today).day ?? 0
-        } else {
-            daysSinceRest = 14 // Assume no rest in 2 weeks
+        // Build set of logged rest day dates
+        let loggedRestDates = Set(loggedRestDays.filter { $0.date >= sevenDaysAgo }.map { calendar.startOfDay(for: $0.date) })
+
+        // Count total rest days (logged + implicit) in last 7 days
+        var restDaysThisWeek = 0
+        var daysSinceRest = 0
+        var foundRestDay = false
+
+        for dayOffset in 1..<7 {
+            guard let checkDate = calendar.date(byAdding: .day, value: -dayOffset, to: today) else { continue }
+            let normalizedDate = calendar.startOfDay(for: checkDate)
+
+            // Check if this day is a rest day (logged or implicit)
+            let isLoggedRest = loggedRestDates.contains(normalizedDate)
+            let isImplicitRest = !activityDates.contains(normalizedDate)
+            let isRestDay = isLoggedRest || isImplicitRest
+
+            if isRestDay {
+                restDaysThisWeek += 1
+                if !foundRestDay {
+                    daysSinceRest = dayOffset
+                    foundRestDay = true
+                }
+            }
         }
+
+        // If no rest days found, assume 14 days
+        if !foundRestDay {
+            daysSinceRest = 14
+        }
+
+        let trainingDaysThisWeek = activityDates.count
+
+        #if DEBUG
+        print("🛏️ Recovery Status: \(trainingDaysThisWeek) training days, \(restDaysThisWeek) rest days (logged + implicit), \(daysSinceRest) days since rest")
+        #endif
 
         // Determine recovery status
         let status: RecoveryStatus

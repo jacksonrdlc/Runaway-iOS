@@ -18,42 +18,56 @@ struct Runaway_iOSApp: App {
     @StateObject private var dataManager = DataManager.shared
     @StateObject private var stravaService = StravaService()
     @StateObject private var activityRecordingService = ActivityRecordingService()
+    @StateObject private var themeManager = ThemeManager.shared
     @State private var router = AppRouter()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
     init() {
-        // Configure navigation bar appearance for light mode - FORCE DARK TEXT
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(AppTheme.Colors.LightMode.background)
+        // Initial appearance setup - will be updated dynamically based on theme
+        Self.configureAppearance(isDark: ThemeManager.shared.isDarkMode)
+    }
 
-        // Large title - FORCE DARK TEXT (near black)
-        appearance.largeTitleTextAttributes = [
-            .foregroundColor: UIColor.black
+    /// Configure UIKit appearance for navigation and tab bars
+    static func configureAppearance(isDark: Bool) {
+        // Navigation bar appearance
+        let navAppearance = UINavigationBarAppearance()
+        navAppearance.configureWithOpaqueBackground()
+
+        if isDark {
+            navAppearance.backgroundColor = UIColor(AppTheme.Colors.DarkMode.background)
+            navAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
+            navAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+        } else {
+            navAppearance.backgroundColor = UIColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+            navAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.black]
+            navAppearance.titleTextAttributes = [.foregroundColor: UIColor.black]
+        }
+
+        navAppearance.buttonAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor(AppTheme.Colors.accent)
         ]
 
-        // Inline title - FORCE DARK TEXT
-        appearance.titleTextAttributes = [
-            .foregroundColor: UIColor.black
-        ]
+        UINavigationBar.appearance().standardAppearance = navAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
+        UINavigationBar.appearance().compactAppearance = navAppearance
+        UINavigationBar.appearance().tintColor = UIColor(AppTheme.Colors.accent)
 
-        // Button items
-        appearance.buttonAppearance.normal.titleTextAttributes = [
-            .foregroundColor: UIColor(AppTheme.Colors.LightMode.accent)
-        ]
-
-        UINavigationBar.appearance().standardAppearance = appearance
-        UINavigationBar.appearance().scrollEdgeAppearance = appearance
-        UINavigationBar.appearance().compactAppearance = appearance
-        UINavigationBar.appearance().tintColor = UIColor(AppTheme.Colors.LightMode.accent)
-
-        // Tab bar appearance - light gray unselected, electric blue selected
+        // Tab bar appearance
         let tabBarAppearance = UITabBarAppearance()
         tabBarAppearance.configureWithOpaqueBackground()
-        tabBarAppearance.backgroundColor = UIColor(AppTheme.Colors.LightMode.cardBackground)
 
-        // Unselected items - light gray
-        let normalColor = UIColor(AppTheme.Colors.LightMode.textTertiary)
+        let normalColor: UIColor
+        let selectedColor = UIColor(AppTheme.Colors.accent)
+
+        if isDark {
+            tabBarAppearance.backgroundColor = UIColor(AppTheme.Colors.DarkMode.background)
+            normalColor = UIColor(AppTheme.Colors.DarkMode.textTertiary)
+        } else {
+            tabBarAppearance.backgroundColor = UIColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+            normalColor = UIColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+        }
+
+        // Normal state
         tabBarAppearance.stackedLayoutAppearance.normal.iconColor = normalColor
         tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: normalColor]
         tabBarAppearance.inlineLayoutAppearance.normal.iconColor = normalColor
@@ -61,8 +75,7 @@ struct Runaway_iOSApp: App {
         tabBarAppearance.compactInlineLayoutAppearance.normal.iconColor = normalColor
         tabBarAppearance.compactInlineLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: normalColor]
 
-        // Selected items - electric blue
-        let selectedColor = UIColor(AppTheme.Colors.LightMode.accent)
+        // Selected state
         tabBarAppearance.stackedLayoutAppearance.selected.iconColor = selectedColor
         tabBarAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: selectedColor]
         tabBarAppearance.inlineLayoutAppearance.selected.iconColor = selectedColor
@@ -79,11 +92,16 @@ struct Runaway_iOSApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(.light)
+                .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
                 .environmentObject(userSession)
                 .environmentObject(realtimeService)
                 .environmentObject(dataManager)
+                .environmentObject(themeManager)
                 .environment(router)
+                .onChange(of: themeManager.currentTheme) { _, newTheme in
+                    // Update UIKit appearances when theme changes
+                    Self.configureAppearance(isDark: newTheme == .dark)
+                }
                 .onAppear {
                     // Start location services when app appears
                     LocationManager.shared.requestLocationPermission()
@@ -178,6 +196,23 @@ struct Runaway_iOSApp: App {
         if url.scheme == "runaway" && url.host == "strava-connected" {
             Task {
                 await stravaService.handleStravaCallback(url: url)
+            }
+        }
+
+        // Handle Garmin OAuth callback
+        if url.scheme == "runaway" && url.host == "garmin-connected" {
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let success = components?.queryItems?.first(where: { $0.name == "success" })?.value == "true"
+
+            #if DEBUG
+            print("✅ Garmin OAuth callback - success: \(success)")
+            #endif
+
+            // Update GarminService state
+            Task {
+                await MainActor.run {
+                    GarminService.shared.handleOAuthCallback(success: success)
+                }
             }
         }
     }
