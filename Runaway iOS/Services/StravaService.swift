@@ -71,6 +71,12 @@ class StravaService: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Add Supabase API key for authentication
+        if let apiKey = SupabaseConfiguration.supabaseKey {
+            request.setValue(apiKey, forHTTPHeaderField: "apikey")
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+
         // Send auth_user_id to disconnect endpoint
         let body = ["auth_user_id": authUserId]
         request.httpBody = try JSONEncoder().encode(body)
