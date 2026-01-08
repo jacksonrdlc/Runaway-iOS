@@ -68,8 +68,8 @@ class StravaService: ObservableObject {
         }
 
         // Get user's JWT token from current session
-        let session = try await supabase.auth.session
-        let accessToken = session.accessToken
+        let authSession = try await supabase.auth.session
+        let accessToken = authSession.accessToken
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
