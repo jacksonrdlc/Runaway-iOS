@@ -413,6 +413,23 @@ final class AnalyticsService {
         }
     }
 
+    // MARK: - Background State Management
+
+    /// Pause flush timer when app enters background to save battery
+    func pauseForBackground() {
+        flushTimer?.invalidate()
+        flushTimer = nil
+        // Flush any pending events before pausing
+        flush()
+        print("⏸️ AnalyticsService: Paused flush timer for background")
+    }
+
+    /// Resume flush timer when app returns to foreground
+    func resumeFromBackground() {
+        startFlushTimer()
+        print("▶️ AnalyticsService: Resumed flush timer from background")
+    }
+
     deinit {
         flushTimer?.invalidate()
     }

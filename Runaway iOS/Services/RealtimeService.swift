@@ -344,7 +344,23 @@ public final class RealtimeService: ObservableObject {
             heartbeatTimer = nil
         }
     }
-    
+
+    // MARK: - Background State Management
+
+    /// Pause connection monitoring when app enters background to save battery
+    func pauseForBackground() {
+        print("⏸️ RealtimeService: Pausing heartbeat timer for background")
+        stopConnectionMonitoring()
+    }
+
+    /// Resume connection monitoring when app returns to foreground
+    func resumeFromBackground() {
+        print("▶️ RealtimeService: Resuming heartbeat timer from background")
+        if isConnected {
+            startConnectionMonitoring()
+        }
+    }
+
     private func checkConnectionHealth() async {
         let (lastUpdate, needsReconnection, userId): (Date?, Bool, Int?) = await MainActor.run {
             let lastUpdate = lastUpdateTime ?? lastHeartbeat

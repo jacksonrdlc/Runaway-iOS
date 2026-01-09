@@ -134,7 +134,17 @@ class GPSTrackingService: NSObject, ObservableObject {
         print("📍 Starting location updates. Current status: \(authorizationStatus.rawValue)")
         locationManager.startUpdatingLocation()
     }
-    
+
+    func stopLocationUpdates() {
+        // Only stop if not actively tracking a workout
+        guard !isTracking else {
+            print("⚠️ Cannot stop location updates while tracking is active")
+            return
+        }
+        print("📍 Stopping location updates")
+        locationManager.stopUpdatingLocation()
+    }
+
     func startTracking() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
             print("❌ Location permission not granted")

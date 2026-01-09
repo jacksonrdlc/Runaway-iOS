@@ -120,6 +120,14 @@ struct PreRecordingView: View {
         .onAppear {
             setupLocationServices()
         }
+        .onDisappear {
+            // Stop GPS updates if we're not starting a recording to save battery
+            // Note: showingRecordingView means we're transitioning to ActiveRecordingView
+            if !showingRecordingView {
+                recordingService.gpsService.stopLocationUpdates()
+                print("📍 PreRecordingView: Stopped GPS on disappear (not recording)")
+            }
+        }
         .alert("Location Permission Required", isPresented: $showingPermissionAlert) {
             Button("Settings") {
                 openAppSettings()

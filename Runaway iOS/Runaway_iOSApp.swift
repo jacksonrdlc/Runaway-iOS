@@ -107,41 +107,10 @@ struct Runaway_iOSApp: App {
                     LocationManager.shared.requestLocationPermission()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    print("📱 App became active - starting realtime services")
-                    realtimeService.startRealtimeSubscription()
-                    LocationManager.shared.requestLocationPermission()
-
-                    // Request HealthKit authorization if available
-                    if HealthKitManager.shared.isHealthKitAvailable {
-                        Task {
-                            let authorized = await HealthKitManager.shared.requestAuthorization()
-                            if authorized {
-                                print("✅ HealthKit authorization complete")
-                            } else {
-                                print("⚠️ HealthKit authorization not granted")
-                            }
-                        }
-                    }
-
-                    // Detect and log rest days (days without activities)
-                    Task {
-                        if let athleteId = UserSession.shared.userId {
-                            await RestDayService.shared.runDetectionIfNeeded(athleteId: athleteId)
-                        }
-                    }
-
-                    // Track analytics session
-                    AnalyticsService.shared.startSession()
-                    AnalyticsService.shared.track(.appOpened, category: .engagement)
+                    handleAppBecameActive()
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-                    print("📱 App entered background - using silent push notifications for background sync")
-                    // Background tasks disabled - using silent push notifications instead
-                    // realtimeService.scheduleBackgroundRefresh()
-
-                    // Track analytics
-                    AnalyticsService.shared.track(.appBackgrounded, category: .engagement)
-                    AnalyticsService.shared.endSession()
+                    handleAppEnteredBackground()
                 }
                 .onOpenURL { url in
                     handleDeepLink(url)
@@ -216,4 +185,63 @@ struct Runaway_iOSApp: App {
             }
         }
     }
-} 
+
+    // MARK: - App Lifecycle Handlers
+
+    private func handleAppBecameActive() {
+        print("📱 App became active - resuming services")
+
+        // Resume realtime services
+        realtimeService.startRealtimeSubscription()
+        realtimeService.resumeFromBackground()
+
+        // Resume location updates
+        LocationManager.shared.requestLocationPermission()
+
+        // Resume analytics timer
+        AnalyticsService.shared.resumeFromBackground()
+
+        // Request HealthKit authorization if available
+        if HealthKitManager.shared.isHealthKitAvailable {
+            Task {
+                let authorized = await HealthKitManager.shared.requestAuthorization()
+                if authorized {
+                    print("✅ HealthKit authorization complete")
+                } else {
+                    print("⚠️ HealthKit authorization not granted")
+                }
+            }
+        }
+
+        // Detect and log rest days (days without activities)
+        Task {
+            if let athleteId = UserSession.shared.userId {
+                await RestDayService.shared.runDetectionIfNeeded(athleteId: athleteId)
+            }
+        }
+
+        // Track analytics session
+        AnalyticsService.shared.startSession()
+        AnalyticsService.shared.track(.appOpened, category: .engagement)
+    }
+
+    private func handleAppEnteredBackground() {
+        print("📱 App entered background - pausing battery-intensive services")
+
+        // Stop location updates if not actively tracking a workout
+        // GPSTrackingService.isTracking indicates an active recording session
+        if !activityRecordingService.gpsService.isTracking {
+            LocationManager.shared.stopLocationUpdates()
+        }
+
+        // Pause realtime connection monitoring to save battery
+        realtimeService.pauseForBackground()
+
+        // Pause analytics timer
+        AnalyticsService.shared.pauseForBackground()
+
+        // Track analytics before pausing
+        AnalyticsService.shared.track(.appBackgrounded, category: .engagement)
+        AnalyticsService.shared.endSession()
+    }
+}
