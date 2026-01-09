@@ -32,8 +32,11 @@ struct SettingsView: View {
     @State private var showingGarminSheet = false
     @State private var showingDisconnectAlert = false
     @State private var showingGarminDisconnectAlert = false
+    @State private var showingDeleteAccountAlert = false
+    @State private var isDeletingAccount = false
     @State private var stravaError: String?
     @State private var garminError: String?
+    @State private var deleteAccountError: String?
 
     private var colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color) {
         if themeManager.isDarkMode {
@@ -337,16 +340,43 @@ struct SettingsView: View {
                     dismiss()
                 }
             }
+
+            SettingsRow(
+                icon: "trash",
+                title: "Delete Account",
+                subtitle: "Permanently delete your account and all data",
+                color: AppTheme.Colors.error,
+                isDestructive: true
+            ) {
+                showingDeleteAccountAlert = true
+            }
+
+            if let error = deleteAccountError {
+                Text(error)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .padding(.horizontal)
+            }
+        }
+        .alert("Delete Account", isPresented: $showingDeleteAccountAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                Task {
+                    await deleteAccount()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to permanently delete your account? This action cannot be undone. All your activities, training plans, and data will be permanently removed.")
         }
     }
 
     private var appInfoSection: some View {
         VStack(spacing: AppTheme.Spacing.sm) {
-            Text("Runaway iOS")
+            Text("Runaway")
                 .font(AppTheme.Typography.caption)
                 .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
 
-            Text("Version 1.0.0")
+            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
                 .font(AppTheme.Typography.caption)
                 .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
         }
@@ -390,6 +420,65 @@ struct SettingsView: View {
         } catch {
             return nil
         }
+    }
+
+    private func deleteAccount() async {
+        isDeletingAccount = true
+        deleteAccountError = nil
+
+        do {
+            // Get current session for auth
+            let session = try await supabase.auth.session
+            let accessToken = session.accessToken
+
+            // Call the delete-account edge function
+            guard let url = URL(string: "\(SupabaseConfiguration.supabaseURL ?? "")/functions/v1/delete-account") else {
+                deleteAccountError = "Invalid URL"
+                isDeletingAccount = false
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            if let apiKey = SupabaseConfiguration.supabaseKey {
+                request.setValue(apiKey, forHTTPHeaderField: "apikey")
+            }
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+            let body: [String: Any] = [
+                "user_id": session.user.id.uuidString
+            ]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                deleteAccountError = "Invalid response"
+                isDeletingAccount = false
+                return
+            }
+
+            if httpResponse.statusCode == 200 {
+                // Sign out after successful deletion
+                try? await userSession.signOut()
+                dismiss()
+            } else {
+                // Try to parse error message
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let error = json["error"] as? [String: Any],
+                   let message = error["message"] as? String {
+                    deleteAccountError = message
+                } else {
+                    deleteAccountError = "Failed to delete account (status: \(httpResponse.statusCode))"
+                }
+            }
+        } catch {
+            deleteAccountError = error.localizedDescription
+        }
+
+        isDeletingAccount = false
     }
 }
 
