@@ -181,17 +181,18 @@ struct SettingsView: View {
                 }
             }
 
-            NavigationLink(destination: CoachSettingsView()) {
-                SettingsRow(
-                    icon: "brain.head.profile",
-                    title: "Coach Settings",
-                    subtitle: "Customize AI coaching preferences",
-                    color: AppTheme.Colors.success
-                ) {
-                    // Navigation handled by NavigationLink
-                }
-            }
-            .buttonStyle(PlainButtonStyle())
+            // TODO: Re-enable when background audio mode is added back
+            // NavigationLink(destination: CoachSettingsView()) {
+            //     SettingsRow(
+            //         icon: "brain.head.profile",
+            //         title: "Coach Settings",
+            //         subtitle: "Customize AI coaching preferences",
+            //         color: AppTheme.Colors.success
+            //     ) {
+            //         // Navigation handled by NavigationLink
+            //     }
+            // }
+            // .buttonStyle(PlainButtonStyle())
 
             if let athleteId = dataManager.athlete?.id {
                 NavigationLink(destination: RestDayHistoryView(athleteId: athleteId)) {

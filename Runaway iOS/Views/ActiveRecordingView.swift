@@ -20,7 +20,10 @@ struct ActiveRecordingView: View {
 
     @StateObject private var timerManager = TimerUpdateManager()
     @StateObject private var mapThrottler = MapRegionThrottler()
-    @StateObject private var audioCoaching = AudioCoachingService()
+
+    // TODO: Re-enable when background audio mode is added back
+    // @StateObject private var audioCoaching = AudioCoachingService()
+    private let audioCoachingEnabled = false
     
     var body: some View {
         ZStack {
@@ -120,95 +123,11 @@ struct ActiveRecordingView: View {
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                     }
 
-                    // Listening indicator - prominent when voice input is active
-                    if audioCoaching.isListening {
-                        HStack(spacing: 12) {
-                            // Animated waveform
-                            ListeningWaveform()
+                    // TODO: Re-enable audio coaching UI when background audio mode is added back
+                    // Audio coaching UI disabled for App Store submission
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Listening...")
-                                    .font(.subheadline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                Text("Say how you're feeling or ask for stats")
-                                    .font(.caption)
-                                    .foregroundColor(AppTheme.Colors.textSecondary)
-                            }
-
-                            Spacer()
-
-                            // Cancel button
-                            Button(action: {
-                                audioCoaching.stopVoiceInput()
-                            }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.title2)
-                                    .foregroundColor(AppTheme.Colors.iconSecondary)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(.green.opacity(0.9))
-                                .shadow(color: .green.opacity(0.5), radius: 10, x: 0, y: 4)
-                        )
-                        .transition(.scale.combined(with: .opacity))
-                        .animation(.spring(response: 0.3), value: audioCoaching.isListening)
-                    }
-                    // Audio coaching prompt indicator (when speaking)
-                    else if let lastPrompt = audioCoaching.lastPromptMessage,
-                       let promptTime = audioCoaching.lastPromptTime,
-                       Date().timeIntervalSince(promptTime) < 5.0 {
-                        HStack {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .foregroundColor(.blue)
-                            Text(lastPrompt)
-                                .foregroundColor(.white)
-                                .font(.subheadline)
-                                .lineLimit(2)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .animation(.easeInOut, value: lastPrompt)
-                    }
-                    
                     // Control buttons
                     HStack(spacing: 16) {
-                        // Audio coaching toggle
-                        Button(action: {
-                            audioCoaching.isEnabled.toggle()
-                        }) {
-                            Image(systemName: audioCoaching.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                                .font(.title3)
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(audioCoaching.isEnabled ? .blue : .gray, in: Circle())
-                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                        }
-
-                        // Voice input button
-                        Button(action: {
-                            Task {
-                                await audioCoaching.toggleVoiceInput()
-                            }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(audioCoaching.isListening ? .green : .purple)
-                                    .frame(width: 44, height: 44)
-                                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-
-                                Image(systemName: audioCoaching.isListening ? "waveform" : "mic.fill")
-                                    .font(.title3)
-                                    .foregroundColor(.white)
-                                    .symbolEffect(.variableColor.iterative, isActive: audioCoaching.isListening)
-                            }
-                        }
-
                         // Pause/Resume button
                         Button(action: togglePauseResume) {
                             Image(systemName: pauseResumeIcon)
@@ -240,13 +159,13 @@ struct ActiveRecordingView: View {
         .navigationBarHidden(true)
         .onAppear {
             timerManager.start()
-            // Bind audio coaching to recording service
-            audioCoaching.bind(to: recordingService)
+            // TODO: Re-enable when background audio mode is added back
+            // audioCoaching.bind(to: recordingService)
         }
         .onDisappear {
             timerManager.stop()
-            // Unbind audio coaching
-            audioCoaching.unbind()
+            // TODO: Re-enable when background audio mode is added back
+            // audioCoaching.unbind()
         }
         .confirmationDialog("Stop Recording", isPresented: $showingStopConfirmation) {
             Button("Stop and Save", role: .destructive) {

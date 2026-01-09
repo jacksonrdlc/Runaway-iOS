@@ -16,7 +16,8 @@ struct CoachSettings: Codable {
     // MARK: - Master Toggle
 
     /// Whether audio coaching is enabled
-    var isEnabled: Bool = true
+    /// NOTE: Disabled by default until background audio mode is re-enabled
+    var isEnabled: Bool = false
 
     // MARK: - Split Announcements
 
