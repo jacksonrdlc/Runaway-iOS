@@ -234,9 +234,19 @@ class StravaService: ObservableObject {
             throw StravaError.invalidURL
         }
 
+        // Get user's JWT token from current session
+        let authSession = try await supabase.auth.session
+        let accessToken = authSession.accessToken
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add Supabase API key and user's JWT token for authentication
+        if let apiKey = SupabaseConfiguration.supabaseKey {
+            request.setValue(apiKey, forHTTPHeaderField: "apikey")
+        }
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
         let body: [String: Any] = [
             "user_id": userId,
