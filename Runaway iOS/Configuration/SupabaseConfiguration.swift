@@ -70,14 +70,19 @@ struct SupabaseConfiguration {
             throw ConfigurationError.missingSupabaseKey
         }
 
-        // Create client with default configuration (includes session persistence)
+        // Create client with logging enabled in debug builds
         let client = SupabaseClient(
             supabaseURL: url,
-            supabaseKey: key
+            supabaseKey: key,
+            options: SupabaseClientOptions(
+                global: SupabaseClientOptions.GlobalOptions(
+                    logger: SupabaseLoggingService.shared
+                )
+            )
         )
 
         #if DEBUG
-        print("🔐 Supabase client configured with session persistence enabled")
+        print("🔐 Supabase client configured with logging enabled")
         #endif
 
         return client
