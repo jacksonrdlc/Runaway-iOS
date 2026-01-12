@@ -100,10 +100,13 @@ class OnboardingViewModel: ObservableObject {
     @Published var isLoading = false
 
     private var onboardingState: OnboardingState?
+    private var hasLoadedInitialState = false
 
     // MARK: - Load State
 
     func loadOnboardingState(for userId: Int?) async {
+        // Only load once - prevent re-loading from overwriting local navigation state
+        guard !hasLoadedInitialState else { return }
         guard let userId = userId else { return }
 
         isLoading = true
@@ -112,6 +115,7 @@ class OnboardingViewModel: ObservableObject {
         do {
             let state = try await OnboardingService.getOrCreateOnboardingState(athleteId: userId)
             self.onboardingState = state
+            self.hasLoadedInitialState = true
 
             // Restore state
             if let step = OnboardingStep(rawValue: state.currentStep) {
@@ -124,6 +128,8 @@ class OnboardingViewModel: ObservableObject {
             locationPermissionGranted = state.locationPermissionGranted
         } catch {
             print("❌ OnboardingViewModel: Failed to load state: \(error)")
+            // Mark as loaded even on error to prevent infinite retry
+            self.hasLoadedInitialState = true
         }
     }
 
@@ -132,13 +138,17 @@ class OnboardingViewModel: ObservableObject {
     func nextStep() {
         guard let next = currentStep.next else { return }
         currentStep = next
-        saveCurrentStep()
+        Task {
+            await saveCurrentStep()
+        }
     }
 
     func previousStep() {
         guard let previous = currentStep.previous else { return }
         currentStep = previous
-        saveCurrentStep()
+        Task {
+            await saveCurrentStep()
+        }
     }
 
     func skipStep() {
@@ -147,11 +157,13 @@ class OnboardingViewModel: ObservableObject {
 
     // MARK: - Save Methods
 
-    private func saveCurrentStep() {
+    private func saveCurrentStep() async {
         guard let stateId = onboardingState?.id else { return }
 
-        Task {
-            try? await OnboardingService.updateCurrentStep(stateId: stateId, step: currentStep.rawValue)
+        do {
+            try await OnboardingService.updateCurrentStep(stateId: stateId, step: currentStep.rawValue)
+        } catch {
+            print("❌ OnboardingViewModel: Failed to save current step: \(error)")
         }
     }
 
