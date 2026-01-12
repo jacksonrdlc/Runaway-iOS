@@ -30,6 +30,9 @@ class TrainingViewModel: ObservableObject {
     @Published var unifiedRecommendations: [String] = []
     @Published var lastUpdated: Date?
 
+    // Training Phase (Adaptive Dashboard)
+    @Published var trainingPhaseContext: TrainingPhaseContext?
+
     // Cache configuration
     private let cacheValidityDuration: TimeInterval = 5 * 60 // 5 minutes
 
@@ -87,10 +90,30 @@ class TrainingViewModel: ObservableObject {
 
         // Merge again with API data
         mergeRecommendations()
+
+        // Detect training phase for adaptive dashboard
+        detectTrainingPhase(activities: activities)
+
         lastUpdated = Date()
 
         #if DEBUG
         print("✅ TrainingViewModel: All data loaded")
+        #endif
+    }
+
+    // MARK: - Training Phase Detection
+
+    /// Detect current training phase for adaptive dashboard
+    private func detectTrainingPhase(activities: [Activity]) {
+        trainingPhaseContext = TrainingPhaseService.detectPhase(
+            activities: activities,
+            trainingLoad: quickWinsData?.analyses.trainingLoad
+        )
+
+        #if DEBUG
+        if let context = trainingPhaseContext {
+            print("📊 TrainingPhase: \(context.phase.displayName) (confidence: \(Int(context.confidence * 100))%)")
+        }
         #endif
     }
 
