@@ -139,4 +139,16 @@ public final class UserSession: ObservableObject {
         try await supabase.auth.signOut()
         await clearSession()
     }
+
+    /// Sign in with Apple using ID token
+    func signInWithApple(idToken: String, nonce: String) async throws {
+        _ = try await supabase.auth.signInWithIdToken(
+            credentials: .init(
+                provider: .apple,
+                idToken: idToken,
+                nonce: nonce
+            )
+        )
+        // Auth state will be updated automatically via listener
+    }
 }
