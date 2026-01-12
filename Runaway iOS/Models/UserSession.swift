@@ -21,6 +21,12 @@ public final class UserSession: ObservableObject {
     /// User profile from custom User model
     @Published public var profileUser: User?
 
+    /// Onboarding completion state
+    @Published public var hasCompletedOnboarding = true
+
+    /// Loading onboarding state
+    @Published public var isCheckingOnboarding = false
+
     // MARK: - Singleton
 
     public static let shared = UserSession()
@@ -99,6 +105,47 @@ public final class UserSession: ObservableObject {
         }
         // Refresh widgets after authentication state update
         WidgetRefreshService.refreshForAuthUpdate()
+
+        // Check onboarding status after authentication
+        await checkOnboardingStatus()
+    }
+
+    // MARK: - Onboarding State Management
+
+    /// Check if the current user has completed onboarding
+    private func checkOnboardingStatus() async {
+        guard let athleteId = userId else {
+            // No athlete ID yet, will check again when profile is set
+            await MainActor.run {
+                self.hasCompletedOnboarding = true // Default to true to avoid showing onboarding prematurely
+            }
+            return
+        }
+
+        await MainActor.run {
+            self.isCheckingOnboarding = true
+        }
+
+        do {
+            let isCompleted = try await OnboardingService.checkOnboardingStatus(athleteId: athleteId)
+            await MainActor.run {
+                self.hasCompletedOnboarding = isCompleted
+                self.isCheckingOnboarding = false
+            }
+            print("✅ UserSession: Onboarding status - completed: \(isCompleted)")
+        } catch {
+            print("⚠️ UserSession: Failed to check onboarding status: \(error)")
+            await MainActor.run {
+                // Default to completed on error to avoid blocking users
+                self.hasCompletedOnboarding = true
+                self.isCheckingOnboarding = false
+            }
+        }
+    }
+
+    /// Refresh onboarding status (call when profile is set)
+    public func refreshOnboardingStatus() async {
+        await checkOnboardingStatus()
     }
 
     // MARK: - Profile Management
@@ -106,6 +153,11 @@ public final class UserSession: ObservableObject {
     /// Set the user profile
     public func setProfile(_ user: User) {
         self.profileUser = user
+
+        // Check onboarding status now that we have the athlete ID
+        Task {
+            await checkOnboardingStatus()
+        }
     }
 
     /// Clear both auth and profile data
@@ -114,6 +166,8 @@ public final class UserSession: ObservableObject {
             self.currentUser = nil
             self.isAuthenticated = false
             self.profileUser = nil
+            self.hasCompletedOnboarding = true // Reset to default
+            self.isCheckingOnboarding = false
         }
     }
 
