@@ -115,11 +115,20 @@ public final class UserSession: ObservableObject {
 
     // MARK: - Onboarding State Management
 
+    /// Track if we've already checked onboarding status
+    private var hasCheckedOnboarding = false
+
     /// Check if the current user has completed onboarding
     private func checkOnboardingStatus() async {
         // Skip if user just completed onboarding in this session
         if onboardingCompletedInSession {
             print("✅ UserSession: Skipping onboarding check - completed in this session")
+            return
+        }
+
+        // Skip if we've already checked (prevents repeated checks from setProfile calls)
+        if hasCheckedOnboarding {
+            print("✅ UserSession: Skipping onboarding check - already checked")
             return
         }
 
@@ -140,6 +149,11 @@ public final class UserSession: ObservableObject {
             await MainActor.run {
                 self.hasCompletedOnboarding = isCompleted
                 self.isCheckingOnboarding = false
+                self.hasCheckedOnboarding = true // Mark as checked to prevent loops
+                // If already completed, also set the session flag
+                if isCompleted {
+                    self.onboardingCompletedInSession = true
+                }
             }
             print("✅ UserSession: Onboarding status - completed: \(isCompleted)")
         } catch {
@@ -148,6 +162,7 @@ public final class UserSession: ObservableObject {
                 // Default to completed on error to avoid blocking users
                 self.hasCompletedOnboarding = true
                 self.isCheckingOnboarding = false
+                self.hasCheckedOnboarding = true
             }
         }
     }
@@ -184,6 +199,8 @@ public final class UserSession: ObservableObject {
             self.profileUser = nil
             self.hasCompletedOnboarding = true // Reset to default
             self.isCheckingOnboarding = false
+            self.hasCheckedOnboarding = false // Reset so next login checks fresh
+            self.onboardingCompletedInSession = false
         }
     }
 
