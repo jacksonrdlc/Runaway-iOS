@@ -7,6 +7,16 @@
 
 import Foundation
 
+// MARK: - Activity Date Helper
+
+private extension Activity {
+    /// Convenience computed property to get activity date as Date
+    var date: Date? {
+        guard let timestamp = activity_date ?? start_date else { return nil }
+        return Date(timeIntervalSince1970: timestamp)
+    }
+}
+
 // MARK: - Training Phase Service
 
 class TrainingPhaseService {
@@ -268,7 +278,7 @@ class TrainingPhaseService {
         }
 
         let restDays = 7 - Set(last7Days.compactMap { $0.date?.startOfDay }).count
-        let qualityRuns = last7Days.filter { ($0.distanceMeters ?? 0) > 5000 }.count
+        let qualityRuns = last7Days.filter { ($0.distance ?? 0) > 5000 }.count
 
         let recoveryScore: Double
         let status = trainingLoad?.recoveryStatus ?? "adequate"
@@ -311,11 +321,11 @@ class TrainingPhaseService {
     static func generateProgressionMetrics(activities: [Activity]) -> ProgressionMetrics {
         let sortedActivities = activities.sorted { ($0.date ?? Date.distantPast) < ($1.date ?? Date.distantPast) }
 
-        let totalDistanceKm = activities.reduce(0) { $0 + (($1.distanceMeters ?? 0) / 1000) }
-        let longestRunKm = activities.map { ($0.distanceMeters ?? 0) / 1000 }.max() ?? 0
+        let totalDistanceKm = activities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
+        let longestRunKm = activities.map { ($0.distance ?? 0) / 1000 }.max() ?? 0
 
         let avgPace: Double
-        let totalTime = activities.reduce(0) { $0 + ($1.duration ?? 0) }
+        let totalTime = activities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
         if totalDistanceKm > 0 {
             avgPace = (totalTime / 60) / totalDistanceKm // min per km
         } else {
@@ -353,7 +363,7 @@ class TrainingPhaseService {
                 return date >= weekStart && date < weekEnd
             }
 
-            let volumeKm = weekActivities.reduce(0) { $0 + (($1.distanceMeters ?? 0) / 1000) }
+            let volumeKm = weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
             weeklyVolumes.append(volumeKm)
         }
 
@@ -366,7 +376,7 @@ class TrainingPhaseService {
             guard let date = activity.date else { return false }
             return date >= weekStart
         }
-        return weekActivities.reduce(0) { $0 + (($1.distanceMeters ?? 0) / 1000) }
+        return weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
     }
 
     private static func calculatePeakWeeklyVolume(from activities: [Activity]) -> Double {

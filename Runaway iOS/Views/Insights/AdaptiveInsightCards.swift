@@ -112,19 +112,19 @@ struct ProgressionBasicsCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             // Quick stats
             HStack(spacing: AppTheme.Spacing.md) {
-                StatPill(
+                AdaptiveStatPill(
                     value: "\(metrics.totalActivities)",
                     label: "Runs",
                     color: .blue
                 )
 
-                StatPill(
+                AdaptiveStatPill(
                     value: String(format: "%.1f", metrics.totalDistanceMiles),
                     label: "Miles",
                     color: .green
                 )
 
-                StatPill(
+                AdaptiveStatPill(
                     value: "\(metrics.daysSinceStart)",
                     label: "Days",
                     color: .orange
@@ -504,7 +504,11 @@ struct ReturnToRunningCard: View {
     let activities: [Activity]
 
     private var daysSinceLastRun: Int {
-        guard let lastDate = activities.compactMap({ $0.date }).max() else {
+        let dates = activities.compactMap { activity -> Date? in
+            guard let timestamp = activity.activity_date ?? activity.start_date else { return nil }
+            return Date(timeIntervalSince1970: timestamp)
+        }
+        guard let lastDate = dates.max() else {
             return 0
         }
         return Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
@@ -584,7 +588,7 @@ struct ReturnToRunningCard: View {
 
 // MARK: - Supporting Components
 
-struct StatPill: View {
+struct AdaptiveStatPill: View {
     let value: String
     let label: String
     let color: Color
