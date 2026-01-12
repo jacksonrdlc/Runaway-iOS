@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import MapKit
 
 // MARK: - Welcome View
 
@@ -406,26 +405,68 @@ struct OnboardingLocationView: View {
     let onSkip: () -> Void
     let onPermissionResult: (Bool) -> Void
 
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-    )
     @State private var permissionGranted = false
 
     var body: some View {
         VStack(spacing: 24) {
-            // Map preview
-            Map(coordinateRegion: $region)
-                .frame(height: 200)
-                .cornerRadius(20)
-                .padding(.horizontal)
-                .padding(.top)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.blue.opacity(0.3), lineWidth: 2)
-                        .padding(.horizontal)
-                        .padding(.top)
+            // Map preview placeholder
+            ZStack {
+                // Background gradient to simulate map
+                LinearGradient(
+                    colors: [Color.green.opacity(0.3), Color.blue.opacity(0.2)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
+
+                // Grid pattern to simulate streets
+                VStack(spacing: 20) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.5))
+                            .frame(height: 2)
+                    }
+                }
+
+                HStack(spacing: 30) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.5))
+                            .frame(width: 2)
+                    }
+                }
+
+                // Route line
+                Path { path in
+                    path.move(to: CGPoint(x: 50, y: 150))
+                    path.addCurve(
+                        to: CGPoint(x: 300, y: 50),
+                        control1: CGPoint(x: 100, y: 100),
+                        control2: CGPoint(x: 200, y: 80)
+                    )
+                }
+                .stroke(Color.blue, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+
+                // Location pin
+                VStack(spacing: 0) {
+                    Image(systemName: "location.fill")
+                        .font(.title)
+                        .foregroundColor(.blue)
+                    Circle()
+                        .fill(Color.blue.opacity(0.3))
+                        .frame(width: 20, height: 10)
+                }
+                .offset(x: 50, y: -20)
+            }
+            .frame(height: 200)
+            .cornerRadius(20)
+            .padding(.horizontal)
+            .padding(.top)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+                    .padding(.horizontal)
+                    .padding(.top)
+            )
 
             // Header
             VStack(spacing: 8) {
@@ -446,9 +487,9 @@ struct OnboardingLocationView: View {
 
             // Benefits
             VStack(alignment: .leading, spacing: 12) {
-                BenefitRow(icon: "map.fill", text: "See your run routes on a map")
-                BenefitRow(icon: "figure.run", text: "Track pace and distance accurately")
-                BenefitRow(icon: "star.fill", text: "Discover popular running routes")
+                OnboardingBenefitRow(icon: "map.fill", text: "See your run routes on a map")
+                OnboardingBenefitRow(icon: "figure.run", text: "Track pace and distance accurately")
+                OnboardingBenefitRow(icon: "star.fill", text: "Discover popular running routes")
             }
             .padding(.horizontal, 32)
 
@@ -497,7 +538,7 @@ struct OnboardingLocationView: View {
     }
 }
 
-struct BenefitRow: View {
+struct OnboardingBenefitRow: View {
     let icon: String
     let text: String
 
