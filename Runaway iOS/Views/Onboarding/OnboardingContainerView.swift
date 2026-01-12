@@ -82,7 +82,8 @@ struct OnboardingContainerView: View {
         Task {
             await viewModel.completeOnboarding()
             await MainActor.run {
-                userSession.hasCompletedOnboarding = true
+                // Use markOnboardingCompleted to prevent re-checking from database
+                userSession.markOnboardingCompleted()
             }
         }
     }

@@ -27,6 +27,9 @@ public final class UserSession: ObservableObject {
     /// Loading onboarding state
     @Published public var isCheckingOnboarding = false
 
+    /// Flag to prevent re-checking onboarding after user completes it in this session
+    private var onboardingCompletedInSession = false
+
     // MARK: - Singleton
 
     public static let shared = UserSession()
@@ -114,6 +117,12 @@ public final class UserSession: ObservableObject {
 
     /// Check if the current user has completed onboarding
     private func checkOnboardingStatus() async {
+        // Skip if user just completed onboarding in this session
+        if onboardingCompletedInSession {
+            print("✅ UserSession: Skipping onboarding check - completed in this session")
+            return
+        }
+
         guard let athleteId = userId else {
             // No athlete ID yet, will check again when profile is set
             await MainActor.run {
@@ -141,6 +150,13 @@ public final class UserSession: ObservableObject {
                 self.isCheckingOnboarding = false
             }
         }
+    }
+
+    /// Mark onboarding as completed (call after user finishes onboarding flow)
+    public func markOnboardingCompleted() {
+        self.onboardingCompletedInSession = true
+        self.hasCompletedOnboarding = true
+        self.isCheckingOnboarding = false
     }
 
     /// Refresh onboarding status (call when profile is set)
