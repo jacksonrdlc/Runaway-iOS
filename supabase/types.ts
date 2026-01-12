@@ -1088,30 +1088,39 @@ export type Database = {
           activity_type: string
           athlete_id: number
           commitment_date: string
+          commitment_level: string | null
           created_at: string
           fulfilled_at: string | null
           id: number
           is_fulfilled: boolean
+          micro_commitment_type: string | null
+          progression_step: number | null
           updated_at: string
         }
         Insert: {
           activity_type: string
           athlete_id: number
           commitment_date: string
+          commitment_level?: string | null
           created_at?: string
           fulfilled_at?: string | null
           id?: number
           is_fulfilled?: boolean
+          micro_commitment_type?: string | null
+          progression_step?: number | null
           updated_at?: string
         }
         Update: {
           activity_type?: string
           athlete_id?: number
           commitment_date?: string
+          commitment_level?: string | null
           created_at?: string
           fulfilled_at?: string | null
           id?: number
           is_fulfilled?: boolean
+          micro_commitment_type?: string | null
+          progression_step?: number | null
           updated_at?: string
         }
         Relationships: [

@@ -52,6 +52,12 @@ struct ActivityCommitmentCard: View {
                 if commitment.isFulfilled {
                     // Fulfilled commitment
                     FulfilledCommitmentView(commitment: commitment)
+                } else if commitment.isMicroCommitment {
+                    // Active micro-commitment
+                    MicroCommitmentCard(
+                        commitment: commitment,
+                        onComplete: completeMicroCommitment
+                    )
                 } else {
                     // Active commitment with countdown
                     ActiveCommitmentView(commitment: commitment)
@@ -63,6 +69,7 @@ struct ActivityCommitmentCard: View {
                     showingCommitmentPicker: $showingCommitmentPicker,
                     onCommitmentCreated: createCommitment
                 )
+                .environmentObject(CommitmentManager.shared)
             }
 
             // Error message
@@ -127,14 +134,33 @@ struct ActivityCommitmentCard: View {
             }
         }
     }
+
+    private func completeMicroCommitment() {
+        Task {
+            do {
+                errorMessage = nil
+                try await CommitmentManager.shared.completeMicroCommitment()
+
+                // Refresh the data
+                await dataManager.refreshTodaysCommitment()
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to complete: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
 }
 
 // MARK: - No Commitment View
 
 struct NoCommitmentView: View {
+    @EnvironmentObject var commitmentManager: CommitmentManager
     @Binding var selectedActivityType: CommitmentActivityType
     @Binding var showingCommitmentPicker: Bool
     let onCommitmentCreated: () -> Void
+
+    @State private var showMicroCommitmentSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -175,6 +201,40 @@ struct NoCommitmentView: View {
                 .padding(.vertical, AppTheme.Spacing.sm)
                 .background(AppTheme.Colors.accent)
                 .cornerRadius(AppTheme.CornerRadius.small)
+            }
+
+            // Micro-commitment option
+            if commitmentManager.shouldOfferMicroCommitment {
+                VStack(spacing: AppTheme.Spacing.xs) {
+                    Divider()
+                        .padding(.vertical, AppTheme.Spacing.xs)
+
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.cyan)
+                            .font(.caption)
+
+                        Text("Need to start smaller?")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+
+                        Spacer()
+
+                        Button(action: { showMicroCommitmentSheet = true }) {
+                            Text("Try a micro-commitment")
+                                .font(AppTheme.Typography.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.cyan)
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showMicroCommitmentSheet) {
+            MicroCommitmentSelector { type in
+                Task {
+                    try? await commitmentManager.createMicroCommitment(type)
+                }
             }
         }
     }
