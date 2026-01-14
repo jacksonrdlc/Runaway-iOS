@@ -63,16 +63,47 @@ enum AwardTier: String, Codable, CaseIterable {
     case platinum = "platinum"
 
     var displayName: String {
-        rawValue.capitalized
+        switch self {
+        case .bronze: return "Starter"
+        case .silver: return "Achiever"
+        case .gold: return "Elite"
+        case .platinum: return "Legendary"
+        }
     }
 
+    // Primary vibrant color for each tier
     var color: Color {
         switch self {
-        case .bronze: return Color(red: 0.8, green: 0.5, blue: 0.2)
-        case .silver: return Color(red: 0.75, green: 0.75, blue: 0.75)
-        case .gold: return Color(red: 1.0, green: 0.84, blue: 0.0)
-        case .platinum: return Color(red: 0.9, green: 0.9, blue: 1.0)
+        case .bronze: return Color(red: 0.0, green: 0.85, blue: 0.85)     // Electric Cyan
+        case .silver: return Color(red: 0.58, green: 0.34, blue: 0.92)    // Vibrant Purple
+        case .gold: return Color(red: 1.0, green: 0.2, blue: 0.55)        // Hot Pink/Magenta
+        case .platinum: return Color(red: 1.0, green: 0.75, blue: 0.0)    // Legendary Gold
         }
+    }
+
+    // Secondary accent color for gradients
+    var accentColor: Color {
+        switch self {
+        case .bronze: return Color(red: 0.0, green: 0.6, blue: 1.0)       // Sky Blue
+        case .silver: return Color(red: 0.85, green: 0.4, blue: 0.95)     // Orchid
+        case .gold: return Color(red: 1.0, green: 0.4, blue: 0.2)         // Coral Orange
+        case .platinum: return Color(red: 1.0, green: 0.95, blue: 0.4)    // Bright Yellow
+        }
+    }
+
+    // Glow color for neon effect
+    var glowColor: Color {
+        switch self {
+        case .bronze: return Color(red: 0.0, green: 1.0, blue: 1.0)       // Bright Cyan
+        case .silver: return Color(red: 0.7, green: 0.3, blue: 1.0)       // Bright Purple
+        case .gold: return Color(red: 1.0, green: 0.1, blue: 0.5)         // Bright Magenta
+        case .platinum: return Color(red: 1.0, green: 0.9, blue: 0.3)     // Bright Gold
+        }
+    }
+
+    // Whether this tier has animated effects
+    var hasAnimation: Bool {
+        self == .platinum
     }
 }
 

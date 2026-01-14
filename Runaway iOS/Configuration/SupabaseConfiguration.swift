@@ -56,6 +56,11 @@ struct SupabaseConfiguration {
     private static let hardcodedSupabaseURL: String? = nil
     private static let hardcodedSupabaseKey: String? = nil
 
+    // MARK: - Auth Configuration
+
+    /// Deep link URL scheme for auth callbacks
+    static let authRedirectURL = URL(string: "runaway://auth/callback")
+
     // MARK: - Supabase Client Factory
 
     /// Creates a configured Supabase client
@@ -70,14 +75,19 @@ struct SupabaseConfiguration {
             throw ConfigurationError.missingSupabaseKey
         }
 
-        // Create client with default configuration (includes session persistence)
+        // Create client with auth redirect URL for email verification deep links
         let client = SupabaseClient(
             supabaseURL: url,
-            supabaseKey: key
+            supabaseKey: key,
+            options: SupabaseClientOptions(
+                auth: SupabaseClientOptions.AuthOptions(
+                    redirectToURL: authRedirectURL
+                )
+            )
         )
 
         #if DEBUG
-        print("🔐 Supabase client configured with session persistence enabled")
+        print("🔐 Supabase client configured with redirect URL: \(authRedirectURL?.absoluteString ?? "none")")
         #endif
 
         return client

@@ -52,6 +52,12 @@ struct ActivityCommitmentCard: View {
                 if commitment.isFulfilled {
                     // Fulfilled commitment
                     FulfilledCommitmentView(commitment: commitment)
+                } else if commitment.isMicroCommitment {
+                    // Active micro-commitment
+                    MicroCommitmentCard(
+                        commitment: commitment,
+                        onComplete: completeMicroCommitment
+                    )
                 } else {
                     // Active commitment with countdown
                     ActiveCommitmentView(commitment: commitment)
@@ -63,6 +69,7 @@ struct ActivityCommitmentCard: View {
                     showingCommitmentPicker: $showingCommitmentPicker,
                     onCommitmentCreated: createCommitment
                 )
+                .environmentObject(CommitmentManager.shared)
             }
 
             // Error message
@@ -127,14 +134,33 @@ struct ActivityCommitmentCard: View {
             }
         }
     }
+
+    private func completeMicroCommitment() {
+        Task {
+            do {
+                errorMessage = nil
+                try await CommitmentManager.shared.completeMicroCommitment()
+
+                // Refresh the data
+                await dataManager.refreshTodaysCommitment()
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to complete: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
 }
 
 // MARK: - No Commitment View
 
 struct NoCommitmentView: View {
+    @EnvironmentObject var commitmentManager: CommitmentManager
     @Binding var selectedActivityType: CommitmentActivityType
     @Binding var showingCommitmentPicker: Bool
     let onCommitmentCreated: () -> Void
+
+    @State private var showMicroCommitmentSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -175,6 +201,40 @@ struct NoCommitmentView: View {
                 .padding(.vertical, AppTheme.Spacing.sm)
                 .background(AppTheme.Colors.accent)
                 .cornerRadius(AppTheme.CornerRadius.small)
+            }
+
+            // Micro-commitment option
+            if commitmentManager.shouldOfferMicroCommitment {
+                VStack(spacing: AppTheme.Spacing.xs) {
+                    Divider()
+                        .padding(.vertical, AppTheme.Spacing.xs)
+
+                    HStack {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.cyan)
+                            .font(.caption)
+
+                        Text("Need to start smaller?")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+
+                        Spacer()
+
+                        Button(action: { showMicroCommitmentSheet = true }) {
+                            Text("Try a micro-commitment")
+                                .font(AppTheme.Typography.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.cyan)
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showMicroCommitmentSheet) {
+            MicroCommitmentSelector { type in
+                Task {
+                    try? await commitmentManager.createMicroCommitment(type)
+                }
             }
         }
     }
@@ -379,44 +439,50 @@ struct FulfilledCommitmentView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             // Celebration header
             HStack {
-                Text("Commitment Completed")
+                Text(commitment.isMicroCommitment ? "Micro-Commitment Done!" : "Commitment Completed")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.bold)
                     .foregroundColor(AppTheme.Colors.success)
 
                 Spacer()
 
-                Image(systemName: "party.popper.fill")
-                    .foregroundColor(AppTheme.Colors.accent)
+                Image(systemName: commitment.isMicroCommitment ? "sparkles" : "party.popper.fill")
+                    .foregroundColor(commitment.isMicroCommitment ? .cyan : AppTheme.Colors.accent)
                     .font(AppTheme.Typography.title2)
             }
 
             // Main celebration message
             VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                Text("LET'S GO! 🔥")
+                Text(commitment.isMicroCommitment ? "Great start! ✨" : "LET'S GO! 🔥")
                     .font(.title2)
                     .fontWeight(.heavy)
                     .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
-                Text("You crushed your \(commitment.activityType.displayName.lowercased()) commitment today!")
-                    .font(AppTheme.Typography.body)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                if commitment.isMicroCommitment, let microType = commitment.microCommitmentType {
+                    Text(microType.completionMessage)
+                        .font(AppTheme.Typography.body)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                } else {
+                    Text("You crushed your \(commitment.displayTitle.lowercased()) commitment today!")
+                        .font(AppTheme.Typography.body)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                }
             }
 
             // Activity details
             HStack(spacing: AppTheme.Spacing.md) {
                 ZStack {
                     Circle()
-                        .fill(AppTheme.Colors.success.opacity(AppTheme.Opacity.medium))
+                        .fill((commitment.isMicroCommitment ? Color.cyan : AppTheme.Colors.success).opacity(AppTheme.Opacity.medium))
                         .frame(width: 50, height: 50)
 
-                    Image(systemName: commitment.activityType.icon)
-                        .foregroundColor(AppTheme.Colors.success)
+                    Image(systemName: commitment.displayIcon)
+                        .foregroundColor(commitment.isMicroCommitment ? .cyan : AppTheme.Colors.success)
                         .font(AppTheme.Typography.title2)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(commitment.activityType.displayName)
+                    Text(commitment.displayTitle)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
                         .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
@@ -437,7 +503,7 @@ struct FulfilledCommitmentView: View {
                 // Big checkmark with animation effect
                 ZStack {
                     Circle()
-                        .fill(AppTheme.Colors.success)
+                        .fill(commitment.isMicroCommitment ? Color.cyan : AppTheme.Colors.success)
                         .frame(width: 40, height: 40)
 
                     Image(systemName: "checkmark")
@@ -450,9 +516,9 @@ struct FulfilledCommitmentView: View {
             // Motivational footer
             HStack {
                 Spacer()
-                Text("Keep the momentum going! 💪")
+                Text(commitment.isMicroCommitment ? "Small steps lead to big wins! 💫" : "Keep the momentum going! 💪")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(AppTheme.Colors.accent)
+                    .foregroundColor(commitment.isMicroCommitment ? .cyan : AppTheme.Colors.accent)
                     .italic()
                 Spacer()
             }
@@ -460,14 +526,17 @@ struct FulfilledCommitmentView: View {
         .padding(AppTheme.Spacing.md)
         .background(
             LinearGradient(
-                colors: [AppTheme.Colors.success.opacity(AppTheme.Opacity.light), AppTheme.Colors.success.opacity(AppTheme.Opacity.veryLight)],
+                colors: [
+                    (commitment.isMicroCommitment ? Color.cyan : AppTheme.Colors.success).opacity(AppTheme.Opacity.light),
+                    (commitment.isMicroCommitment ? Color.cyan : AppTheme.Colors.success).opacity(AppTheme.Opacity.veryLight)
+                ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                .stroke(AppTheme.Colors.success.opacity(AppTheme.Opacity.strong), lineWidth: 1)
+                .stroke((commitment.isMicroCommitment ? Color.cyan : AppTheme.Colors.success).opacity(AppTheme.Opacity.strong), lineWidth: 1)
         )
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
@@ -516,57 +585,6 @@ struct CommitmentProgressRing: View {
     }
 }
 
-// MARK: - Activity Type Picker Sheet
-
-struct ActivityTypePickerSheet: View {
-    @Environment(\.presentationMode) var presentationMode
-    @Binding var selectedType: CommitmentActivityType
-
-    var body: some View {
-        NavigationView {
-            List {
-                ForEach(CommitmentActivityType.allCases, id: \.self) { activityType in
-                    Button(action: {
-                        selectedType = activityType
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: activityType.icon)
-                                .foregroundColor(AppTheme.Colors.accent)
-                                .font(AppTheme.Typography.title2)
-                                .frame(width: 30)
-
-                            Text(activityType.displayName)
-                                .font(AppTheme.Typography.body)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                            Spacer()
-
-                            if selectedType == activityType {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(AppTheme.Colors.accent)
-                            }
-                        }
-                        .padding(.vertical, AppTheme.Spacing.xs)
-                    }
-                }
-            }
-            .navigationTitle("Choose Activity")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.light, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        presentationMode.wrappedValue.dismiss()
-                    }
-                    .foregroundColor(AppTheme.Colors.accent)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Edit Commitment Sheet
 
 struct EditCommitmentSheet: View {
@@ -574,6 +592,10 @@ struct EditCommitmentSheet: View {
     @Binding var selectedType: CommitmentActivityType
     let currentType: CommitmentActivityType
     let onSave: () -> Void
+
+    @State private var activityTypes: [ActivityType] = []
+    @State private var isLoading = true
+    @State private var selectedTypeName: String = ""
 
     var body: some View {
         NavigationView {
@@ -583,63 +605,73 @@ struct EditCommitmentSheet: View {
                     .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                     .padding(.top, AppTheme.Spacing.md)
 
-                VStack(spacing: AppTheme.Spacing.sm) {
-                    ForEach(CommitmentActivityType.allCases, id: \.self) { activityType in
-                        Button(action: {
-                            selectedType = activityType
-                        }) {
-                            HStack(spacing: AppTheme.Spacing.md) {
-                                ZStack {
-                                    Circle()
-                                        .fill(selectedType == activityType ?
-                                              AppTheme.Colors.accent.opacity(0.2) :
-                                              AppTheme.Colors.textTertiary.opacity(0.1))
-                                        .frame(width: 44, height: 44)
+                if isLoading {
+                    Spacer()
+                    ProgressView("Loading activity types...")
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    Spacer()
+                } else {
+                    ScrollView {
+                        VStack(spacing: AppTheme.Spacing.sm) {
+                            ForEach(activityTypes) { activityType in
+                                Button(action: {
+                                    selectedTypeName = activityType.name
+                                    // Map to CommitmentActivityType enum
+                                    selectedType = mapToCommitmentType(activityType.name)
+                                }) {
+                                    HStack(spacing: AppTheme.Spacing.md) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(selectedTypeName.lowercased() == activityType.name.lowercased() ?
+                                                      AppTheme.Colors.accent.opacity(0.2) :
+                                                      AppTheme.Colors.textTertiary.opacity(0.1))
+                                                .frame(width: 44, height: 44)
 
-                                    Image(systemName: activityType.icon)
-                                        .foregroundColor(selectedType == activityType ?
-                                                        AppTheme.Colors.accent :
-                                                        ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                                        .font(.title3)
+                                            Image(systemName: activityType.icon)
+                                                .foregroundColor(selectedTypeName.lowercased() == activityType.name.lowercased() ?
+                                                                AppTheme.Colors.accent :
+                                                                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                                .font(.title3)
+                                        }
+
+                                        Text(activityType.name)
+                                            .font(AppTheme.Typography.body)
+                                            .fontWeight(selectedTypeName.lowercased() == activityType.name.lowercased() ? .semibold : .regular)
+                                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+                                        Spacer()
+
+                                        if selectedTypeName.lowercased() == activityType.name.lowercased() {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(AppTheme.Colors.accent)
+                                                .font(.title3)
+                                        } else {
+                                            Circle()
+                                                .stroke(AppTheme.Colors.textTertiary.opacity(0.3), lineWidth: 1.5)
+                                                .frame(width: 22, height: 22)
+                                        }
+                                    }
+                                    .padding(AppTheme.Spacing.md)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                                            .fill(selectedTypeName.lowercased() == activityType.name.lowercased() ?
+                                                  AppTheme.Colors.accent.opacity(0.05) :
+                                                  Color.clear)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                                            .stroke(selectedTypeName.lowercased() == activityType.name.lowercased() ?
+                                                   AppTheme.Colors.accent.opacity(0.3) :
+                                                   AppTheme.Colors.textTertiary.opacity(0.2), lineWidth: 1)
+                                    )
+                                    .contentShape(Rectangle()) // Make entire row tappable
                                 }
-
-                                Text(activityType.displayName)
-                                    .font(AppTheme.Typography.body)
-                                    .fontWeight(selectedType == activityType ? .semibold : .regular)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                                Spacer()
-
-                                if selectedType == activityType {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(AppTheme.Colors.accent)
-                                        .font(.title3)
-                                } else {
-                                    Circle()
-                                        .stroke(AppTheme.Colors.textTertiary.opacity(0.3), lineWidth: 1.5)
-                                        .frame(width: 22, height: 22)
-                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
-                            .padding(AppTheme.Spacing.md)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                                    .fill(selectedType == activityType ?
-                                          AppTheme.Colors.accent.opacity(0.05) :
-                                          Color.clear)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                                    .stroke(selectedType == activityType ?
-                                           AppTheme.Colors.accent.opacity(0.3) :
-                                           AppTheme.Colors.textTertiary.opacity(0.2), lineWidth: 1)
-                            )
                         }
-                        .buttonStyle(PlainButtonStyle())
+                        .padding(.horizontal, AppTheme.Spacing.md)
                     }
                 }
-                .padding(.horizontal, AppTheme.Spacing.md)
-
-                Spacer()
 
                 Button(action: onSave) {
                     HStack {
@@ -672,6 +704,33 @@ struct EditCommitmentSheet: View {
                     .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
             }
+        }
+        .task {
+            await loadActivityTypes()
+        }
+        .onAppear {
+            selectedTypeName = currentType.displayName
+        }
+    }
+
+    private func loadActivityTypes() async {
+        do {
+            activityTypes = try await ActivityTypeService.getAllActivityTypes()
+            isLoading = false
+        } catch {
+            print("Failed to load activity types: \(error)")
+            isLoading = false
+        }
+    }
+
+    /// Map activity type name to CommitmentActivityType enum
+    private func mapToCommitmentType(_ name: String) -> CommitmentActivityType {
+        switch name.lowercased() {
+        case "run": return .run
+        case "walk": return .walk
+        case "yoga": return .yoga
+        case "weight training", "workout": return .workout
+        default: return .run // Default to run for unmapped types
         }
     }
 }

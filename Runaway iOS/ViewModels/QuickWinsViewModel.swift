@@ -17,6 +17,9 @@ class QuickWinsViewModel: ObservableObject {
     @Published var error: QuickWinsError?
     @Published var lastUpdated: Date?
 
+    /// Current training phase context (adaptive dashboard)
+    @Published var trainingPhaseContext: TrainingPhaseContext?
+
     // MARK: - Private Properties
 
     private let service: QuickWinsService
@@ -132,5 +135,28 @@ class QuickWinsViewModel: ObservableObject {
     func loadMockData() {
         quickWinsData = .mock
         lastUpdated = Date()
+    }
+
+    // MARK: - Training Phase Detection
+
+    /// Detect current training phase based on activities and training load
+    func detectTrainingPhase(activities: [Activity]) {
+        let trainingLoad = quickWinsData?.analyses.trainingLoad
+        trainingPhaseContext = TrainingPhaseService.detectPhase(
+            activities: activities,
+            trainingLoad: trainingLoad
+        )
+
+        #if DEBUG
+        if let context = trainingPhaseContext {
+            print("📊 TrainingPhase: \(context.phase.displayName) (confidence: \(Int(context.confidence * 100))%)")
+        }
+        #endif
+    }
+
+    /// Get the appropriate insight card type for current phase
+    var currentInsightCardType: InsightCardType? {
+        guard let context = trainingPhaseContext else { return nil }
+        return InsightCardType.forPhase(context.phase)
     }
 }

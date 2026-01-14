@@ -21,15 +21,27 @@ public final class UserSession: ObservableObject {
     /// User profile from custom User model
     @Published public var profileUser: User?
 
+    /// Onboarding completion state
+    @Published public var hasCompletedOnboarding = true
+
+    /// Loading onboarding state
+    @Published public var isCheckingOnboarding = false
+
+    /// Flag to prevent re-checking onboarding after user completes it in this session
+    private var onboardingCompletedInSession = false
+
+    /// Stored athlete ID from ensureAthleteExists (used before profile is loaded)
+    private var storedAthleteId: Int?
+
     // MARK: - Singleton
 
     public static let shared = UserSession()
 
     // MARK: - Computed Properties
 
-    /// Convenience accessor for user ID from profile
+    /// Convenience accessor for user ID from profile or stored athlete ID
     public var userId: Int? {
-        return profileUser?.userId
+        return profileUser?.userId ?? storedAthleteId
     }
 
     /// User's email from authentication
@@ -93,12 +105,137 @@ public final class UserSession: ObservableObject {
     }
 
     private func updateAuthState(with user: Supabase.User) async {
+        print("🔐 UserSession: Updating auth state for user \(user.email ?? "unknown")")
+
         await MainActor.run {
             self.currentUser = user
             self.isAuthenticated = true
+            self.isCheckingOnboarding = true // Start checking onboarding
         }
+
+        print("🔐 UserSession: isAuthenticated=true, isCheckingOnboarding=true")
+
         // Refresh widgets after authentication state update
         WidgetRefreshService.refreshForAuthUpdate()
+
+        // Ensure athlete record exists and get the athlete ID
+        let athleteId = await ensureAthleteRecordExists(for: user)
+        print("🔐 UserSession: Got athlete ID: \(athleteId?.description ?? "nil")")
+
+        // Store the athlete ID so it's available before profile is loaded
+        await MainActor.run {
+            self.storedAthleteId = athleteId
+        }
+
+        // Check onboarding status using the athlete ID
+        if let athleteId = athleteId {
+            await checkOnboardingStatusForAthlete(athleteId: athleteId)
+        } else {
+            // No athlete ID - default to showing onboarding for new users
+            print("🔐 UserSession: No athlete ID, defaulting to onboarding not completed")
+            await MainActor.run {
+                self.hasCompletedOnboarding = false
+                self.isCheckingOnboarding = false
+            }
+        }
+
+        print("🔐 UserSession: Final state - hasCompletedOnboarding=\(hasCompletedOnboarding), isCheckingOnboarding=\(isCheckingOnboarding)")
+    }
+
+    /// Ensures athlete record exists for the authenticated user
+    /// Returns the athlete ID if successful
+    private func ensureAthleteRecordExists(for user: Supabase.User) async -> Int? {
+        do {
+            let athleteId = try await AthleteService.ensureAthleteExists(
+                authId: user.id,
+                email: user.email
+            )
+            print("✅ UserSession: Athlete record confirmed with ID \(athleteId)")
+            return athleteId
+        } catch {
+            print("⚠️ UserSession: Failed to ensure athlete exists: \(error)")
+            return nil
+        }
+    }
+
+    /// Check onboarding status for a specific athlete ID
+    private func checkOnboardingStatusForAthlete(athleteId: Int) async {
+        print("🔍 UserSession: Checking onboarding status for athlete \(athleteId)")
+
+        // Skip if user just completed onboarding in this session
+        if onboardingCompletedInSession {
+            print("✅ UserSession: Skipping onboarding check - completed in this session")
+            await MainActor.run {
+                self.hasCompletedOnboarding = true
+                self.isCheckingOnboarding = false
+            }
+            return
+        }
+
+        do {
+            let isCompleted = try await OnboardingService.checkOnboardingStatus(athleteId: athleteId)
+            print("✅ UserSession: OnboardingService returned isCompleted=\(isCompleted)")
+            await MainActor.run {
+                self.hasCompletedOnboarding = isCompleted
+                self.isCheckingOnboarding = false
+                self.hasCheckedOnboarding = true
+                if isCompleted {
+                    self.onboardingCompletedInSession = true
+                }
+            }
+            print("✅ UserSession: Set hasCompletedOnboarding=\(isCompleted)")
+        } catch {
+            print("⚠️ UserSession: Failed to check onboarding status: \(error)")
+            print("⚠️ UserSession: Defaulting to hasCompletedOnboarding=false (show onboarding)")
+            await MainActor.run {
+                // Default to NOT completed for new users - show onboarding
+                self.hasCompletedOnboarding = false
+                self.isCheckingOnboarding = false
+            }
+        }
+    }
+
+    // MARK: - Onboarding State Management
+
+    /// Track if we've already checked onboarding status
+    private var hasCheckedOnboarding = false
+
+    /// Check if the current user has completed onboarding (called from setProfile)
+    private func checkOnboardingStatus() async {
+        // Skip if user just completed onboarding in this session
+        if onboardingCompletedInSession {
+            print("✅ UserSession: Skipping onboarding check - completed in this session")
+            return
+        }
+
+        // Skip if we've already checked (prevents repeated checks from setProfile calls)
+        if hasCheckedOnboarding {
+            print("✅ UserSession: Skipping onboarding check - already checked")
+            return
+        }
+
+        guard let athleteId = userId else {
+            // No athlete ID yet - default to showing onboarding for new users
+            print("⚠️ UserSession: No athlete ID for onboarding check, defaulting to not completed")
+            await MainActor.run {
+                self.hasCompletedOnboarding = false
+            }
+            return
+        }
+
+        await checkOnboardingStatusForAthlete(athleteId: athleteId)
+    }
+
+    /// Mark onboarding as completed (call after user finishes onboarding flow)
+    public func markOnboardingCompleted() {
+        self.onboardingCompletedInSession = true
+        self.hasCompletedOnboarding = true
+        self.isCheckingOnboarding = false
+    }
+
+    /// Refresh onboarding status (call when profile is set)
+    public func refreshOnboardingStatus() async {
+        await checkOnboardingStatus()
     }
 
     // MARK: - Profile Management
@@ -106,6 +243,11 @@ public final class UserSession: ObservableObject {
     /// Set the user profile
     public func setProfile(_ user: User) {
         self.profileUser = user
+
+        // Check onboarding status now that we have the athlete ID
+        Task {
+            await checkOnboardingStatus()
+        }
     }
 
     /// Clear both auth and profile data
@@ -114,6 +256,11 @@ public final class UserSession: ObservableObject {
             self.currentUser = nil
             self.isAuthenticated = false
             self.profileUser = nil
+            self.storedAthleteId = nil // Clear stored athlete ID
+            self.hasCompletedOnboarding = true // Reset to default
+            self.isCheckingOnboarding = false
+            self.hasCheckedOnboarding = false // Reset so next login checks fresh
+            self.onboardingCompletedInSession = false
         }
     }
 
@@ -138,5 +285,22 @@ public final class UserSession: ObservableObject {
     func signOut() async throws {
         try await supabase.auth.signOut()
         await clearSession()
+    }
+
+    /// Sign in with Apple using ID token
+    func signInWithApple(idToken: String, nonce: String) async throws {
+        _ = try await supabase.auth.signInWithIdToken(
+            credentials: .init(
+                provider: .apple,
+                idToken: idToken,
+                nonce: nonce
+            )
+        )
+        // Auth state will be updated automatically via listener
+    }
+
+    /// Resend verification email
+    func resendVerificationEmail(email: String) async throws {
+        try await supabase.auth.resend(email: email, type: .signup)
     }
 }

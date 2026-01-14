@@ -63,8 +63,18 @@ struct TrainingView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 16) {
-                        // 1. Readiness Banner (glanceable, color-coded)
-                        ReadinessBanner()
+                        // 1. Adaptive Primary Insight (phase-aware dashboard)
+                        if let phaseContext = viewModel.trainingPhaseContext {
+                            AdaptivePrimaryInsightCard(
+                                phaseContext: phaseContext,
+                                activities: dataManager.activities,
+                                trainingLoad: viewModel.quickWinsData?.analyses.trainingLoad,
+                                racePredictions: viewModel.quickWinsData?.analyses.vo2maxEstimate?.racePredictions
+                            )
+                        } else {
+                            // Fallback: Readiness Banner (glanceable, color-coded)
+                            ReadinessBanner()
+                        }
 
                         // 2. Today's Focus (most actionable - what to do NOW)
                         TodaysFocusCard()

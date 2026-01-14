@@ -41,5 +41,7 @@
 	<string>YOUR_SUPABASE_PROJECT_URL_HERE</string>
 	<key>SUPABASE_KEY</key>
 	<string>YOUR_SUPABASE_ANON_KEY_HERE</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Runaway uses motion sensors to measure your running cadence during the onboarding assessment, helping personalize your training recommendations.</string>
 </dict>
 </plist>

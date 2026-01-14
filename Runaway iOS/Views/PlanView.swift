@@ -292,6 +292,7 @@ struct TodayWorkoutCard: View {
             .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
             .cornerRadius(AppTheme.CornerRadius.large)
             .shadow(color: .black.opacity(0.05), radius: 8, y: 4)
+            .contentShape(Rectangle()) // Make entire card tappable
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -376,6 +377,7 @@ struct PlanWeekDayRow: View {
             .padding(.horizontal, AppTheme.Spacing.sm)
             .background(entry.isToday ? AppTheme.Colors.accent.opacity(0.05) : Color.clear)
             .cornerRadius(8)
+            .contentShape(Rectangle()) // Make entire row tappable
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(entry.plannedWorkout == nil)
@@ -450,6 +452,7 @@ struct BaselineTransparencyCard: View {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
+                .contentShape(Rectangle()) // Make entire row tappable
             }
             .buttonStyle(PlainButtonStyle())
 
@@ -594,6 +597,7 @@ struct TrainingPrinciplesCard: View {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                 }
+                .contentShape(Rectangle()) // Make entire row tappable
             }
             .buttonStyle(PlainButtonStyle())
 

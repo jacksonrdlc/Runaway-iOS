@@ -9,18 +9,24 @@ import SwiftUI
 import Charts
 
 struct AthleteView: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let athlete: Athlete
     let stats: AthleteStats
-    
+
     @State var userImage: String?
     @State var name: String?
-    
+
     @State private var isAthleteDataReady = false
     @State private var isActivitiesDataReady = false
-    
+
+    private var background: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
     var body: some View {
         ZStack {
-            (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+            background.ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
@@ -52,8 +58,18 @@ struct AthleteView: View {
 
 // MARK: - Profile Header
 struct ProfileHeader: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let athlete: Athlete
-    
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             // Profile Image - Much Smaller
@@ -73,16 +89,16 @@ struct ProfileHeader: View {
             .frame(width: 160, height: 160)
             .clipShape(Circle())
             .shadow(color: AppTheme.Colors.primary.opacity(0.3), radius: 8, x: 0, y: 4)
-            
+
             // Name and Info
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text("\(athlete.firstname ?? "Unknown") \(athlete.lastname ?? "Athlete")")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(textPrimary)
 
                 Text("Runner • Athlete")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(textSecondary)
             }
         }
     }
@@ -122,30 +138,40 @@ struct QuickStatsGrid: View {
 
 // MARK: - Quick Stat Item
 struct QuickStatItem: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let icon: String
     let value: String
     let label: String
     let color: Color
-    
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
     var body: some View {
         VStack(spacing: AppTheme.Spacing.sm) {
             ZStack {
                 Circle()
                     .fill(color.opacity(0.2))
                     .frame(width: 50, height: 50)
-                
+
                 Image(systemName: icon)
                     .font(.title2)
                     .foregroundColor(color)
             }
-            
+
             Text(value)
                 .font(AppTheme.Typography.title.weight(.bold))
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(textPrimary)
 
             Text(label)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(textSecondary)
                 .multilineTextAlignment(.center)
         }
         .surfaceCard()
@@ -154,6 +180,8 @@ struct QuickStatItem: View {
 
 // MARK: - Weekly Stats Card
 struct WeeklyStatsCard: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let stats: AthleteStats
     @EnvironmentObject private var dataManager: DataManager
     @State private var weeklyRuns = 0
@@ -166,6 +194,18 @@ struct WeeklyStatsCard: View {
         min(weeklyDistanceValue / weeklyGoal, 1.0)
     }
 
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    private var surfaceBackground: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
@@ -175,7 +215,7 @@ struct WeeklyStatsCard: View {
 
                 Text("This Week")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(textPrimary)
 
                 Spacer()
             }
@@ -192,7 +232,7 @@ struct WeeklyStatsCard: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                            .fill(surfaceBackground)
                             .frame(height: 8)
 
                         RoundedRectangle(cornerRadius: 4)
@@ -204,7 +244,7 @@ struct WeeklyStatsCard: View {
 
                 Text(String(format: "%.0f%% of weekly goal", weeklyProgress * 100))
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(textSecondary)
             }
         }
         .surfaceCard()
@@ -260,6 +300,8 @@ struct WeeklyStatsCard: View {
 
 // MARK: - Monthly Stats Card
 struct MonthlyStatsCard: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let stats: AthleteStats
     @EnvironmentObject private var dataManager: DataManager
     @State private var monthlyRuns = 0
@@ -272,6 +314,18 @@ struct MonthlyStatsCard: View {
         min(monthlyDistanceValue / monthlyGoal, 1.0)
     }
 
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    private var surfaceBackground: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
@@ -281,7 +335,7 @@ struct MonthlyStatsCard: View {
 
                 Text("This Month")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(textPrimary)
 
                 Spacer()
             }
@@ -298,7 +352,7 @@ struct MonthlyStatsCard: View {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                            .fill(surfaceBackground)
                             .frame(height: 8)
 
                         RoundedRectangle(cornerRadius: 4)
@@ -310,7 +364,7 @@ struct MonthlyStatsCard: View {
 
                 Text(String(format: "%.0f%% of monthly goal", monthlyProgress * 100))
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(textSecondary)
             }
         }
         .surfaceCard()
@@ -384,8 +438,14 @@ struct MonthlyStatsCard: View {
 
 // MARK: - All Time Stats Card
 struct AllTimeStatsCard: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let stats: AthleteStats
-    
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             HStack {
@@ -395,11 +455,11 @@ struct AllTimeStatsCard: View {
 
                 Text("All Time")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(textPrimary)
 
                 Spacer()
             }
-            
+
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: AppTheme.Spacing.md) {
                 StatPair(label: "Total Runs", value: "\(stats.count ?? 0)", color: AppTheme.Colors.accent)
                 StatPair(label: "Total Distance", value: String(format: "%.1f mi", (stats.distance ?? 0.0) * 0.000621371), color: AppTheme.Colors.accent)
@@ -413,10 +473,16 @@ struct AllTimeStatsCard: View {
 
 // MARK: - Stat Pair
 struct StatPair: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let label: String
     let value: String
     let color: Color
-    
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
             Text(value)
@@ -425,7 +491,7 @@ struct StatPair: View {
 
             Text(label)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(textSecondary)
         }
     }
 }

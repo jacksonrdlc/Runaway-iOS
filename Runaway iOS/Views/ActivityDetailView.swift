@@ -13,7 +13,11 @@ import Combine
 struct ActivityDetailView: View {
     let activity: LocalActivity
     @Environment(\.dismiss) private var dismiss
-    
+    @EnvironmentObject var dataManager: DataManager
+
+    @State private var showDeleteConfirmation = false
+    @State private var isDeleting = false
+
     var body: some View {
         ZStack {
             (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
@@ -53,10 +57,72 @@ struct ActivityDetailView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
+                Menu {
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Activity", systemImage: "trash")
+                    }
+
+                    Divider()
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Label("Done", systemImage: "xmark")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundColor(AppTheme.Colors.accent)
+                        .font(.title3)
+                }
+            }
+        }
+        .alert("Delete Activity", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteActivity()
+            }
+        } message: {
+            Text("Are you sure you want to delete \"\(activity.name ?? "this activity")\"? This action cannot be undone.")
+        }
+        .overlay {
+            if isDeleting {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .overlay {
+                        ProgressView("Deleting...")
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(10)
+                    }
+            }
+        }
+    }
+
+    private func deleteActivity() {
+        let activityId = activity.id
+
+        isDeleting = true
+
+        Task {
+            do {
+                try await ActivityService.deleteActivity(id: activityId)
+
+                // Refresh activities list
+                if let userId = UserSession.shared.userId {
+                    await dataManager.loadActivities(for: userId)
+                }
+
+                await MainActor.run {
+                    isDeleting = false
                     dismiss()
                 }
-                .foregroundColor(AppTheme.Colors.accent)
+            } catch {
+                print("❌ Failed to delete activity: \(error)")
+                await MainActor.run {
+                    isDeleting = false
+                }
             }
         }
     }

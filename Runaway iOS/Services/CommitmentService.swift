@@ -20,7 +20,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let createdCommitment = try JSONDecoder().decode([DailyCommitment].self, from: data).first
+        let createdCommitment = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data).first
 
         guard let result = createdCommitment else {
             throw SupabaseError.decodingError("Failed to decode created commitment")
@@ -44,7 +44,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let commitments = try JSONDecoder().decode([DailyCommitment].self, from: data)
+        let commitments = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data)
 
         print("🔍 CommitmentService: Found \(commitments.count) commitment(s) for today")
         if let commitment = commitments.first {
@@ -69,7 +69,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let updatedCommitment = try JSONDecoder().decode([DailyCommitment].self, from: data).first
+        let updatedCommitment = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data).first
 
         guard let result = updatedCommitment else {
             throw SupabaseError.decodingError("Failed to decode updated commitment")
@@ -98,7 +98,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let updatedCommitment = try JSONDecoder().decode([DailyCommitment].self, from: data).first
+        let updatedCommitment = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data).first
 
         guard let result = updatedCommitment else {
             throw SupabaseError.decodingError("Failed to decode fulfilled commitment")
@@ -167,7 +167,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let commitments = try JSONDecoder().decode([DailyCommitment].self, from: data)
+        let commitments = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data)
 
         return commitments
     }
@@ -197,7 +197,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let results = try JSONDecoder().decode([CommitmentStatsResponse].self, from: data)
+        let results = try SupabaseDecoder.shared.decode([CommitmentStatsResponse].self, from: data)
 
         guard let statsData = results.first else {
             // Return empty stats if no data
@@ -228,11 +228,106 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        if let streak = try? JSONDecoder().decode(Int.self, from: data) {
+        if let streak = try? SupabaseDecoder.shared.decode(Int.self, from: data) {
             return streak
         }
 
         return 0
+    }
+
+    // MARK: - Micro-Commitment Methods
+
+    /// Create a micro-commitment
+    static func createMicroCommitment(_ type: MicroCommitmentType, for userId: Int) async throws -> DailyCommitment {
+        let commitment = DailyCommitment(athleteId: userId, microCommitmentType: type)
+        return try await createCommitment(commitment)
+    }
+
+    /// Get suggested micro-commitment based on user's history
+    static func getSuggestedMicroCommitment(for userId: Int) async throws -> MicroCommitmentType {
+        // Get recent micro-commitments to suggest the next one in progression
+        let history = try await getCommitmentHistory(for: userId, limit: 10)
+
+        let microHistory = history.filter { $0.isMicroCommitment && $0.isFulfilled }
+
+        // Count completions by type
+        var completionCounts: [MicroCommitmentType: Int] = [:]
+        for commitment in microHistory {
+            if let microType = commitment.microCommitmentType {
+                completionCounts[microType, default: 0] += 1
+            }
+        }
+
+        // Suggest based on progression order - find the first type not completed 3 times
+        for type in MicroCommitmentType.progressionOrder {
+            if (completionCounts[type] ?? 0) < 3 {
+                return type
+            }
+        }
+
+        // If all completed 3+ times, suggest based on least recently used
+        return MicroCommitmentType.progressionOrder.first ?? .putOnShoes
+    }
+
+    /// Determine if user should be offered micro-commitment option
+    static func shouldOfferMicroCommitment(for userId: Int) async throws -> Bool {
+        let history = try await getCommitmentHistory(for: userId, limit: 7)
+
+        // Offer micro-commitments if:
+        // 1. User has no recent commitments (new or lapsed user)
+        // 2. User has unfulfilled commitments in recent history (struggling)
+        // 3. User has less than 3 fulfilled commitments in last week
+
+        if history.isEmpty {
+            return true // New user
+        }
+
+        let fulfilledCount = history.filter { $0.isFulfilled }.count
+        let unfullfilledCount = history.filter { !$0.isFulfilled }.count
+
+        // If more unfulfilled than fulfilled, suggest micro-commitments
+        if unfullfilledCount > fulfilledCount {
+            return true
+        }
+
+        // If low fulfillment rate, suggest micro-commitments
+        if fulfilledCount < 3 {
+            return true
+        }
+
+        return false
+    }
+
+    /// Get counts by commitment level for ladder progress
+    static func getCommitmentLevelCounts(for userId: Int) async throws -> (micro: Int, mini: Int, standard: Int) {
+        let history = try await getCommitmentHistory(for: userId, limit: 100)
+
+        let fulfilledHistory = history.filter { $0.isFulfilled }
+
+        let microCount = fulfilledHistory.filter { $0.commitmentLevel == .micro }.count
+        let miniCount = fulfilledHistory.filter { $0.commitmentLevel == .mini }.count
+        let standardCount = fulfilledHistory.filter { $0.commitmentLevel == .standard }.count
+
+        return (micro: microCount, mini: miniCount, standard: standardCount)
+    }
+
+    /// Determine suggested commitment level based on history
+    static func getSuggestedCommitmentLevel(for userId: Int) async throws -> CommitmentLevel {
+        let counts = try await getCommitmentLevelCounts(for: userId)
+
+        // Progress through levels: need 3 completions to unlock next level
+        if counts.micro < 3 {
+            return .micro
+        } else if counts.mini < 3 {
+            return .mini
+        } else {
+            return .standard
+        }
+    }
+
+    /// Complete a micro-commitment (mark as fulfilled)
+    static func completeMicroCommitment(commitmentId: Int) async throws -> DailyCommitment {
+        return try await fulfillCommitment(commitmentId: commitmentId)
     }
 }
 

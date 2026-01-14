@@ -12,11 +12,16 @@ import Foundation
 protocol CommitmentManagerProtocol: ObservableObject {
     var todaysCommitment: DailyCommitment? { get }
     var isLoading: Bool { get }
+    var suggestedMicroCommitment: MicroCommitmentType? { get }
+    var shouldOfferMicroCommitment: Bool { get }
+    var commitmentLevelCounts: (micro: Int, mini: Int, standard: Int) { get }
 
     func loadTodaysCommitment(for userId: Int) async
     func createCommitment(_ activityType: CommitmentActivityType) async throws
+    func createMicroCommitment(_ type: MicroCommitmentType) async throws
     func updateCommitment(to activityType: CommitmentActivityType) async throws
     func deleteCommitment() async throws
+    func completeMicroCommitment() async throws
     func checkActivityFulfillsCommitment(_ activity: Activity) async
     func refresh() async
 }
@@ -30,6 +35,10 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
 
     @Published private(set) var todaysCommitment: DailyCommitment?
     @Published private(set) var isLoading = false
+    @Published private(set) var suggestedMicroCommitment: MicroCommitmentType?
+    @Published private(set) var shouldOfferMicroCommitment: Bool = false
+    @Published private(set) var commitmentLevelCounts: (micro: Int, mini: Int, standard: Int) = (0, 0, 0)
+    @Published private(set) var suggestedLevel: CommitmentLevel = .standard
 
     // MARK: - Private Properties
 
@@ -53,8 +62,30 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
 
         do {
             self.todaysCommitment = try await repository.getTodaysCommitment(userId: userId)
+
+            // Load micro-commitment suggestions
+            await loadMicroCommitmentSuggestions(for: userId)
         } catch {
             print("❌ CommitmentManager: Failed to load commitment: \(error)")
+        }
+    }
+
+    /// Load micro-commitment related data
+    private func loadMicroCommitmentSuggestions(for userId: Int) async {
+        do {
+            // Check if we should offer micro-commitments
+            self.shouldOfferMicroCommitment = try await CommitmentService.shouldOfferMicroCommitment(for: userId)
+
+            // Get suggested micro-commitment
+            self.suggestedMicroCommitment = try await CommitmentService.getSuggestedMicroCommitment(for: userId)
+
+            // Get level counts for ladder
+            self.commitmentLevelCounts = try await CommitmentService.getCommitmentLevelCounts(for: userId)
+
+            // Get suggested level
+            self.suggestedLevel = try await CommitmentService.getSuggestedCommitmentLevel(for: userId)
+        } catch {
+            print("❌ CommitmentManager: Failed to load micro-commitment data: \(error)")
         }
     }
 
@@ -74,6 +105,58 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
             self.todaysCommitment = createdCommitment
         } catch {
             print("❌ CommitmentManager: Failed to create commitment: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - Micro-Commitment Creation
+
+    func createMicroCommitment(_ type: MicroCommitmentType) async throws {
+        guard let userId = UserSession.shared.userId else {
+            throw CommitmentError.noUserId
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let commitment = DailyCommitment(athleteId: userId, microCommitmentType: type)
+            let createdCommitment = try await repository.createCommitment(commitment)
+            self.todaysCommitment = createdCommitment
+            print("✅ CommitmentManager: Created micro-commitment: \(type.displayName)")
+        } catch {
+            print("❌ CommitmentManager: Failed to create micro-commitment: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - Micro-Commitment Completion
+
+    func completeMicroCommitment() async throws {
+        guard let currentCommitment = todaysCommitment,
+              let commitmentId = currentCommitment.id,
+              currentCommitment.isMicroCommitment else {
+            throw CommitmentError.noCommitmentToUpdate
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let fulfilledCommitment = try await CommitmentService.completeMicroCommitment(commitmentId: commitmentId)
+            self.todaysCommitment = fulfilledCommitment
+
+            // Trigger celebration
+            CelebrationService.shared.celebrate(for: fulfilledCommitment)
+
+            // Reload suggestions
+            if let userId = UserSession.shared.userId {
+                await loadMicroCommitmentSuggestions(for: userId)
+            }
+
+            print("✅ CommitmentManager: Completed micro-commitment!")
+        } catch {
+            print("❌ CommitmentManager: Failed to complete micro-commitment: \(error)")
             throw error
         }
     }

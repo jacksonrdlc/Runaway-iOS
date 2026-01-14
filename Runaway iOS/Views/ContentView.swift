@@ -11,10 +11,14 @@ struct ContentView: View {
     @EnvironmentObject var userSession: UserSession
 
     var body: some View {
-        if userSession.isCheckingAuth {
+        if userSession.isCheckingAuth || userSession.isCheckingOnboarding {
             LoaderView()
         } else if userSession.isAuthenticated {
-            MainView()
+            if userSession.hasCompletedOnboarding {
+                MainView()
+            } else {
+                OnboardingContainerView()
+            }
         } else {
             LoginView()
         }

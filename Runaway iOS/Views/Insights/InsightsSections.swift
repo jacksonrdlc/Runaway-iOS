@@ -8,20 +8,40 @@
 import SwiftUI
 import Charts
 
-// MARK: - Section 1: Hero Stats Section
+// MARK: - Section 1: Hero Stats Section (with Adaptive Primary Insight)
 
 struct HeroStatsSection: View {
     let quickWinsData: QuickWinsResponse?
+    let activities: [Activity]
+    let phaseContext: TrainingPhaseContext?
+
+    init(quickWinsData: QuickWinsResponse?, activities: [Activity] = [], phaseContext: TrainingPhaseContext? = nil) {
+        self.quickWinsData = quickWinsData
+        self.activities = activities
+        self.phaseContext = phaseContext
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            Text("At a Glance")
-                .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+            // Show adaptive card if we have phase context, otherwise show legacy carousel
+            if let context = phaseContext {
+                AdaptivePrimaryInsightCard(
+                    phaseContext: context,
+                    activities: activities,
+                    trainingLoad: quickWinsData?.analyses.trainingLoad,
+                    racePredictions: quickWinsData?.analyses.vo2maxEstimate?.racePredictions
+                )
                 .padding(.horizontal)
+            } else {
+                // Legacy view
+                Text("At a Glance")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .padding(.horizontal)
 
-            if let data = quickWinsData {
-                QuickStatsCarousel(data: data)
+                if let data = quickWinsData {
+                    QuickStatsCarousel(data: data)
+                }
             }
         }
     }
