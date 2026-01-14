@@ -469,13 +469,21 @@ struct RoutePreviewMap: UIViewRepresentable {
             longitude: (minLon + maxLon) / 2
         )
 
+        // Validate coordinates are not at 0,0 (invalid GPS)
+        guard center.latitude != 0 || center.longitude != 0 else {
+            // Default to a reasonable zoom if GPS data is invalid
+            let camera = CameraOptions(center: center, zoom: 2)
+            mapView.mapboxMap.setCamera(to: camera)
+            return
+        }
+
         // Add padding to ensure the route is fully visible
         let latDelta = (maxLat - minLat) * 1.3
         let lonDelta = (maxLon - minLon) * 1.3
 
-        // Calculate zoom level from delta
-        let maxDelta = max(latDelta, lonDelta)
-        let zoom = log2(360 / maxDelta) - 1
+        // Calculate zoom level from delta, with minimum delta to prevent infinite zoom
+        let maxDelta = max(latDelta, lonDelta, 0.001) // Minimum delta prevents division issues
+        let zoom = min(max(log2(360 / maxDelta) - 1, 10), 18) // Clamp zoom between 10-18
 
         let camera = CameraOptions(
             center: center,

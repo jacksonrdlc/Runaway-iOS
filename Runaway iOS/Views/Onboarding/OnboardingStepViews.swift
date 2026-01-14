@@ -110,6 +110,305 @@ struct FeatureRow: View {
     }
 }
 
+// MARK: - Profile Setup View
+
+struct OnboardingProfileSetupView: View {
+    @Binding var firstName: String
+    @Binding var lastName: String
+    let onContinue: () -> Void
+
+    @FocusState private var focusedField: Field?
+
+    enum Field {
+        case firstName, lastName
+    }
+
+    private var isValid: Bool {
+        !firstName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 8) {
+                Image(systemName: "person.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.blue)
+
+                Text("What's your name?")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("This helps personalize your experience")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 40)
+
+            // Form fields
+            VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("First Name")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    TextField("Enter your first name", text: $firstName)
+                        .font(.body)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
+                        .focused($focusedField, equals: .firstName)
+                        .textContentType(.givenName)
+                        .submitLabel(.next)
+                        .onSubmit {
+                            focusedField = .lastName
+                        }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Last Name (Optional)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    TextField("Enter your last name", text: $lastName)
+                        .font(.body)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
+                        .focused($focusedField, equals: .lastName)
+                        .textContentType(.familyName)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            if isValid {
+                                onContinue()
+                            }
+                        }
+                }
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Continue button
+            Button(action: onContinue) {
+                Text("Continue")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isValid ? Color.blue : Color.gray)
+                    .cornerRadius(16)
+            }
+            .disabled(!isValid)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 40)
+        }
+        .onAppear {
+            focusedField = .firstName
+        }
+    }
+}
+
+// MARK: - Goals Setup View
+
+struct OnboardingGoalsSetupView: View {
+    @Binding var weeklyGoal: Double
+    @Binding var monthlyGoal: Double
+    let onContinue: () -> Void
+
+    @State private var weeklyGoalText: String = ""
+    @State private var monthlyGoalText: String = ""
+
+    // Preset options for weekly goals
+    private let weeklyPresets: [(label: String, value: Double)] = [
+        ("10 mi", 10),
+        ("15 mi", 15),
+        ("20 mi", 20),
+        ("25 mi", 25),
+        ("30 mi", 30),
+        ("40 mi", 40)
+    ]
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 8) {
+                Image(systemName: "target")
+                    .font(.system(size: 50))
+                    .foregroundColor(.green)
+
+                Text("Set Your Goals")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("What distance do you want to run each week?")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, 40)
+
+            // Weekly goal presets
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Weekly Goal")
+                    .font(.headline)
+                    .padding(.horizontal, 24)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(weeklyPresets, id: \.value) { preset in
+                            GoalPresetButton(
+                                label: preset.label,
+                                isSelected: weeklyGoal == preset.value,
+                                action: {
+                                    weeklyGoal = preset.value
+                                    // Auto-calculate monthly as 4x weekly
+                                    monthlyGoal = preset.value * 4
+                                }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                }
+            }
+
+            // Custom input
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Or enter custom goals")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 24)
+
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Weekly")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        HStack {
+                            TextField("20", text: $weeklyGoalText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.center)
+                                .frame(width: 60)
+                                .padding(.vertical, 12)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(8)
+                                .onChange(of: weeklyGoalText) { newValue in
+                                    if let value = Double(newValue), value > 0 {
+                                        weeklyGoal = value
+                                    }
+                                }
+
+                            Text("mi")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Monthly")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        HStack {
+                            TextField("80", text: $monthlyGoalText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.center)
+                                .frame(width: 60)
+                                .padding(.vertical, 12)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(8)
+                                .onChange(of: monthlyGoalText) { newValue in
+                                    if let value = Double(newValue), value > 0 {
+                                        monthlyGoal = value
+                                    }
+                                }
+
+                            Text("mi")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+
+            // Summary
+            VStack(spacing: 8) {
+                Text("Your targets")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 32) {
+                    VStack {
+                        Text("\(Int(weeklyGoal))")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundColor(.blue)
+                        Text("mi/week")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    VStack {
+                        Text("\(Int(monthlyGoal))")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundColor(.green)
+                        Text("mi/month")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(16)
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Continue button
+            Button(action: onContinue) {
+                Text("Continue")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(16)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 40)
+        }
+        .onAppear {
+            weeklyGoalText = weeklyGoal > 0 ? String(format: "%.0f", weeklyGoal) : ""
+            monthlyGoalText = monthlyGoal > 0 ? String(format: "%.0f", monthlyGoal) : ""
+        }
+    }
+}
+
+private struct GoalPresetButton: View {
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(isSelected ? .white : .primary)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isSelected ? Color.blue : Color(.secondarySystemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isSelected ? Color.clear : Color.gray.opacity(0.3), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Experience Assessment View
 
 struct OnboardingExperienceView: View {

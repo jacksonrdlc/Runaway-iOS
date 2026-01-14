@@ -65,7 +65,16 @@ class GPSTrackingService: NSObject, ObservableObject {
     @Published var totalDistance: Double = 0.0 // meters
     @Published var currentSpeed: Double = 0.0 // meters per second
     @Published var averageSpeed: Double = 0.0 // meters per second
+    @Published var maxSpeed: Double = 0.0 // meters per second - peak speed during activity
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+
+    // MARK: - Elevation Tracking
+    @Published var elevationGain: Double = 0.0 // meters climbed
+    @Published var elevationLoss: Double = 0.0 // meters descended
+    @Published var elevationHigh: Double = -Double.greatestFiniteMagnitude // max altitude
+    @Published var elevationLow: Double = Double.greatestFiniteMagnitude // min altitude
+    private var lastAltitude: Double?
+    private let elevationThreshold: Double = 2.0 // Minimum altitude change to count (reduces GPS noise)
     
     // MARK: - Private Properties
     private let locationManager = CLLocationManager()
@@ -164,6 +173,12 @@ class GPSTrackingService: NSObject, ObservableObject {
         totalDistance = 0.0
         currentSpeed = 0.0
         averageSpeed = 0.0
+        maxSpeed = 0.0
+        elevationGain = 0.0
+        elevationLoss = 0.0
+        elevationHigh = -Double.greatestFiniteMagnitude
+        elevationLow = Double.greatestFiniteMagnitude
+        lastAltitude = nil
         lastLocation = nil
         startTime = Date()
 
@@ -223,6 +238,12 @@ class GPSTrackingService: NSObject, ObservableObject {
         totalDistance = 0.0
         currentSpeed = 0.0
         averageSpeed = 0.0
+        maxSpeed = 0.0
+        elevationGain = 0.0
+        elevationLoss = 0.0
+        elevationHigh = -Double.greatestFiniteMagnitude
+        elevationLow = Double.greatestFiniteMagnitude
+        lastAltitude = nil
         lastLocation = nil
         startTime = nil
         print("🗑️ Route data cleared")
@@ -312,6 +333,11 @@ class GPSTrackingService: NSObject, ObservableObject {
 
         currentSpeed = calculatedSpeed
 
+        // Track max speed
+        if calculatedSpeed > maxSpeed {
+            maxSpeed = calculatedSpeed
+        }
+
         // Add to speed history for averaging
         speedHistory.append(currentSpeed)
         if speedHistory.count > speedSmoothingWindow {
@@ -328,6 +354,38 @@ class GPSTrackingService: NSObject, ObservableObject {
             let overallAverageSpeed = totalDistance / elapsedTime
             // Use the more conservative of the two averages
             averageSpeed = min(averageSpeed, overallAverageSpeed)
+        }
+
+        // Update elevation tracking
+        updateElevation(location.altitude)
+    }
+
+    @MainActor
+    private func updateElevation(_ altitude: Double) {
+        // Update min/max elevation
+        if altitude > elevationHigh {
+            elevationHigh = altitude
+        }
+        if altitude < elevationLow {
+            elevationLow = altitude
+        }
+
+        // Calculate gain/loss
+        if let prevAltitude = lastAltitude {
+            let altitudeChange = altitude - prevAltitude
+
+            // Only count significant changes to filter GPS noise
+            if abs(altitudeChange) >= elevationThreshold {
+                if altitudeChange > 0 {
+                    elevationGain += altitudeChange
+                } else {
+                    elevationLoss += abs(altitudeChange)
+                }
+                lastAltitude = altitude
+            }
+        } else {
+            // First altitude reading
+            lastAltitude = altitude
         }
     }
 }

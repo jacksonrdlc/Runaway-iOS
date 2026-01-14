@@ -37,6 +37,7 @@ struct SettingsView: View {
     @State private var stravaError: String?
     @State private var garminError: String?
     @State private var deleteAccountError: String?
+    @State private var showingGoalSettings = false
 
     private var colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color) {
         if themeManager.isDarkMode {
@@ -48,10 +49,10 @@ struct SettingsView: View {
             )
         } else {
             return (
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+                AppTheme.Colors.LightMode.background,
+                AppTheme.Colors.LightMode.cardBackground,
+                AppTheme.Colors.LightMode.textPrimary,
+                AppTheme.Colors.LightMode.textSecondary
             )
         }
     }
@@ -65,6 +66,7 @@ struct SettingsView: View {
                     VStack(spacing: AppTheme.Spacing.lg) {
                         profileSection
                         appSettingsSection
+                        goalsSection
                         integrationsSection
                         supportSection
                         debugSection
@@ -91,6 +93,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingGarminSheet) {
                 GarminConnectSheet(garminService: garminService)
+            }
+            .sheet(isPresented: $showingGoalSettings) {
+                GoalSettingsView()
             }
             .alert("Disconnect from Strava", isPresented: $showingDisconnectAlert) {
                 Button("Cancel", role: .cancel) {}
@@ -132,7 +137,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Profile")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(colors.textPrimary)
 
             NavigationLink(destination: AccountInformationView()) {
                 SettingsRow(
@@ -210,11 +215,30 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Goals Section
+
+    private var goalsSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Goals")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(colors.textPrimary)
+
+            SettingsRow(
+                icon: "target",
+                title: "Running Goals",
+                subtitle: "Weekly: \(Int(GoalSettingsStore.shared.weeklyGoal)) mi • Monthly: \(Int(GoalSettingsStore.shared.monthlyGoal)) mi",
+                color: AppTheme.Colors.success
+            ) {
+                showingGoalSettings = true
+            }
+        }
+    }
+
     private var integrationsSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Integrations")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(colors.textPrimary)
 
             StravaIntegrationRow(
                 stravaService: stravaService,
@@ -262,7 +286,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Support")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(colors.textPrimary)
 
             SettingsRow(
                 icon: "envelope.fill",
@@ -306,7 +330,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Debug")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(colors.textPrimary)
 
             NavigationLink(destination: DebugMenuView()) {
                 SettingsRow(
@@ -327,7 +351,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Account")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(colors.textPrimary)
 
             SettingsRow(
                 icon: "rectangle.portrait.and.arrow.right",
@@ -372,14 +396,15 @@ struct SettingsView: View {
     }
 
     private var appInfoSection: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
+        let textTertiary = themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+        return VStack(spacing: AppTheme.Spacing.sm) {
             Text("Runaway")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(textTertiary)
 
             Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(textTertiary)
         }
         .padding(.top, AppTheme.Spacing.xl)
     }
@@ -485,13 +510,27 @@ struct SettingsView: View {
 
 // MARK: - Settings Row
 struct SettingsRow: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let icon: String
     let title: String
     let subtitle: String
     let color: Color
     var isDestructive: Bool = false
     let action: () -> Void
-    
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    private var textTertiary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: AppTheme.Spacing.md) {
@@ -500,33 +539,34 @@ struct SettingsRow: View {
                     Circle()
                         .fill(color.opacity(0.2))
                         .frame(width: 40, height: 40)
-                    
+
                     Image(systemName: icon)
                         .font(.title3)
                         .foregroundColor(color)
                 }
-                
+
                 // Content
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(AppTheme.Typography.body.weight(.medium))
-                        .foregroundColor(isDestructive ? AppTheme.Colors.error : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(isDestructive ? AppTheme.Colors.error : textPrimary)
 
                     Text(subtitle)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(textSecondary)
                 }
-                
+
                 Spacer()
-                
+
                 // Chevron
                 if !isDestructive {
                     Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(textTertiary)
                 }
             }
             .padding(AppTheme.Spacing.md)
+            .contentShape(Rectangle()) // Make entire row tappable
         }
         .buttonStyle(PlainButtonStyle())
         .surfaceCard()
@@ -536,13 +576,26 @@ struct SettingsRow: View {
 // MARK: - Strava Connect Sheet
 struct StravaConnectSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject var stravaService: StravaService
     @State private var isLoading = false
+
+    private var background: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
 
     var body: some View {
         NavigationView {
             ZStack {
-                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+                background.ignoresSafeArea()
 
                 VStack(spacing: AppTheme.Spacing.xl) {
                     // Strava Logo/Icon
@@ -561,11 +614,11 @@ struct StravaConnectSheet: View {
                     VStack(spacing: AppTheme.Spacing.md) {
                         Text("Connect to Strava")
                             .font(AppTheme.Typography.title)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(textPrimary)
 
                         Text("Sync your Strava activities automatically. You can disconnect at any time.")
                             .font(AppTheme.Typography.body)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, AppTheme.Spacing.lg)
                     }
@@ -662,6 +715,8 @@ struct StravaConnectSheet: View {
 
 // MARK: - Benefit Row Helper
 struct BenefitRow: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     let icon: String
     let text: String
 
@@ -673,7 +728,7 @@ struct BenefitRow: View {
 
             Text(text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
             Spacer()
         }
@@ -682,10 +737,23 @@ struct BenefitRow: View {
 
 // MARK: - Strava Integration Row
 struct StravaIntegrationRow: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject var stravaService: StravaService
     let onConnect: () -> Void
     let onDisconnect: () -> Void
     let onSync: () -> Void
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    private var cardBackground: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
@@ -711,9 +779,9 @@ struct StravaIntegrationRow: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: ThemeManager.shared.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 4, x: 0, y: 1)
+        .shadow(color: themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 4, x: 0, y: 1)
     }
 
     private var stravaIcon: some View {
@@ -732,11 +800,11 @@ struct StravaIntegrationRow: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Strava")
                 .font(AppTheme.Typography.body.weight(.medium))
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(textPrimary)
 
             Text(stravaService.isConnected ? "Connected" : "Not connected")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(stravaService.isConnected ? AppTheme.Colors.success : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(stravaService.isConnected ? AppTheme.Colors.success : textSecondary)
         }
     }
 
@@ -751,20 +819,20 @@ struct StravaIntegrationRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(stravaService.isSyncing ? "Syncing..." : "Data Sync")
                         .font(AppTheme.Typography.caption.weight(.medium))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(textPrimary)
 
                     if let progress = stravaService.syncProgress {
                         Text(progress)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(textSecondary)
                     } else if let lastSync = stravaService.lastSyncDate {
                         Text("Last synced: \(lastSync, style: .relative) ago")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(textSecondary)
                     } else {
                         Text("Never synced")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(textSecondary)
                     }
                 }
 
@@ -832,7 +900,7 @@ struct ThemeToggleRow: View {
     let colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color)
 
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
+        HStack(spacing: AppTheme.Spacing.sm) {
             // Icon
             ZStack {
                 Circle()
@@ -904,14 +972,27 @@ struct ThemeToggleRow: View {
 // MARK: - Garmin Connect Sheet
 struct GarminConnectSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject var garminService: GarminService
     @State private var isLoading = false
     @State private var webAuthSession: ASWebAuthenticationSession?
 
+    private var background: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
-                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+                background.ignoresSafeArea()
 
                 VStack(spacing: AppTheme.Spacing.xl) {
                     // Garmin Logo/Icon
@@ -930,11 +1011,11 @@ struct GarminConnectSheet: View {
                     VStack(spacing: AppTheme.Spacing.md) {
                         Text("Connect to Garmin")
                             .font(AppTheme.Typography.title)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(textPrimary)
 
                         Text("Sync your Garmin Connect activities automatically. You can disconnect at any time.")
                             .font(AppTheme.Typography.body)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(textSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, AppTheme.Spacing.lg)
                     }
@@ -1071,9 +1152,22 @@ struct GarminConnectSheet: View {
 
 // MARK: - Garmin Integration Row
 struct GarminIntegrationRow: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject var garminService: GarminService
     let onConnect: () -> Void
     let onDisconnect: () -> Void
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    private var cardBackground: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+    }
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.md) {
@@ -1092,11 +1186,11 @@ struct GarminIntegrationRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Garmin Connect")
                     .font(AppTheme.Typography.body.weight(.medium))
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(textPrimary)
 
                 Text(garminService.isConnected ? "Connected" : "Not connected")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(garminService.isConnected ? AppTheme.Colors.success : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(garminService.isConnected ? AppTheme.Colors.success : textSecondary)
             }
 
             Spacer()
@@ -1125,9 +1219,9 @@ struct GarminIntegrationRow: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
-        .shadow(color: ThemeManager.shared.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 4, x: 0, y: 1)
+        .shadow(color: themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 4, x: 0, y: 1)
     }
 }
 

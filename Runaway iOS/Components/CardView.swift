@@ -135,6 +135,7 @@ struct CardView: View {
                     AIInsightsBanner(insights: insights)
                 }
             }
+            .contentShape(Rectangle()) // Make entire card tappable
         }
         .buttonStyle(PlainButtonStyle())
         .accessibilityElement(children: .combine)

@@ -109,6 +109,32 @@ The app shares data with its widget through:
 - `Runaway-iOS-Info.plist` - API keys and Supabase credentials (generated from template)
 - `GoogleService-Info.plist` - Firebase configuration
 
+## Database Schema Reference
+
+**CRITICAL: Always reference the ERD before any database operations!**
+
+The authoritative database schema is documented in:
+- `Runaway iOS/Documentation/strava_erd.md` - Complete ERD with all table definitions
+
+### Before Writing Database Code
+1. **Always read the ERD first** to verify table and column names
+2. **Never assume column names** - they must match the schema exactly
+3. **Check data types** - the ERD specifies bigint, int, varchar, timestamp, etc.
+
+### Key Tables (from ERD)
+- `activities` - Core activity data (90+ fields including timing, distance, elevation, speed, heart rate, weather, etc.)
+- `athletes` - User profiles (id, auth_user_id, email, first_name, last_name, strava/garmin integration, etc.)
+- `daily_commitments` - Daily commitment tracking with micro-commitment support
+- `activity_types` - Activity type reference data
+- `running_goals` - User running goals
+- `athlete_onboarding` - Onboarding state and preferences
+- `gear` - User equipment (shoes, bikes)
+- `training_zones` - Heart rate/power zones
+- `weekly_training_plans` - AI-generated training plans
+
+### Activity Recording Fields
+When saving manual activities, reference the "Manual Activity Recording - Fields to Save" section in the ERD for the complete list of fields that should be populated.
+
 ## Development Workflow
 
 ### Adding New Features
@@ -117,6 +143,7 @@ The app shares data with its widget through:
 3. **Views**: Build SwiftUI views that observe DataManager
 4. **Integration**: Update DataManager to handle new data type
 5. **Widget**: Update widget data format if relevant for home screen display
+6. **Database**: Reference `strava_erd.md` for correct table/column names
 
 ### API Integration Pattern
 ```swift

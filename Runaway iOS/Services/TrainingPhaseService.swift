@@ -277,7 +277,7 @@ class TrainingPhaseService {
             return date >= Calendar.current.date(byAdding: .day, value: -7, to: Date())!
         }
 
-        let restDays = 7 - Set(last7Days.compactMap { $0.date?.startOfDay }).count
+        let restDays = 7 - Set(last7Days.compactMap { $0.date?.phaseStartOfDay }).count
         let qualityRuns = last7Days.filter { ($0.distance ?? 0) > 5000 }.count
 
         let recoveryScore: Double
@@ -355,7 +355,7 @@ class TrainingPhaseService {
         var weeklyVolumes: [Double] = []
 
         for weekOffset in 0..<8 {
-            let weekStart = calendar.date(byAdding: .weekOfYear, value: -weekOffset, to: Date())!.startOfWeek
+            let weekStart = calendar.date(byAdding: .weekOfYear, value: -weekOffset, to: Date())!.phaseStartOfWeek
             let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart)!
 
             let weekActivities = activities.filter { activity in
@@ -371,7 +371,7 @@ class TrainingPhaseService {
     }
 
     private static func calculateCurrentWeekVolume(from activities: [Activity]) -> Double {
-        let weekStart = Date().startOfWeek
+        let weekStart = Date().phaseStartOfWeek
         let weekActivities = activities.filter { activity in
             guard let date = activity.date else { return false }
             return date >= weekStart
@@ -393,9 +393,9 @@ class TrainingPhaseService {
     private static func calculateStreakDays(from activities: [Activity]) -> Int {
         let calendar = Calendar.current
         var streakDays = 0
-        var currentDate = Date().startOfDay
+        var currentDate = Date().phaseStartOfDay
 
-        let activityDates = Set(activities.compactMap { $0.date?.startOfDay })
+        let activityDates = Set(activities.compactMap { $0.date?.phaseStartOfDay })
 
         // Count backwards from today
         while activityDates.contains(currentDate) {
@@ -536,11 +536,11 @@ class TrainingPhaseService {
 // MARK: - Date Extensions
 
 private extension Date {
-    var startOfDay: Date {
+    var phaseStartOfDay: Date {
         Calendar.current.startOfDay(for: self)
     }
 
-    var startOfWeek: Date {
+    var phaseStartOfWeek: Date {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
         return calendar.date(from: components) ?? self

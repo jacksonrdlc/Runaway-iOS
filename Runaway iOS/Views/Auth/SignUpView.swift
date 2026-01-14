@@ -16,7 +16,7 @@ struct SignUpView: View {
     @StateObject private var viewModel = SignUpViewModel()
 
     @State private var showError = false
-    @State private var showSuccess = false
+    @State private var showEmailVerification = false
 
     private var backgroundColor: Color {
         themeManager.isDarkMode
@@ -176,10 +176,20 @@ struct SignUpView: View {
         } message: {
             Text(viewModel.errorMessage ?? "An unknown error occurred")
         }
-        .alert("Account Created", isPresented: $showSuccess) {
-            Button("OK") { dismiss() }
-        } message: {
-            Text("Your account has been created. Please check your email to verify your account.")
+        .navigationDestination(isPresented: $showEmailVerification) {
+            EmailVerificationPendingView(
+                email: viewModel.email,
+                onResendEmail: {
+                    try? await userSession.resendVerificationEmail(email: viewModel.email)
+                },
+                onBackToSignIn: {
+                    // Pop back to root
+                    showEmailVerification = false
+                    dismiss()
+                }
+            )
+            .environmentObject(userSession)
+            .environmentObject(themeManager)
         }
     }
 
@@ -187,7 +197,7 @@ struct SignUpView: View {
         Task {
             do {
                 try await viewModel.signUp(userSession: userSession)
-                showSuccess = true
+                showEmailVerification = true
             } catch {
                 showError = true
             }

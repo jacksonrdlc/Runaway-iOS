@@ -66,38 +66,38 @@ struct DynamicColors {
 
     // MARK: - Backgrounds
     var background: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
     }
 
     var backgroundElevated: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.backgroundElevated : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.backgroundElevated
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.backgroundElevated : AppTheme.Colors.LightMode.backgroundElevated
     }
 
     // MARK: - Cards
     var cardBackground: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
     }
 
     var cardBackgroundElevated: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackgroundElevated : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackgroundElevated
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackgroundElevated : AppTheme.Colors.LightMode.cardBackgroundElevated
     }
 
     // MARK: - Surfaces
     var surfaceBackground: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
     }
 
     // MARK: - Text
     var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
     }
 
     var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
     }
 
     var textTertiary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
     }
 
     // MARK: - Accent (same for both modes)

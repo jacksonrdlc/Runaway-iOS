@@ -20,8 +20,6 @@ struct PreRecordingView: View {
     @State private var showingActivityTypeSelector = false
     @State private var locationName: String?
     
-    private let activityTypes = ["Run", "Walk", "Bike", "Hike"]
-    
     var body: some View {
         ZStack {
             // MapBox map taking up full screen
@@ -138,13 +136,12 @@ struct PreRecordingView: View {
         } message: {
             Text("Please enable location access in Settings to record your activity route.")
         }
-        .confirmationDialog("Select Activity Type", isPresented: $showingActivityTypeSelector) {
-            ForEach(activityTypes, id: \.self) { type in
-                Button(type) {
-                    activityType = type
-                }
-            }
-            Button("Cancel", role: .cancel) { }
+        .sheet(isPresented: $showingActivityTypeSelector) {
+            ActivityTypePickerSheet(
+                selectedTypeName: $activityType,
+                title: "Select Activity",
+                subtitle: "Choose your activity type"
+            )
         }
         .fullScreenCover(isPresented: $showingRecordingView) {
             ActiveRecordingView(

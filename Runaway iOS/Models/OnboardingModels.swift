@@ -80,15 +80,19 @@ struct OnboardingState: Codable, Sendable {
 
 enum OnboardingStep: Int, CaseIterable, Sendable {
     case welcome = 0
-    case experienceAssessment = 1
-    case movementTest = 2
-    case locationPermission = 3
-    case coachSelection = 4
-    case completion = 5
+    case profileSetup = 1
+    case goalsSetup = 2
+    case experienceAssessment = 3
+    case movementTest = 4
+    case locationPermission = 5
+    case coachSelection = 6
+    case completion = 7
 
     var title: String {
         switch self {
         case .welcome: return "Welcome"
+        case .profileSetup: return "About You"
+        case .goalsSetup: return "Your Goals"
         case .experienceAssessment: return "Your Experience"
         case .movementTest: return "Movement Test"
         case .locationPermission: return "Location"
@@ -100,6 +104,8 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
     var subtitle: String {
         switch self {
         case .welcome: return "Let's get you set up"
+        case .profileSetup: return "Tell us your name"
+        case .goalsSetup: return "Set your running targets"
         case .experienceAssessment: return "Tell us about your running"
         case .movementTest: return "Quick 30-second assessment"
         case .locationPermission: return "Track your runs"
@@ -111,6 +117,8 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
     var icon: String {
         switch self {
         case .welcome: return "hand.wave.fill"
+        case .profileSetup: return "person.fill"
+        case .goalsSetup: return "target"
         case .experienceAssessment: return "figure.run"
         case .movementTest: return "waveform.path.ecg"
         case .locationPermission: return "location.fill"
@@ -121,7 +129,7 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
 
     var isSkippable: Bool {
         switch self {
-        case .welcome, .completion: return false
+        case .welcome, .profileSetup, .goalsSetup, .completion: return false
         case .experienceAssessment, .movementTest, .locationPermission, .coachSelection: return true
         }
     }

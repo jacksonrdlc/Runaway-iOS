@@ -181,6 +181,12 @@ struct ActiveRecordingView: View {
         .fullScreenCover(isPresented: $showingPostRecording) {
             PostRecordingView(recordingService: recordingService)
         }
+        .onChange(of: recordingService.state) { oldState, newState in
+            // When state returns to ready (after save or discard), dismiss the recording view
+            if oldState == .completed && newState == .ready {
+                dismiss()
+            }
+        }
     }
     
     // MARK: - Computed Properties

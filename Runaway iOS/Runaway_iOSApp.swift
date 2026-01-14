@@ -161,6 +161,45 @@ struct Runaway_iOSApp: App {
         print("🔗 Deep link received: \(url)")
         #endif
 
+        // Handle Supabase auth callback (email verification, password reset, etc.)
+        if url.scheme == "runaway" && url.host == "auth" {
+            Task {
+                #if DEBUG
+                print("🔐 Handling Supabase auth callback...")
+                print("🔗 Callback URL: \(url)")
+                #endif
+                do {
+                    let session = try await supabase.auth.session(from: url)
+                    #if DEBUG
+                    print("✅ Supabase auth callback handled successfully")
+                    print("👤 User: \(session.user.email ?? "unknown")")
+                    #endif
+
+                    // Explicitly notify that authentication succeeded
+                    await MainActor.run {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("EmailVerificationCompleted"),
+                            object: nil
+                        )
+                    }
+                } catch {
+                    #if DEBUG
+                    print("❌ Supabase auth callback error: \(error)")
+                    #endif
+
+                    // Notify about the error so UI can show it
+                    await MainActor.run {
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("EmailVerificationFailed"),
+                            object: nil,
+                            userInfo: ["error": error.localizedDescription]
+                        )
+                    }
+                }
+            }
+            return
+        }
+
         // Handle Strava OAuth callback
         if url.scheme == "runaway" && url.host == "strava-connected" {
             Task {

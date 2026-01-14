@@ -150,6 +150,7 @@ struct MicroCommitmentOptionCard: View {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color(.secondarySystemGroupedBackground))
             )
+            .contentShape(Rectangle()) // Make entire card tappable
             .scaleEffect(isPressed ? 0.98 : 1.0)
         }
         .buttonStyle(.plain)

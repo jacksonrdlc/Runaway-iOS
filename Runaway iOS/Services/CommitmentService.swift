@@ -20,7 +20,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let createdCommitment = try JSONDecoder().decode([DailyCommitment].self, from: data).first
+        let createdCommitment = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data).first
 
         guard let result = createdCommitment else {
             throw SupabaseError.decodingError("Failed to decode created commitment")
@@ -44,7 +44,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let commitments = try JSONDecoder().decode([DailyCommitment].self, from: data)
+        let commitments = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data)
 
         print("🔍 CommitmentService: Found \(commitments.count) commitment(s) for today")
         if let commitment = commitments.first {
@@ -69,7 +69,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let updatedCommitment = try JSONDecoder().decode([DailyCommitment].self, from: data).first
+        let updatedCommitment = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data).first
 
         guard let result = updatedCommitment else {
             throw SupabaseError.decodingError("Failed to decode updated commitment")
@@ -98,7 +98,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let updatedCommitment = try JSONDecoder().decode([DailyCommitment].self, from: data).first
+        let updatedCommitment = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data).first
 
         guard let result = updatedCommitment else {
             throw SupabaseError.decodingError("Failed to decode fulfilled commitment")
@@ -167,7 +167,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let commitments = try JSONDecoder().decode([DailyCommitment].self, from: data)
+        let commitments = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data)
 
         return commitments
     }
@@ -197,7 +197,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        let results = try JSONDecoder().decode([CommitmentStatsResponse].self, from: data)
+        let results = try SupabaseDecoder.shared.decode([CommitmentStatsResponse].self, from: data)
 
         guard let statsData = results.first else {
             // Return empty stats if no data
@@ -228,7 +228,7 @@ class CommitmentService {
             .execute()
 
         let data = response.data
-        if let streak = try? JSONDecoder().decode(Int.self, from: data) {
+        if let streak = try? SupabaseDecoder.shared.decode(Int.self, from: data) {
             return streak
         }
 

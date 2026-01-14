@@ -117,7 +117,7 @@ class ActivityRecordingService: ObservableObject {
         // Create new session
         currentSession = RecordingSession(
             startTime: Date(),
-            name: name.isEmpty ? generateDefaultName() : name,
+            name: name.isEmpty ? generateDefaultName(for: activityType) : name,
             activityType: activityType
         )
 
@@ -323,8 +323,7 @@ class ActivityRecordingService: ObservableObject {
     
     func saveActivity() async throws -> Activity? {
         guard let session = currentSession,
-              state == .completed,
-              !session.routePoints.isEmpty else {
+              state == .completed else {
             throw RecordingError.invalidSession
         }
 
@@ -335,11 +334,20 @@ class ActivityRecordingService: ObservableObject {
             throw RecordingError.noUser
         }
 
+        // Capture GPS data from service before background task
+        let routePoints = gpsService.routePoints
+        let maxSpeed = gpsService.maxSpeed
+        let averageSpeed = gpsService.averageSpeed
+        let elevationGain = gpsService.elevationGain
+        let elevationLoss = gpsService.elevationLoss
+        let elevationHigh = gpsService.elevationHigh
+        let elevationLow = gpsService.elevationLow
+
         // Perform heavy polyline encoding on background thread
-        let activityData = await Task.detached(priority: .userInitiated) { [session] in
-            // Generate polyline from route points
+        let activityData = await Task.detached(priority: .userInitiated) { [session, routePoints, maxSpeed, averageSpeed, elevationGain, elevationLoss, elevationHigh, elevationLow] in
+            // Generate polylines from route points
             let polylineService = PolylineEncodingService()
-            let coordinates = session.routePoints.map { $0.coordinate }
+            let coordinates = routePoints.map { $0.coordinate }
             let encodedPolyline = polylineService.encode(coordinates: coordinates)
 
             // Get activity type ID from database IDs
@@ -356,21 +364,115 @@ class ActivityRecordingService: ObservableObject {
             default: activityTypeId = 103 // Default to Run
             }
 
-            // Format date as ISO 8601 for PostgreSQL timestamp
+            // Format dates as ISO 8601 for PostgreSQL timestamp
             let iso8601Formatter = ISO8601DateFormatter()
             iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             let activityDateString = iso8601Formatter.string(from: session.startTime)
+            let startTimeString = iso8601Formatter.string(from: session.startTime)
 
-            // Create activity for database with correct field names
-            return [
+            // Calculate moving time (elapsed minus paused)
+            let movingTime = Int(session.elapsedTime - session.pausedDuration)
+
+            // Get start/end coordinates from route points
+            let startLat = routePoints.first?.coordinate.latitude
+            let startLon = routePoints.first?.coordinate.longitude
+            let endLat = routePoints.last?.coordinate.latitude
+            let endLon = routePoints.last?.coordinate.longitude
+
+            // Estimate calories based on activity type and duration
+            // Simple estimation: ~100 cal/mile for running, ~50 for walking
+            let distanceMiles = session.totalDistance * 0.000621371
+            let calories: Int?
+            switch session.activityType.lowercased() {
+            case "run":
+                calories = Int(distanceMiles * 100)
+            case "walk":
+                calories = Int(distanceMiles * 50)
+            case "ride", "bike":
+                calories = Int(distanceMiles * 40)
+            default:
+                // Estimate based on duration: ~5 cal/min for moderate activity
+                calories = Int(session.elapsedTime / 60 * 5)
+            }
+
+            // Estimate steps for runs/walks (~1,400 steps per mile running, ~2,000 walking)
+            let totalSteps: Int?
+            switch session.activityType.lowercased() {
+            case "run":
+                totalSteps = Int(distanceMiles * 1400)
+            case "walk", "hike":
+                totalSteps = Int(distanceMiles * 2000)
+            default:
+                totalSteps = nil
+            }
+
+            // Build activity data dictionary
+            // Schema reference: activities table in strava_erd.md
+            // Note: id is omitted - database will auto-generate via sequence
+            var data: [String: AnyEncodable] = [
+                // Required fields
                 "athlete_id": AnyEncodable(userId),
                 "name": AnyEncodable(session.name),
                 "activity_type_id": AnyEncodable(activityTypeId),
-                "distance": AnyEncodable(session.totalDistance),
-                "elapsed_time": AnyEncodable(Int(session.elapsedTime)),
                 "activity_date": AnyEncodable(activityDateString),
-                "map_summary_polyline": AnyEncodable(encodedPolyline)
+                "elapsed_time": AnyEncodable(Int(session.elapsedTime)),
+                "distance": AnyEncodable(session.totalDistance),
+
+                // Source/type flags
+                "source": AnyEncodable("manual"),
+                "manual": AnyEncodable(true),
+
+                // Timing
+                "start_time": AnyEncodable(startTimeString),
+                "moving_time": AnyEncodable(movingTime),
+
+                // Polylines (use same encoded polyline for both - summary can be simplified later)
+                "map_summary_polyline": AnyEncodable(encodedPolyline),
+                "map_polyline": AnyEncodable(encodedPolyline),
+
+                // Speed (in m/s)
+                "average_speed": AnyEncodable(averageSpeed),
+                "max_speed": AnyEncodable(maxSpeed),
+
+                // Device info
+                "device_name": AnyEncodable("Runaway iOS")
             ]
+
+            // Add GPS coordinates if available
+            if let lat = startLat, let lon = startLon {
+                data["start_latitude"] = AnyEncodable(lat)
+                data["start_longitude"] = AnyEncodable(lon)
+            }
+            if let lat = endLat, let lon = endLon {
+                data["end_latitude"] = AnyEncodable(lat)
+                data["end_longitude"] = AnyEncodable(lon)
+            }
+
+            // Add elevation data if we have valid readings
+            if elevationHigh > -Double.greatestFiniteMagnitude {
+                data["elevation_high"] = AnyEncodable(elevationHigh)
+            }
+            if elevationLow < Double.greatestFiniteMagnitude {
+                data["elevation_low"] = AnyEncodable(elevationLow)
+            }
+            if elevationGain > 0 {
+                data["elevation_gain"] = AnyEncodable(elevationGain)
+            }
+            if elevationLoss > 0 {
+                data["elevation_loss"] = AnyEncodable(elevationLoss)
+            }
+
+            // Add estimated calories
+            if let cal = calories, cal > 0 {
+                data["calories"] = AnyEncodable(cal)
+            }
+
+            // Add estimated steps for applicable activities
+            if let steps = totalSteps, steps > 0 {
+                data["total_steps"] = AnyEncodable(steps)
+            }
+
+            return data
         }.value
 
         // Save to Supabase
@@ -470,10 +572,10 @@ class ActivityRecordingService: ObservableObject {
         }
     }
     
-    private func generateDefaultName() -> String {
+    private func generateDefaultName(for activityType: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d 'at' h:mm a"
-        return "Run on \(formatter.string(from: Date()))"
+        return "\(activityType) on \(formatter.string(from: Date()))"
     }
 
     // MARK: - Live Activity Helpers

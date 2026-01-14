@@ -111,19 +111,19 @@ public final class RealtimeService: ObservableObject {
         let insertions = channel.postgresChange(
             AnyAction.self,
             table: "activities",
-            filter: "user_id=eq.\(userId)"
+            filter: "athlete_id=eq.\(userId)"
         )
-        
+
         let updates = channel.postgresChange(
             AnyAction.self,
-            table: "activities", 
-            filter: "user_id=eq.\(userId)"
+            table: "activities",
+            filter: "athlete_id=eq.\(userId)"
         )
-        
+
         let deletions = channel.postgresChange(
             AnyAction.self,
             table: "activities",
-            filter: "user_id=eq.\(userId)"
+            filter: "athlete_id=eq.\(userId)"
         )
         
         print("Subscribing to realtime channel for user: \(userId)")

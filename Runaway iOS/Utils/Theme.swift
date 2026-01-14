@@ -518,17 +518,7 @@ extension View {
 
     /// Surface card for nested content (theme-aware)
     func surfaceCard() -> some View {
-        let isDark = ThemeManager.shared.isDarkMode
-        return self
-            .padding(AppTheme.Spacing.md)
-            .background(isDark ? AppTheme.Colors.DarkMode.cardBackground : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-            .cornerRadius(AppTheme.CornerRadius.medium)
-            .shadow(
-                color: isDark ? Color.black.opacity(0.3) : Color.black.opacity(0.08),
-                radius: isDark ? 8 : 4,
-                x: 0,
-                y: isDark ? 4 : 2
-            )
+        modifier(SurfaceCardModifier())
     }
 
     /// Orange accent card (for energy metrics)
@@ -726,6 +716,24 @@ extension View {
             x: shadow.x,
             y: shadow.y
         )
+    }
+}
+
+// MARK: - Surface Card Modifier (Theme-Aware)
+struct SurfaceCardModifier: ViewModifier {
+    @ObservedObject private var themeManager = ThemeManager.shared
+
+    func body(content: Content) -> some View {
+        content
+            .padding(AppTheme.Spacing.md)
+            .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+            .cornerRadius(AppTheme.CornerRadius.medium)
+            .shadow(
+                color: themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.08),
+                radius: themeManager.isDarkMode ? 8 : 4,
+                x: 0,
+                y: themeManager.isDarkMode ? 4 : 2
+            )
     }
 }
 

@@ -35,6 +35,20 @@ struct OnboardingContainerView: View {
                     OnboardingWelcomeView(onContinue: viewModel.nextStep)
                         .tag(OnboardingStep.welcome)
 
+                    OnboardingProfileSetupView(
+                        firstName: $viewModel.firstName,
+                        lastName: $viewModel.lastName,
+                        onContinue: viewModel.nextStep
+                    )
+                    .tag(OnboardingStep.profileSetup)
+
+                    OnboardingGoalsSetupView(
+                        weeklyGoal: $viewModel.weeklyGoal,
+                        monthlyGoal: $viewModel.monthlyGoal,
+                        onContinue: viewModel.nextStep
+                    )
+                    .tag(OnboardingStep.goalsSetup)
+
                     OnboardingExperienceView(
                         selectedLevel: $viewModel.experienceLevel,
                         onContinue: viewModel.nextStep,
@@ -100,8 +114,15 @@ class OnboardingViewModel: ObservableObject {
     @Published var locationPermissionGranted = false
     @Published var isLoading = false
 
+    // Profile setup fields
+    @Published var firstName: String = ""
+    @Published var lastName: String = ""
+    @Published var weeklyGoal: Double = 20.0
+    @Published var monthlyGoal: Double = 80.0
+
     private var onboardingState: OnboardingState?
     private var hasLoadedInitialState = false
+    private var athleteId: Int?
 
     // MARK: - Load State
 
@@ -110,6 +131,7 @@ class OnboardingViewModel: ObservableObject {
         guard !hasLoadedInitialState else { return }
         guard let userId = userId else { return }
 
+        self.athleteId = userId
         isLoading = true
         defer { isLoading = false }
 
@@ -127,6 +149,11 @@ class OnboardingViewModel: ObservableObject {
                 experienceLevel = level
             }
             locationPermissionGranted = state.locationPermissionGranted
+
+            // Load existing goal settings
+            let goalStore = GoalSettingsStore.shared
+            weeklyGoal = goalStore.weeklyGoal
+            monthlyGoal = goalStore.monthlyGoal
         } catch {
             print("❌ OnboardingViewModel: Failed to load state: \(error)")
             // Mark as loaded even on error to prevent infinite retry
@@ -216,6 +243,12 @@ class OnboardingViewModel: ObservableObject {
             saveExperienceLevel()
             saveCoachPersonality()
 
+            // Save profile info to athlete record
+            await saveProfileData()
+
+            // Save goals to GoalSettingsStore
+            saveGoals()
+
             // Mark as complete
             let completedState = try await OnboardingService.completeOnboarding(stateId: stateId)
             self.onboardingState = completedState
@@ -223,6 +256,34 @@ class OnboardingViewModel: ObservableObject {
         } catch {
             print("❌ OnboardingViewModel: Failed to complete onboarding: \(error)")
         }
+    }
+
+    // MARK: - Profile Data Saving
+
+    private func saveProfileData() async {
+        guard let athleteId = athleteId else {
+            print("⚠️ OnboardingViewModel: No athlete ID, skipping profile save")
+            return
+        }
+
+        do {
+            try await AthleteService.shared.updateAthlete(
+                athleteId: athleteId,
+                firstname: firstName.trimmingCharacters(in: .whitespaces),
+                lastname: lastName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : lastName.trimmingCharacters(in: .whitespaces),
+                profileURL: nil
+            )
+            print("✅ OnboardingViewModel: Profile data saved")
+        } catch {
+            print("❌ OnboardingViewModel: Failed to save profile data: \(error)")
+        }
+    }
+
+    private func saveGoals() {
+        let goalStore = GoalSettingsStore.shared
+        goalStore.weeklyGoal = weeklyGoal
+        goalStore.monthlyGoal = monthlyGoal
+        print("✅ OnboardingViewModel: Goals saved - Weekly: \(weeklyGoal)mi, Monthly: \(monthlyGoal)mi")
     }
 }
 

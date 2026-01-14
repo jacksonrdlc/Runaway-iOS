@@ -32,6 +32,8 @@ struct SimpleEntry: TimelineEntry {
     let runs: Int
     let days: [Day]
     let selectedActivities: [ActivityTypeEntity]
+    let weeklyGoal: Double
+    let monthlyGoal: Double
 }
 
 struct BarChart: View {
@@ -167,13 +169,17 @@ struct Provider: AppIntentTimelineProvider {
         ]
     }
 
+    // Default goals
+    private let defaultWeeklyGoal: Double = 20.0
+    private let defaultMonthlyGoal: Double = 80.0
+
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: defaultActivities)
+        SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal)
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
         let activities = configuration.selectedActivities ?? defaultActivities
-        return SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities)
+        return SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal)
     }
     
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
@@ -183,11 +189,17 @@ struct Provider: AppIntentTimelineProvider {
 
         for hourOffset in 0 ..< 5 {
             let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities)
+            var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal)
             if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
                 let miles = userDefaults.double(forKey: "miles")
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
+
+                // Read customizable goals (with defaults)
+                let weeklyGoal = userDefaults.double(forKey: "weekly_goal_miles")
+                let monthlyGoal = userDefaults.double(forKey: "monthly_goal_miles")
+                let finalWeeklyGoal = weeklyGoal > 0 ? weeklyGoal : defaultWeeklyGoal
+                let finalMonthlyGoal = monthlyGoal > 0 ? monthlyGoal : defaultMonthlyGoal
                 
                 print("Miles: \(miles), Runs: \(runs), Monthly Miles: \(monthlyMiles)")
                 
@@ -363,7 +375,7 @@ struct Provider: AppIntentTimelineProvider {
                     print("🔵   \(day.name): \(day.type) - \(day.minutes) min - \(day.miles) mi")
                 }
 
-                entry = SimpleEntry(date: entryDate, miles: miles, monthlyMiles: monthlyMiles, runs: runs, days: daysData, selectedActivities: activities)
+                entry = SimpleEntry(date: entryDate, miles: miles, monthlyMiles: monthlyMiles, runs: runs, days: daysData, selectedActivities: activities, weeklyGoal: finalWeeklyGoal, monthlyGoal: finalMonthlyGoal)
             }
             entries.append(entry)
         }
@@ -406,11 +418,11 @@ struct RunawayWidgetEntryView : View {
                 }.frame(minWidth: 140).padding(.bottom,8)
                 Spacer()
                 VStack{
-                    PieChartView(current: weeklyMileage, goalRemaining: max(0, 50.0 - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
+                    PieChartView(current: weeklyMileage, goalRemaining: max(0, entry.weeklyGoal - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
                     Text("Weekly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
                 VStack{
-                    PieChartView(current: entry.monthlyMiles, goalRemaining: max(0, 200.0 - entry.monthlyMiles), color: Color(red: 0.4, green: 0.8, blue: 0.4)).padding(.bottom,2)
+                    PieChartView(current: entry.monthlyMiles, goalRemaining: max(0, entry.monthlyGoal - entry.monthlyMiles), color: Color(red: 0.4, green: 0.8, blue: 0.4)).padding(.bottom,2)
                     Text("Monthly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
             }.padding(.top, 16)
@@ -484,6 +496,6 @@ extension Double {
         ActivityTypeEntity(id: "weight_training", name: "Weight Training", color: "#FFB300"),
         ActivityTypeEntity(id: "yoga", name: "Yoga", color: "#CC66CC")
     ]
-    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities)
-    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities)
+    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: 20.0, monthlyGoal: 80.0)
+    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: 20.0, monthlyGoal: 80.0)
 }

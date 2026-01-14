@@ -95,17 +95,39 @@ struct MainView: View {
                                         }
                                     }
                                 }
-                        } else {
+                        } else if dataManager.isLoadingAthlete {
+                            // Still loading - show spinner
                             VStack(spacing: AppTheme.Spacing.md) {
                                 ProgressView()
                                     .scaleEffect(1.2)
                                     .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
                                 Text("Loading profile...")
                                     .font(AppTheme.Typography.body)
-                                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+                            .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+                            .navigationTitle("Profile")
+                            .navigationBarTitleDisplayMode(.large)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button(action: {
+                                        router.navigate(to: .settings)
+                                    }) {
+                                        Image(systemName: "gearshape.fill")
+                                            .foregroundColor(AppTheme.Colors.accent)
+                                    }
+                                }
+                            }
+                        } else {
+                            // Done loading but no profile - attempt reload
+                            ProfileLoadingErrorView(onRetry: {
+                                Task {
+                                    if let userId = userSession.userId {
+                                        await dataManager.loadAllData(for: userId)
+                                    }
+                                }
+                            })
                             .navigationTitle("Profile")
                             .navigationBarTitleDisplayMode(.large)
                             .toolbar {
@@ -218,6 +240,74 @@ extension MainView {
             await MainActor.run {
                 isDataReady = true
             }
+        }
+    }
+}
+
+// MARK: - Profile Loading Error View
+
+private struct ProfileLoadingErrorView: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+    let onRetry: () -> Void
+
+    @State private var isRetrying = false
+
+    private var background: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    var body: some View {
+        ZStack {
+            background.ignoresSafeArea()
+
+            VStack(spacing: AppTheme.Spacing.lg) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 50))
+                    .foregroundColor(.orange)
+
+                Text("Couldn't load profile")
+                    .font(AppTheme.Typography.headline)
+                    .foregroundColor(textPrimary)
+
+                Text("Please check your connection and try again")
+                    .font(AppTheme.Typography.body)
+                    .foregroundColor(textSecondary)
+                    .multilineTextAlignment(.center)
+
+                Button(action: {
+                    isRetrying = true
+                    onRetry()
+                    // Reset after a delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        isRetrying = false
+                    }
+                }) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        if isRetrying {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        Text(isRetrying ? "Loading..." : "Try Again")
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, AppTheme.Spacing.xl)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .background(AppTheme.Colors.accent)
+                    .cornerRadius(AppTheme.CornerRadius.medium)
+                }
+                .disabled(isRetrying)
+            }
+            .padding(AppTheme.Spacing.xl)
         }
     }
 }

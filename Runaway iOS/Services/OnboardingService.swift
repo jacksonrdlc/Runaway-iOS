@@ -23,7 +23,7 @@ class OnboardingService {
             .execute()
 
         let data = response.data
-        let states = try JSONDecoder().decode([OnboardingState].self, from: data)
+        let states = try SupabaseDecoder.shared.decode([OnboardingState].self, from: data)
 
         return states.first
     }
@@ -41,7 +41,7 @@ class OnboardingService {
             .execute()
 
         let data = response.data
-        let states = try JSONDecoder().decode([OnboardingState].self, from: data)
+        let states = try SupabaseDecoder.shared.decode([OnboardingState].self, from: data)
 
         guard let createdState = states.first else {
             throw OnboardingError.creationFailed
@@ -67,7 +67,7 @@ class OnboardingService {
             .execute()
 
         let data = response.data
-        let states = try JSONDecoder().decode([OnboardingState].self, from: data)
+        let states = try SupabaseDecoder.shared.decode([OnboardingState].self, from: data)
 
         guard let updatedState = states.first else {
             throw OnboardingError.updateFailed
@@ -173,7 +173,7 @@ class OnboardingService {
             .execute()
 
         let data = response.data
-        let states = try JSONDecoder().decode([OnboardingState].self, from: data)
+        let states = try SupabaseDecoder.shared.decode([OnboardingState].self, from: data)
 
         guard let completedState = states.first else {
             throw OnboardingError.completionFailed
@@ -185,19 +185,30 @@ class OnboardingService {
 
     // MARK: - Check Onboarding Status
 
-    /// Check if athlete has completed onboarding (uses database function)
+    /// Check if athlete has completed onboarding
     static func checkOnboardingStatus(athleteId: Int) async throws -> Bool {
+        print("🔍 OnboardingService: Checking onboarding status for athlete \(athleteId)")
+
+        // Query the onboarding table directly
         let response = try await supabase
-            .rpc("check_onboarding_status", params: [
-                "p_athlete_id": athleteId
-            ])
+            .from("athlete_onboarding")
+            .select("is_completed")
+            .eq("athlete_id", value: athleteId)
             .execute()
 
-        let data = response.data
-        if let result = try? JSONDecoder().decode(Bool.self, from: data) {
-            return result
+        struct OnboardingStatusResult: Decodable {
+            let is_completed: Bool
         }
 
+        let results = try SupabaseDecoder.shared.decode([OnboardingStatusResult].self, from: response.data)
+
+        if let result = results.first {
+            print("✅ OnboardingService: Onboarding completed = \(result.is_completed)")
+            return result.is_completed
+        }
+
+        // No onboarding record found - default to not completed (new user)
+        print("⚠️ OnboardingService: No onboarding record found for athlete \(athleteId), defaulting to not completed")
         return false
     }
 
