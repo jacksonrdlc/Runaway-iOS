@@ -203,8 +203,8 @@ struct PostRecordingView: View {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
                 SummaryMetricCard(
                     title: "Distance",
-                    value: String(format: "%.2f", recordingService.gpsService.totalDistanceMiles),
-                    unit: "miles",
+                    value: UnitFormatter.formatDistance(recordingService.gpsService.totalDistance, decimals: 2, includeUnit: false),
+                    unit: UnitFormatter.distanceUnitName,
                     icon: "road.lanes",
                     color: .blue
                 )
@@ -219,16 +219,16 @@ struct PostRecordingView: View {
 
                 SummaryMetricCard(
                     title: "Avg Pace",
-                    value: formatPace(recordingService.gpsService.averagePace),
-                    unit: "/mile",
+                    value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.averagePace),
+                    unit: UnitFormatter.paceUnitLabel,
                     icon: "speedometer",
                     color: .orange
                 )
 
                 SummaryMetricCard(
                     title: "Avg Speed",
-                    value: String(format: "%.1f", recordingService.gpsService.averageSpeed * 2.237),
-                    unit: "mph",
+                    value: UnitFormatter.formatSpeedValue(recordingService.gpsService.averageSpeed),
+                    unit: UnitFormatter.speedUnitLabel,
                     icon: "gauge.high",
                     color: .purple
                 )
