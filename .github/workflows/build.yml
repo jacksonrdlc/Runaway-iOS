@@ -8,130 +8,65 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-14
+    timeout-minutes: 30
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Mapbox SDK authentication
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '16.0'
+
+    - name: Setup Mapbox authentication
       env:
         MAPBOX_SECRET_TOKEN: ${{ secrets.MAPBOX_SECRET_TOKEN }}
       run: |
-        echo "=== Mapbox Auth Debug ==="
-        if [ -z "$MAPBOX_SECRET_TOKEN" ]; then
-          echo "::warning::MAPBOX_SECRET_TOKEN not set - Mapbox packages may fail to download"
-          echo "Continuing without Mapbox auth..."
-        else
-          echo "✓ MAPBOX_SECRET_TOKEN is set (length: ${#MAPBOX_SECRET_TOKEN} chars)"
-          # Mapbox requires auth for multiple domains
-          echo "machine api.mapbox.com" > ~/.netrc
-          echo "login mapbox" >> ~/.netrc
-          echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
-          echo "" >> ~/.netrc
-          echo "machine api.mapbox.cn" >> ~/.netrc
-          echo "login mapbox" >> ~/.netrc
-          echo "password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
+        if [ -n "$MAPBOX_SECRET_TOKEN" ]; then
+          echo "machine api.mapbox.com login mapbox password ${MAPBOX_SECRET_TOKEN}" > ~/.netrc
           chmod 600 ~/.netrc
-          echo "✓ .netrc configured"
         fi
-        echo "=== Mapbox Auth Complete ==="
 
-    - name: Create Info.plist from template
+    - name: Create config files
       run: |
+        # Info.plist
         cp Runaway-iOS-Info.plist.template Runaway-iOS-Info.plist
-        # Use placeholder values for CI build - secrets not needed for compile check
         sed -i '' "s|YOUR_MAPBOX_TOKEN_HERE|pk.placeholder|g" Runaway-iOS-Info.plist
         sed -i '' "s|YOUR_SUPABASE_PROJECT_URL_HERE|https://placeholder.supabase.co|g" Runaway-iOS-Info.plist
         sed -i '' "s|YOUR_SUPABASE_ANON_KEY_HERE|placeholder_key|g" Runaway-iOS-Info.plist
         sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|placeholder_api_key|g" Runaway-iOS-Info.plist
-        echo "✓ Info.plist created from template with placeholder values"
 
-    - name: Create GoogleService-Info.plist
-      run: |
-        # Create GoogleService-Info.plist with placeholder Firebase configuration for CI build
+        # GoogleService-Info.plist
         cat > "Runaway iOS/GoogleService-Info.plist" << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
           <key>API_KEY</key>
-          <string>PLACEHOLDER_FIREBASE_API_KEY</string>
+          <string>placeholder</string>
           <key>GCM_SENDER_ID</key>
           <string>123456789</string>
-          <key>PLIST_VERSION</key>
-          <string>1</string>
           <key>BUNDLE_ID</key>
           <string>com.jackrudelic.labs.Runaway-iOS</string>
           <key>PROJECT_ID</key>
-          <string>runaway-ios-placeholder</string>
-          <key>STORAGE_BUCKET</key>
-          <string>runaway-ios-placeholder.appspot.com</string>
-          <key>IS_ADS_ENABLED</key>
-          <false/>
-          <key>IS_ANALYTICS_ENABLED</key>
-          <false/>
-          <key>IS_APPINVITE_ENABLED</key>
-          <false/>
-          <key>IS_GCM_ENABLED</key>
-          <true/>
-          <key>IS_SIGNIN_ENABLED</key>
-          <false/>
+          <string>placeholder</string>
           <key>GOOGLE_APP_ID</key>
-          <string>1:123456789:ios:PLACEHOLDER</string>
+          <string>1:123456789:ios:placeholder</string>
         </dict>
         </plist>
         EOF
-        echo "✓ GoogleService-Info.plist created with placeholder values"
 
-    - name: Select Xcode 16
-      run: |
-        sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer || \
-        sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer || \
-        sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer || \
-        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-        xcodebuild -version
-
-    - name: Install iOS Simulator
-      run: |
-        sudo xcodebuild -downloadPlatform iOS
-      continue-on-error: true
-
-    - name: List available simulators and SDKs
-      run: |
-        echo "=== Available SDKs ==="
-        xcodebuild -showsdks
-        echo ""
-        echo "=== Available iOS Simulators ==="
-        xcrun simctl list devices available | grep -E "iPhone|iOS" || true
-        echo ""
-        echo "=== Available Runtimes ==="
-        xcrun simctl list runtimes
-
-    - name: Resolve Swift packages
-      run: |
-        echo "=== Resolving Swift Package Dependencies ==="
-        xcodebuild -project "Runaway iOS.xcodeproj" \
-          -scheme "Runaway iOS" \
-          -disablePackageRepositoryCache \
-          -resolvePackageDependencies 2>&1 | tee package_resolution.log
-        echo "=== Package Resolution Complete ==="
-        if grep -i "error\|failed\|unauthorized" package_resolution.log; then
-          echo "::warning::Package resolution may have issues - check log above"
-        fi
-
-    - name: Clean build artifacts
-      run: |
-        # Clean derived data to prevent Xcode 16 SPM caching issues
-        rm -rf ~/Library/Developer/Xcode/DerivedData
-        rm -rf ~/Library/Caches/org.swift.swiftpm
-        echo "✓ Cleaned build artifacts and SPM cache"
+    - name: Install xcpretty
+      run: gem install xcpretty
 
     - name: Build
       run: |
-        xcodebuild -project "Runaway iOS.xcodeproj" \
+        set -o pipefail
+        xcodebuild build \
+          -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
-          -sdk iphonesimulator \
-          -destination "generic/platform=iOS Simulator" \
+          -destination "platform=iOS Simulator,name=iPhone 15" \
           -skipPackagePluginValidation \
-          SWIFT_STRICT_CONCURRENCY=minimal \
-          build
+          CODE_SIGNING_ALLOWED=NO \
+          2>&1 | xcpretty --color
