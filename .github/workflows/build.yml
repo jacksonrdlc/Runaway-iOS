@@ -57,16 +57,11 @@ jobs:
         </plist>
         EOF
 
-    - name: Install xcpretty
-      run: gem install xcpretty
-
     - name: Build
       run: |
-        set -o pipefail
         xcodebuild build \
           -project "Runaway iOS.xcodeproj" \
           -scheme "Runaway iOS" \
           -destination "platform=iOS Simulator,name=iPhone 15" \
           -skipPackagePluginValidation \
-          CODE_SIGNING_ALLOWED=NO \
-          2>&1 | xcpretty --color
+          CODE_SIGNING_ALLOWED=NO
