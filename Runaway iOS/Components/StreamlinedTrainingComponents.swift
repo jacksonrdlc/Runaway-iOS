@@ -692,6 +692,28 @@ struct WeekDayActivityTile: View {
         return distance * 0.000621371 // Convert to miles
     }
 
+    private var activityElapsedMinutes: Int? {
+        guard let elapsed = entry?.actualActivity?.elapsed_time else { return nil }
+        return Int(elapsed / 60)
+    }
+
+    /// Determine if this activity type is mileage-focused (vs time-focused)
+    private var isMileageFocused: Bool {
+        guard let type = activityType else { return true }
+
+        // Time-focused activities (show duration instead of distance)
+        let timeFocusedActivities = ["yoga", "weight", "strength", "workout", "training", "stretch", "core", "meditation"]
+
+        for keyword in timeFocusedActivities {
+            if type.contains(keyword) {
+                return false
+            }
+        }
+
+        // All other activities are mileage-focused
+        return true
+    }
+
     var body: some View {
         VStack(spacing: 4) {
             // Day label
@@ -713,18 +735,42 @@ struct WeekDayActivityTile: View {
                         .frame(width: 40, height: 44)
                 }
 
-                // Content
+                // Content - use fixed layout for consistent alignment
                 VStack(spacing: 2) {
                     Image(systemName: iconName)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(iconColor)
 
-                    if let distance = activityDistance, hasActivity {
-                        Text(String(format: "%.1f", distance))
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundColor(iconColor)
+                    // Metric text - always at bottom with consistent height
+                    Group {
+                        if hasActivity {
+                            if isMileageFocused {
+                                if let distance = activityDistance {
+                                    Text(String(format: "%.1fmi", distance))
+                                        .font(.system(size: 8, weight: .medium))
+                                        .foregroundColor(iconColor)
+                                } else {
+                                    Text(" ")
+                                        .font(.system(size: 8, weight: .medium))
+                                }
+                            } else {
+                                if let minutes = activityElapsedMinutes {
+                                    Text("\(minutes)min")
+                                        .font(.system(size: 8, weight: .medium))
+                                        .foregroundColor(iconColor)
+                                } else {
+                                    Text(" ")
+                                        .font(.system(size: 8, weight: .medium))
+                                }
+                            }
+                        } else {
+                            Text(" ")
+                                .font(.system(size: 8, weight: .medium))
+                        }
                     }
+                    .frame(height: 10)
                 }
+                .padding(.vertical, 2)
             }
         }
         .frame(maxWidth: .infinity)
@@ -813,10 +859,14 @@ struct WeekDayActivityTile: View {
             return .blue
         } else if type.contains("hike") {
             return .orange
-        } else if type.contains("cycle") || type.contains("ride") {
+        } else if type.contains("cycle") || type.contains("ride") || type.contains("bike") {
             return .purple
         } else if type.contains("swim") {
             return .cyan
+        } else if type.contains("yoga") {
+            return .purple
+        } else if type.contains("weight") || type.contains("strength") || type.contains("training") || type.contains("workout") {
+            return .green
         }
         return .green
     }

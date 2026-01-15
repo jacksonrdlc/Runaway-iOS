@@ -37,6 +37,21 @@ struct CardView: View {
         }
     }
 
+    // Check if we have a valid route worth displaying
+    private var hasValidRoute: Bool {
+        // Must have a non-empty polyline
+        guard let polyline = activity.summary_polyline, !polyline.isEmpty else {
+            return false
+        }
+
+        // Must have meaningful distance (at least 0.05 miles / ~80 meters)
+        guard let distance = activity.distance, distance * 0.000621371 >= 0.05 else {
+            return false
+        }
+
+        return true
+    }
+
     init(activity: LocalActivity, previousActivities: [LocalActivity] = [], onTap: (() -> Void)? = nil) {
         self.activity = activity
         self.previousActivities = previousActivities
@@ -88,9 +103,9 @@ struct CardView: View {
                         }
                     }
 
-                    // Map view with modern styling
-                    if let polyline = activity.summary_polyline, !polyline.isEmpty {
-                        ActivityMapView(summaryPolyline: polyline)
+                    // Map view with modern styling - only show if there's a valid route with meaningful distance
+                    if hasValidRoute {
+                        ActivityMapView(summaryPolyline: activity.summary_polyline!)
                             .frame(height: AppTheme.Layout.mapPreviewHeight)
                             .cornerRadius(AppTheme.CornerRadius.medium)
                             .themeShadow(.light)
