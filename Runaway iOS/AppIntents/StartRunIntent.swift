@@ -142,4 +142,5 @@ extension Notification.Name {
     static let pauseRecordingFromSiri = Notification.Name("pauseRecordingFromSiri")
     static let resumeRecordingFromSiri = Notification.Name("resumeRecordingFromSiri")
     static let navigateToRecordTab = Notification.Name("navigateToRecordTab")
+    static let activitySavedSuccessfully = Notification.Name("activitySavedSuccessfully")
 }

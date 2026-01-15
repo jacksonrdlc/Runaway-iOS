@@ -18,151 +18,63 @@ struct PostRecordingView: View {
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var showingSaveError = false
-    
+    @FocusState private var isNameFocused: Bool
+
+    // Check if we have a valid route (more than 1 point with actual movement)
+    private var hasValidRoute: Bool {
+        let points = recordingService.gpsService.routePoints
+        guard points.count > 1 else { return false }
+
+        // Check if there's actually meaningful distance (more than 10 meters)
+        let totalDistance = recordingService.gpsService.totalDistance
+        return totalDistance > 10
+    }
+
+    private var activityIcon: String {
+        let activityType = recordingService.currentSession?.activityType ?? "Run"
+        switch activityType.lowercased() {
+        case "run": return "figure.run"
+        case "walk": return "figure.walk"
+        case "ride", "bike", "cycling": return "figure.outdoor.cycle"
+        case "hike": return "figure.hiking"
+        case "swim": return "figure.pool.swim"
+        case "yoga": return "figure.mind.and.body"
+        case "weight training", "workout": return "dumbbell.fill"
+        default: return "figure.mixed.cardio"
+        }
+    }
+
+    private var activityColor: Color {
+        let activityType = recordingService.currentSession?.activityType ?? "Run"
+        switch activityType.lowercased() {
+        case "run": return .green
+        case "walk": return .blue
+        case "ride", "bike", "cycling": return .orange
+        case "hike": return .brown
+        case "swim": return .cyan
+        case "yoga": return .purple
+        case "weight training", "workout": return .red
+        default: return .green
+        }
+    }
+
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Route map preview
-                    if !recordingService.gpsService.routePoints.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Route")
-                                .font(.headline)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-                            
-                            RoutePreviewMap(
-                                routePoints: recordingService.gpsService.routePoints
-                            )
-                            .frame(height: 200)
-                            .cornerRadius(12)
-                        }
+                    // Activity name input - prominent at top
+                    activityNameSection
+
+                    // Activity summary metrics
+                    activitySummarySection
+
+                    // Route map preview - only show if valid route exists
+                    if hasValidRoute {
+                        routeSection
                     }
-                    
-                    // Activity summary
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Activity Summary")
-                            .font(.headline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-                        
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                            SummaryMetricCard(
-                                title: "Distance",
-                                value: String(format: "%.2f", recordingService.gpsService.totalDistanceMiles),
-                                unit: "miles",
-                                icon: "road.lanes",
-                                color: .blue
-                            )
-                            
-                            SummaryMetricCard(
-                                title: "Time",
-                                value: formatTime(recordingService.currentSession?.elapsedTime ?? 0),
-                                unit: "",
-                                icon: "clock",
-                                color: .green
-                            )
-                            
-                            SummaryMetricCard(
-                                title: "Avg Pace",
-                                value: formatPace(recordingService.gpsService.averagePace),
-                                unit: "/mile",
-                                icon: "speedometer",
-                                color: .orange
-                            )
-                            
-                            SummaryMetricCard(
-                                title: "Avg Speed",
-                                value: String(format: "%.1f", recordingService.gpsService.averageSpeed * 2.237),
-                                unit: "mph",
-                                icon: "gauge.high",
-                                color: .purple
-                            )
-                        }
-                    }
-                    
-                    // Activity details
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Activity Details")
-                            .font(.headline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
-                        VStack(spacing: 12) {
-                            // Activity name input
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Activity Name")
-                                    .font(.subheadline)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                                
-                                TextField("Enter activity name", text: $activityName)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .onAppear {
-                                        if activityName.isEmpty {
-                                            activityName = recordingService.currentSession?.name ?? ""
-                                        }
-                                    }
-                            }
-                            
-                            // Activity type and date
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Type")
-                                        .font(.caption)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                                    Text(recordingService.currentSession?.activityType ?? "Run")
-                                        .font(.subheadline)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-                                }
-
-                                Spacer()
-
-                                VStack(alignment: .trailing, spacing: 4) {
-                                    Text("Date")
-                                        .font(.caption)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                                    Text(formatDate(recordingService.currentSession?.startTime ?? Date()))
-                                        .font(.subheadline)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        .padding()
-                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-                        .cornerRadius(12)
-                    }
-                    
-                    // Additional stats
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Route Statistics")
-                            .font(.headline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                        HStack {
-                            StatItem(
-                                title: "Route Points",
-                                value: "\(recordingService.gpsService.routePoints.count)",
-                                icon: "location.circle"
-                            )
-
-                            Spacer()
-
-                            StatItem(
-                                title: "Start Time",
-                                value: formatStartTime(recordingService.currentSession?.startTime ?? Date()),
-                                icon: "clock.arrow.circlepath"
-                            )
-
-                            Spacer()
-
-                            StatItem(
-                                title: "End Time",
-                                value: formatStartTime(recordingService.currentSession?.endTime ?? Date()),
-                                icon: "flag.checkered"
-                            )
-                        }
-                        .padding()
-                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-                        .cornerRadius(12)
-                    }
+                    // Time statistics
+                    timeStatisticsSection
                 }
                 .padding()
             }
@@ -180,7 +92,7 @@ struct PostRecordingView: View {
                     .foregroundColor(.red)
                     .disabled(isSaving)
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: saveActivity) {
                         if isSaving {
@@ -203,6 +115,180 @@ struct PostRecordingView: View {
         } message: {
             Text(saveError ?? "Unknown error occurred while saving activity")
         }
+        .onAppear {
+            if activityName.isEmpty {
+                activityName = recordingService.currentSession?.name ?? ""
+            }
+        }
+    }
+
+    // MARK: - Activity Name Section
+
+    private var activityNameSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Activity type badge and date
+            HStack {
+                // Activity type badge
+                HStack(spacing: 8) {
+                    Image(systemName: activityIcon)
+                        .font(.body)
+                    Text(recordingService.currentSession?.activityType ?? "Run")
+                        .font(.body)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(activityColor)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(activityColor.opacity(0.15))
+                )
+
+                Spacer()
+
+                // Date
+                Text(formatDate(recordingService.currentSession?.startTime ?? Date()))
+                    .font(.subheadline)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+            }
+
+            // Editable activity name
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Activity Name")
+                        .font(.caption)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+
+                    Spacer()
+
+                    Button(action: { isNameFocused = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil")
+                            Text("Edit")
+                        }
+                        .font(.caption)
+                        .foregroundColor(AppTheme.Colors.accent)
+                    }
+                }
+
+                TextField("Enter activity name", text: $activityName)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .focused($isNameFocused)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(ThemeManager.shared.isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(isNameFocused ? AppTheme.Colors.accent : Color.clear, lineWidth: 2)
+                    )
+            }
+        }
+        .padding()
+        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .cornerRadius(16)
+    }
+
+    // MARK: - Activity Summary Section
+
+    private var activitySummarySection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Summary")
+                .font(.headline)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                SummaryMetricCard(
+                    title: "Distance",
+                    value: String(format: "%.2f", recordingService.gpsService.totalDistanceMiles),
+                    unit: "miles",
+                    icon: "road.lanes",
+                    color: .blue
+                )
+
+                SummaryMetricCard(
+                    title: "Time",
+                    value: formatTime(recordingService.currentSession?.elapsedTime ?? 0),
+                    unit: "",
+                    icon: "clock",
+                    color: .green
+                )
+
+                SummaryMetricCard(
+                    title: "Avg Pace",
+                    value: formatPace(recordingService.gpsService.averagePace),
+                    unit: "/mile",
+                    icon: "speedometer",
+                    color: .orange
+                )
+
+                SummaryMetricCard(
+                    title: "Avg Speed",
+                    value: String(format: "%.1f", recordingService.gpsService.averageSpeed * 2.237),
+                    unit: "mph",
+                    icon: "gauge.high",
+                    color: .purple
+                )
+            }
+        }
+    }
+
+    // MARK: - Route Section
+
+    private var routeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Route")
+                .font(.headline)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+            RoutePreviewMap(
+                routePoints: recordingService.gpsService.routePoints
+            )
+            .frame(height: 200)
+            .cornerRadius(12)
+        }
+    }
+
+    // MARK: - Time Statistics Section
+
+    private var timeStatisticsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Time")
+                .font(.headline)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+            HStack {
+                StatItem(
+                    title: "Started",
+                    value: formatStartTime(recordingService.currentSession?.startTime ?? Date()),
+                    icon: "clock.arrow.circlepath"
+                )
+
+                Spacer()
+
+                StatItem(
+                    title: "Ended",
+                    value: formatStartTime(recordingService.currentSession?.endTime ?? Date()),
+                    icon: "flag.checkered"
+                )
+
+                if hasValidRoute {
+                    Spacer()
+
+                    StatItem(
+                        title: "GPS Points",
+                        value: "\(recordingService.gpsService.routePoints.count)",
+                        icon: "location.circle"
+                    )
+                }
+            }
+            .padding()
+            .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+            .cornerRadius(12)
+        }
     }
     
     // MARK: - Methods
@@ -211,21 +297,22 @@ struct PostRecordingView: View {
         guard !activityName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
-        
+
         isSaving = true
-        
+
         // Update session name
         recordingService.currentSession?.name = activityName.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         Task {
             do {
                 let savedActivity = try await recordingService.saveActivity()
-                
+
                 await MainActor.run {
                     isSaving = false
-                    
+
                     if savedActivity != nil {
-                        // Successfully saved, dismiss view
+                        // Successfully saved - notify to dismiss all recording sheets
+                        NotificationCenter.default.post(name: .activitySavedSuccessfully, object: nil)
                         dismiss()
                     } else {
                         saveError = "Failed to save activity"

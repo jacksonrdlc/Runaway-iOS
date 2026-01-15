@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import MapboxMaps
 import CoreLocation
 
 struct ActiveRecordingView: View {
@@ -15,150 +14,98 @@ struct ActiveRecordingView: View {
     let customName: String
 
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var themeManager = ThemeManager.shared
     @State private var showingStopConfirmation = false
     @State private var showingPostRecording = false
+    @State private var pulseAnimation = false
 
     @StateObject private var timerManager = TimerUpdateManager()
-    @StateObject private var mapThrottler = MapRegionThrottler()
 
     // TODO: Re-enable when background audio mode is added back
     // @StateObject private var audioCoaching = AudioCoachingService()
     private let audioCoachingEnabled = false
-    
+
+    // Activities that require GPS tracking
+    private let gpsActivities = ["run", "walk", "ride", "hike", "swim", "bike", "cycling"]
+
+    private var needsGPS: Bool {
+        gpsActivities.contains(activityType.lowercased())
+    }
+
+    private var activityIcon: String {
+        switch activityType.lowercased() {
+        case "run": return "figure.run"
+        case "walk": return "figure.walk"
+        case "ride", "bike", "cycling": return "figure.outdoor.cycle"
+        case "hike": return "figure.hiking"
+        case "swim": return "figure.pool.swim"
+        case "yoga": return "figure.mind.and.body"
+        case "weight training", "workout": return "dumbbell.fill"
+        default: return "figure.mixed.cardio"
+        }
+    }
+
+    private var activityColor: Color {
+        switch activityType.lowercased() {
+        case "run": return .green
+        case "walk": return .blue
+        case "ride", "bike", "cycling": return .orange
+        case "hike": return .brown
+        case "swim": return .cyan
+        case "yoga": return .purple
+        case "weight training", "workout": return .red
+        default: return .green
+        }
+    }
+
+    private var background: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
     var body: some View {
         ZStack {
-            // MapBox map with route tracking and 3D buildings
-            ActiveRecordingMapBoxView(
-                currentLocation: recordingService.gpsService.currentLocation,
-                routePoints: recordingService.gpsService.routePoints
-            )
-            .ignoresSafeArea()
-            
-            // UI Overlay
-            VStack {
-                // Top metrics bar
-                HStack {
-                    // Time
-                    VStack(spacing: 2) {
-                        Text(formatTime(timerManager.elapsedTime))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                        Text("TIME")
-                            .font(.caption2)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                    }
-                    
-                    Spacer()
-                    
-                    // Distance
-                    VStack(spacing: 2) {
-                        Text(String(format: "%.2f", recordingService.gpsService.totalDistanceMiles))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                        Text("MILES")
-                            .font(.caption2)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                    }
-                    
-                    Spacer()
-                    
-                    // Current pace
-                    VStack(spacing: 2) {
-                        Text(formatPace(recordingService.gpsService.currentPace))
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                        Text("PACE")
-                            .font(.caption2)
-                            .foregroundColor(AppTheme.Colors.textSecondary)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal)
-                .padding(.top, 8)
-                
+            background.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Top status bar
+                topStatusBar
+
                 Spacer()
-                
-                // Bottom controls
-                VStack(spacing: 20) {
-                    // Additional metrics
-                    HStack(spacing: 30) {
-                        MetricDisplay(
-                            value: formatPace(recordingService.gpsService.averagePace),
-                            label: "AVG PACE",
-                            color: .blue
-                        )
-                        
-                        MetricDisplay(
-                            value: String(format: "%.1f", recordingService.gpsService.currentSpeed * 2.237), // mph
-                            label: "SPEED",
-                            color: .green
-                        )
-                        
-                        MetricDisplay(
-                            value: "\(recordingService.gpsService.routePoints.count)",
-                            label: "POINTS",
-                            color: .purple
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 12)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    
-                    // Auto-pause indicator
-                    if recordingService.isAutopaused {
-                        HStack {
-                            Image(systemName: "pause.circle.fill")
-                                .foregroundColor(.orange)
-                            Text("Auto-paused - Start moving to resume")
-                                .foregroundColor(.white)
-                                .font(.subheadline)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                    }
 
-                    // TODO: Re-enable audio coaching UI when background audio mode is added back
-                    // Audio coaching UI disabled for App Store submission
+                // Main timer display
+                mainTimerDisplay
 
-                    // Control buttons
-                    HStack(spacing: 16) {
-                        // Pause/Resume button
-                        Button(action: togglePauseResume) {
-                            Image(systemName: pauseResumeIcon)
-                                .font(.title)
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(pauseResumeColor, in: Circle())
-                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                        }
-                        .disabled(recordingService.isAutopaused)
+                Spacer()
 
-                        // Stop button
-                        Button(action: {
-                            showingStopConfirmation = true
-                        }) {
-                            Image(systemName: "stop.fill")
-                                .font(.title)
-                                .foregroundColor(.white)
-                                .frame(width: 60, height: 60)
-                                .background(.red, in: Circle())
-                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                        }
-                    }
+                // Metrics grid
+                metricsGrid
+
+                // Auto-pause indicator
+                if recordingService.isAutopaused {
+                    autoPauseIndicator
+                        .padding(.top, 16)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 40)
+
+                // Control buttons
+                controlButtons
+                    .padding(.top, 24)
+                    .padding(.bottom, 40)
             }
         }
         .navigationBarHidden(true)
         .onAppear {
             timerManager.start()
+            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                pulseAnimation = true
+            }
             // TODO: Re-enable when background audio mode is added back
             // audioCoaching.bind(to: recordingService)
         }
@@ -187,10 +134,269 @@ struct ActiveRecordingView: View {
                 dismiss()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .activitySavedSuccessfully)) { _ in
+            // Activity was saved - dismiss this view to return to Feed
+            dismiss()
+        }
+    }
+
+    // MARK: - Top Status Bar
+
+    private var topStatusBar: some View {
+        HStack {
+            // Activity type indicator
+            HStack(spacing: 8) {
+                Image(systemName: activityIcon)
+                    .font(.body)
+                Text(activityType)
+                    .font(.body)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(activityColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(activityColor.opacity(0.15))
+            )
+
+            Spacer()
+
+            // Recording state indicator
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(recordingStateColor)
+                    .frame(width: 8, height: 8)
+                    .opacity(pulseAnimation && recordingService.state == .recording ? 1.0 : 0.6)
+                Text(recordingStateText)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(textSecondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+            )
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+    }
+
+    private var recordingStateColor: Color {
+        switch recordingService.state {
+        case .recording: return .red
+        case .paused: return .orange
+        default: return .gray
+        }
+    }
+
+    private var recordingStateText: String {
+        switch recordingService.state {
+        case .recording: return "Recording"
+        case .paused: return "Paused"
+        default: return "Ready"
+        }
+    }
+
+    // MARK: - Main Timer Display
+
+    private var mainTimerDisplay: some View {
+        VStack(spacing: 24) {
+            // Large activity icon with pulse effect
+            ZStack {
+                // Outer pulse ring (only when recording)
+                if recordingService.state == .recording {
+                    Circle()
+                        .stroke(activityColor.opacity(0.2), lineWidth: 2)
+                        .frame(width: 140, height: 140)
+                        .scaleEffect(pulseAnimation ? 1.15 : 1.0)
+                        .opacity(pulseAnimation ? 0 : 0.5)
+                }
+
+                // Middle ring
+                Circle()
+                    .stroke(activityColor.opacity(0.3), lineWidth: 3)
+                    .frame(width: 120, height: 120)
+
+                // Inner filled circle
+                Circle()
+                    .fill(activityColor.opacity(0.15))
+                    .frame(width: 100, height: 100)
+
+                // Icon
+                Image(systemName: activityIcon)
+                    .font(.system(size: 44))
+                    .foregroundColor(activityColor)
+            }
+
+            // Large timer
+            Text(formatTime(timerManager.elapsedTime))
+                .font(.system(size: 64, weight: .bold, design: .rounded))
+                .foregroundColor(textPrimary)
+                .monospacedDigit()
+        }
+    }
+
+    // MARK: - Metrics Grid
+
+    private var metricsGrid: some View {
+        VStack(spacing: 16) {
+            // Primary metrics row (Distance and Pace)
+            HStack(spacing: 20) {
+                primaryMetricCard(
+                    value: String(format: "%.2f", recordingService.gpsService.totalDistanceMiles),
+                    unit: "mi",
+                    label: "Distance",
+                    icon: "point.topleft.down.to.point.bottomright.curvepath"
+                )
+
+                primaryMetricCard(
+                    value: formatPace(recordingService.gpsService.currentPace),
+                    unit: "/mi",
+                    label: "Pace",
+                    icon: "speedometer"
+                )
+            }
+
+            // Secondary metrics row
+            HStack(spacing: 12) {
+                secondaryMetricCard(
+                    value: formatPace(recordingService.gpsService.averagePace),
+                    label: "Avg Pace"
+                )
+
+                secondaryMetricCard(
+                    value: String(format: "%.1f", recordingService.gpsService.currentSpeed * 2.237),
+                    label: "Speed (mph)"
+                )
+
+                if needsGPS {
+                    secondaryMetricCard(
+                        value: "\(recordingService.gpsService.routePoints.count)",
+                        label: "GPS Points"
+                    )
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private func primaryMetricCard(value: String, unit: String, label: String, icon: String) -> some View {
+        VStack(spacing: 8) {
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(textPrimary)
+                    .monospacedDigit()
+                Text(unit)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(textSecondary)
+            }
+
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption)
+                Text(label)
+                    .font(.caption)
+            }
+            .foregroundColor(textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(themeManager.isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
+        )
+    }
+
+    private func secondaryMetricCard(value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(textPrimary)
+                .monospacedDigit()
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
+        )
+    }
+
+    // MARK: - Auto Pause Indicator
+
+    private var autoPauseIndicator: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "pause.circle.fill")
+                .foregroundColor(.orange)
+            Text("Auto-paused - Start moving to resume")
+                .font(.subheadline)
+                .foregroundColor(textSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.orange.opacity(0.15))
+        )
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Control Buttons
+
+    private var controlButtons: some View {
+        HStack(spacing: 24) {
+            // Pause/Resume button
+            Button(action: togglePauseResume) {
+                VStack(spacing: 6) {
+                    Image(systemName: pauseResumeIcon)
+                        .font(.title)
+                        .foregroundColor(.white)
+                        .frame(width: 70, height: 70)
+                        .background(pauseResumeColor, in: Circle())
+                        .shadow(color: pauseResumeColor.opacity(0.4), radius: 10, x: 0, y: 4)
+
+                    Text(pauseResumeLabel)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(textSecondary)
+                }
+            }
+            .disabled(recordingService.isAutopaused)
+            .opacity(recordingService.isAutopaused ? 0.5 : 1.0)
+
+            // Stop button
+            Button(action: {
+                showingStopConfirmation = true
+            }) {
+                VStack(spacing: 6) {
+                    Image(systemName: "stop.fill")
+                        .font(.title)
+                        .foregroundColor(.white)
+                        .frame(width: 70, height: 70)
+                        .background(.red, in: Circle())
+                        .shadow(color: Color.red.opacity(0.4), radius: 10, x: 0, y: 4)
+
+                    Text("Stop")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(textSecondary)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
     }
     
     // MARK: - Computed Properties
-    
+
     private var pauseResumeIcon: String {
         switch recordingService.state {
         case .recording:
@@ -201,7 +407,7 @@ struct ActiveRecordingView: View {
             return "pause.fill"
         }
     }
-    
+
     private var pauseResumeColor: Color {
         switch recordingService.state {
         case .recording:
@@ -212,7 +418,18 @@ struct ActiveRecordingView: View {
             return .orange
         }
     }
-    
+
+    private var pauseResumeLabel: String {
+        switch recordingService.state {
+        case .recording:
+            return "Pause"
+        case .paused:
+            return "Resume"
+        default:
+            return "Pause"
+        }
+    }
+
     // MARK: - Methods
 
     private func togglePauseResume() {
@@ -225,127 +442,34 @@ struct ActiveRecordingView: View {
             break
         }
     }
-    
+
     private func stopRecording() {
         recordingService.stopRecording()
         showingPostRecording = true
     }
-    
+
     private func discardRecording() {
         recordingService.discardRecording()
         dismiss()
     }
-    
+
     private func formatTime(_ time: TimeInterval) -> String {
         let hours = Int(time) / 3600
         let minutes = (Int(time) % 3600) / 60
         let seconds = Int(time) % 60
-        
+
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%d:%02d", minutes, seconds)
         }
     }
-    
+
     private func formatPace(_ pace: Double) -> String {
         guard pace > 0 && pace < 999 else { return "--:--" }
         let minutes = Int(pace)
         let seconds = Int((pace - Double(minutes)) * 60)
         return String(format: "%d:%02d", minutes, seconds)
-    }
-}
-
-// MARK: - Metric Display Component
-struct MetricDisplay: View {
-    let value: String
-    let label: String
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-            Text(label)
-                .font(.caption2)
-                .foregroundColor(AppTheme.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-// MARK: - Active Recording MapBox View
-struct ActiveRecordingMapBoxView: View {
-    let currentLocation: CLLocation?
-    let routePoints: [GPSRoutePoint]
-
-    @State private var mapView: MapboxMaps.MapView?
-    private let routeRenderer = MapBoxRouteRenderer()
-
-    var body: some View {
-        MapBoxBaseView(
-            config: .recording,
-            currentLocation: currentLocation,
-            onMapLoaded: {
-                // Map is ready, can add route if needed
-                updateRoute()
-            }
-        )
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MapViewCreated"))) { notification in
-            if let mapView = notification.object as? MapboxMaps.MapView {
-                self.mapView = mapView
-                updateRoute()
-            }
-        }
-        .onChange(of: routePoints.count) { _ in
-            updateRoute()
-        }
-    }
-
-    private func updateRoute() {
-        guard let mapView = mapView, routePoints.count > 1 else { return }
-
-        // Convert GPSRoutePoints to coordinates
-        let coordinates = routePoints.map { $0.coordinate }
-
-        // Encode as polyline for route renderer
-        let polylineService = PolylineEncodingService()
-        let encodedPolyline = polylineService.encode(coordinates: coordinates)
-
-        // Add route to map
-        routeRenderer.addRoute(
-            to: mapView,
-            polyline: encodedPolyline,
-            style: .recording,
-            showMarkers: false
-        )
-    }
-}
-
-// MARK: - Listening Waveform Animation
-struct ListeningWaveform: View {
-    @State private var animating = false
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<4, id: \.self) { index in
-                Capsule()
-                    .fill(.white)
-                    .frame(width: 4, height: animating ? CGFloat.random(in: 12...24) : 8)
-                    .animation(
-                        .easeInOut(duration: 0.3)
-                        .repeatForever(autoreverses: true)
-                        .delay(Double(index) * 0.1),
-                        value: animating
-                    )
-            }
-        }
-        .frame(width: 28, height: 24)
-        .onAppear {
-            animating = true
-        }
     }
 }
 
