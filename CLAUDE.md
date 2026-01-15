@@ -247,4 +247,9 @@ Widget functionality can be tested by:
 - Ensure Supabase credentials are properly configured (use `SupabaseConfiguration.printConfiguration()` to debug)
 - Check network connectivity and Supabase project status
 - Verify RealtimeService subscription is active
-- Confirm credentials are loaded from environment variables or Info.plist
+- Confirm credentials are loaded from environment variables or Info.plist# Additional Repositories
+
+## Runaway Edge Functions
+Path: /Users/jack.rudelic/projects/labs/runaway-edge
+Purpose: Supabase Edge Functions for the Runaway iOS app, including AI-powered features that may use Anthropic Claude API.
+
