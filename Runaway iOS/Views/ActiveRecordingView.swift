@@ -246,15 +246,15 @@ struct ActiveRecordingView: View {
             // Primary metrics row (Distance and Pace)
             HStack(spacing: 20) {
                 primaryMetricCard(
-                    value: String(format: "%.2f", recordingService.gpsService.totalDistanceMiles),
-                    unit: "mi",
+                    value: UnitFormatter.formatDistance(recordingService.gpsService.totalDistance, decimals: 2, includeUnit: false),
+                    unit: UnitFormatter.distanceUnitAbbreviation,
                     label: "Distance",
                     icon: "point.topleft.down.to.point.bottomright.curvepath"
                 )
 
                 primaryMetricCard(
-                    value: formatPace(recordingService.gpsService.currentPace),
-                    unit: "/mi",
+                    value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.currentPace),
+                    unit: UnitFormatter.paceUnitLabel,
                     label: "Pace",
                     icon: "speedometer"
                 )
@@ -263,13 +263,13 @@ struct ActiveRecordingView: View {
             // Secondary metrics row
             HStack(spacing: 12) {
                 secondaryMetricCard(
-                    value: formatPace(recordingService.gpsService.averagePace),
+                    value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.averagePace),
                     label: "Avg Pace"
                 )
 
                 secondaryMetricCard(
-                    value: String(format: "%.1f", recordingService.gpsService.currentSpeed * 2.237),
-                    label: "Speed (mph)"
+                    value: UnitFormatter.formatSpeedValue(recordingService.gpsService.currentSpeed),
+                    label: "Speed (\(UnitFormatter.speedUnitLabel))"
                 )
 
                 if needsGPS {

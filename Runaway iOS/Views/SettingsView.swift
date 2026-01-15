@@ -28,6 +28,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var stravaService = StravaService()
     @StateObject private var garminService = GarminService()
+    @ObservedObject private var unitPreferences = UnitPreferences.shared
     @State private var showingStravaSheet = false
     @State private var showingGarminSheet = false
     @State private var showingDisconnectAlert = false
@@ -161,6 +162,9 @@ struct SettingsView: View {
 
             // Theme Toggle
             ThemeToggleRow(themeManager: themeManager, colors: colors)
+
+            // Unit Toggle
+            UnitToggleRow(unitPreferences: unitPreferences, colors: colors)
 
             SettingsRow(
                 icon: "bell",
@@ -962,6 +966,77 @@ struct ThemeToggleRow: View {
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.08),
+            radius: 4,
+            x: 0,
+            y: 2
+        )
+    }
+}
+
+// MARK: - Unit Toggle Row
+struct UnitToggleRow: View {
+    @ObservedObject var unitPreferences: UnitPreferences
+    let colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color)
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Colors.accent.opacity(0.2))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: "ruler")
+                    .font(.title3)
+                    .foregroundColor(AppTheme.Colors.accent)
+            }
+
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Units")
+                    .font(AppTheme.Typography.body.weight(.medium))
+                    .foregroundColor(colors.textPrimary)
+
+                Text(unitPreferences.isImperial ? "Imperial (mi, mph)" : "Metric (km, km/h)")
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(colors.textSecondary)
+            }
+
+            Spacer()
+
+            // Unit Toggle
+            HStack(spacing: AppTheme.Spacing.xs) {
+                ForEach(DistanceUnit.allCases, id: \.self) { unit in
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            unitPreferences.distanceUnit = unit
+                        }
+                    }) {
+                        Text(unit.abbreviation)
+                            .font(AppTheme.Typography.caption.weight(.medium))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(
+                                unitPreferences.distanceUnit == unit
+                                    ? AppTheme.Colors.accent
+                                    : colors.cardBg
+                            )
+                            .foregroundColor(
+                                unitPreferences.distanceUnit == unit
+                                    ? .white
+                                    : colors.textSecondary
+                            )
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(colors.cardBg)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(
+            color: ThemeManager.shared.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.08),
             radius: 4,
             x: 0,
             y: 2

@@ -302,8 +302,7 @@ struct TodaysFocusCard: View {
 
                         HStack(spacing: 8) {
                             if let distance = activity.distance {
-                                let miles = distance * 0.000621371
-                                Text(String(format: "%.1f mi", miles))
+                                Text(UnitFormatter.formatDistance(distance, decimals: 1, includeUnit: true))
                                     .font(.caption)
                                     .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                             }
@@ -543,12 +542,12 @@ struct WeekProgressRow: View {
 
         // Calculate from activities only
         let completedActivities = weekEntries.filter { $0.actualActivity != nil }
-        let totalMiles = completedActivities.compactMap { entry -> Double? in
+        let totalDistance = completedActivities.compactMap { entry -> Double? in
             guard let distance = entry.actualActivity?.distance else { return nil }
-            return distance * 0.000621371
+            return UnitFormatter.metersToPreferredUnit(distance)
         }.reduce(0, +)
 
-        return (totalMiles, 0, completedActivities.count, 0)
+        return (totalDistance, 0, completedActivities.count, 0)
     }
 
     var body: some View {
@@ -572,11 +571,11 @@ struct WeekProgressRow: View {
                         Text("/")
                             .font(.caption)
                             .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                        Text(String(format: "%.0f mi", weekStats.planned))
+                        Text(String(format: "%.0f \(UnitFormatter.distanceUnitAbbreviation)", weekStats.planned))
                             .font(.caption)
                             .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                     } else {
-                        Text("mi")
+                        Text(UnitFormatter.distanceUnitAbbreviation)
                             .font(.caption)
                             .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
                     }
@@ -689,7 +688,7 @@ struct WeekDayActivityTile: View {
 
     private var activityDistance: Double? {
         guard let distance = entry?.actualActivity?.distance else { return nil }
-        return distance * 0.000621371 // Convert to miles
+        return UnitFormatter.metersToPreferredUnit(distance)
     }
 
     private var activityElapsedMinutes: Int? {
@@ -746,7 +745,7 @@ struct WeekDayActivityTile: View {
                         if hasActivity {
                             if isMileageFocused {
                                 if let distance = activityDistance {
-                                    Text(String(format: "%.1fmi", distance))
+                                    Text(String(format: "%.1f\(UnitFormatter.distanceUnitAbbreviation)", distance))
                                         .font(.system(size: 8, weight: .medium))
                                         .foregroundColor(iconColor)
                                 } else {
@@ -1001,7 +1000,7 @@ struct KeyMetricsGrid: View {
 
         // Use calendar week (Sunday to Saturday) for consistency
         guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now) else {
-            return "0 mi"
+            return "0 \(UnitFormatter.distanceUnitAbbreviation)"
         }
 
         let weeklyActivities = activities.filter { activity in
@@ -1011,8 +1010,7 @@ struct KeyMetricsGrid: View {
         }
 
         let totalMeters = weeklyActivities.compactMap { $0.distance }.reduce(0, +)
-        let miles = totalMeters * 0.000621371
-        return String(format: "%.1f mi", miles)
+        return UnitFormatter.formatDistance(totalMeters, decimals: 1, includeUnit: true)
     }
 
     private var weeklyTrend: String {
@@ -1212,16 +1210,15 @@ struct CompactActivityRow: View {
         return Date(timeIntervalSince1970: interval)
     }
 
-    private var distanceMiles: Double {
-        (activity.distance ?? 0) * 0.000621371
+    private var formattedDistance: String {
+        UnitFormatter.formatDistance(activity.distance ?? 0, decimals: 1, includeUnit: true)
     }
 
     private var paceString: String {
         guard let speed = activity.average_speed, speed > 0 else { return "--:--" }
+        // Calculate minutes per mile from m/s
         let minutesPerMile = (1609.34 / speed) / 60.0
-        let minutes = Int(minutesPerMile)
-        let seconds = Int((minutesPerMile - Double(minutes)) * 60)
-        return String(format: "%d:%02d", minutes, seconds)
+        return UnitFormatter.formatPaceTime(minutesPerMile: minutesPerMile)
     }
 
     private var durationString: String {
@@ -1266,14 +1263,14 @@ struct CompactActivityRow: View {
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
-                    Label(String(format: "%.1f mi", distanceMiles), systemImage: "figure.run")
+                    Label(formattedDistance, systemImage: "figure.run")
                         .font(.caption)
                         .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
                     Text("•")
                         .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
 
-                    Label("\(paceString) /mi", systemImage: "speedometer")
+                    Label("\(paceString)\(UnitFormatter.paceUnitLabel)", systemImage: "speedometer")
                         .font(.caption)
                         .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
 
@@ -1363,8 +1360,8 @@ struct MiniWeeklyChart: View {
             }
 
             let totalMeters = weekActivities.compactMap { $0.distance }.reduce(0, +)
-            let miles = totalMeters * 0.000621371
-            weeks.append((week: 8 - weekOffset, miles: miles))
+            let distance = UnitFormatter.metersToPreferredUnit(totalMeters)
+            weeks.append((week: 8 - weekOffset, miles: distance))
         }
 
         return weeks

@@ -44,8 +44,8 @@ struct CardView: View {
             return false
         }
 
-        // Must have meaningful distance (at least 0.05 miles / ~80 meters)
-        guard let distance = activity.distance, distance * 0.000621371 >= 0.05 else {
+        // Must have meaningful distance (at least 80 meters)
+        guard let distance = activity.distance, distance >= 80 else {
             return false
         }
 
@@ -113,11 +113,11 @@ struct CardView: View {
 
                     // Metrics row with modern styling
                     HStack(spacing: AppTheme.Spacing.lg) {
-                        if let distance = activity.distance, distance * 0.000621371 >= 0.1 {
+                        if let distance = activity.distance, UnitFormatter.metersToPreferredUnit(distance) >= 0.1 {
                             MetricPill(
                                 icon: AppIcons.distance,
-                                value: String(format: "%.2f", distance * 0.000621371),
-                                unit: "mi",
+                                value: UnitFormatter.formatDistance(distance, decimals: 2, includeUnit: false),
+                                unit: UnitFormatter.distanceUnitAbbreviation,
                                 color: AppTheme.Colors.accent
                             )
                         }
@@ -131,11 +131,11 @@ struct CardView: View {
                             )
                         }
 
-                        if let distance = activity.distance, let time = activity.elapsed_time, distance * 0.000621371 >= 0.1 {
+                        if let distance = activity.distance, let time = activity.elapsed_time, UnitFormatter.metersToPreferredUnit(distance) >= 0.1 {
                             MetricPill(
                                 icon: AppIcons.pace,
-                                value: calculatePace(distance: distance * 0.000621371, time: time),
-                                unit: "/mi",
+                                value: calculatePaceFromMeters(distance: distance, time: time),
+                                unit: UnitFormatter.paceUnitLabel,
                                 color: AppTheme.Colors.accent
                             )
                         }
@@ -186,7 +186,7 @@ struct CardView: View {
         }
 
         if let distance = activity.distance {
-            label += ", \(String(format: "%.2f", distance * 0.000621371)) miles"
+            label += ", \(UnitFormatter.formatDistance(distance, decimals: 2, includeUnit: true))"
         }
 
         if let time = activity.elapsed_time {
@@ -194,19 +194,29 @@ struct CardView: View {
         }
 
         if let distance = activity.distance, let time = activity.elapsed_time {
-            let pace = calculatePace(distance: distance * 0.000621371, time: time)
-            label += ", pace \(pace) per mile"
+            let pace = calculatePaceFromMeters(distance: distance, time: time)
+            label += ", pace \(pace)\(UnitFormatter.paceUnitLabel)"
         }
 
         return label
     }
-    
+
     private func calculatePace(distance: Double, time: Double) -> String {
         guard distance > 0, time > 0 else { return "--:--" }
         let paceInSeconds = time / distance
         let minutes = Int(paceInSeconds) / 60
         let seconds = Int(paceInSeconds) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Calculate pace from distance in meters and time in seconds
+    private func calculatePaceFromMeters(distance: Double, time: Double) -> String {
+        guard distance > 0, time > 0 else { return "--:--" }
+        // Convert to minutes per mile first (internal format)
+        let miles = distance * 0.000621371
+        let minutesPerMile = (time / 60) / miles
+        // Use UnitFormatter to convert if needed
+        return UnitFormatter.formatPaceTime(minutesPerMile: minutesPerMile)
     }
 
     private func timeAgoString(from date: Date) -> String {
