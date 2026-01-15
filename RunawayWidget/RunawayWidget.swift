@@ -10,11 +10,47 @@ import SwiftUI
 import Charts
 import AppIntents
 
+// MARK: - Widget Unit Helper (reads from shared UserDefaults)
+
+struct WidgetUnitHelper {
+    private static let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios")
+    private static let unitKey = "preferred_distance_unit"
+
+    /// Check if user prefers metric units
+    static var isMetric: Bool {
+        guard let savedValue = userDefaults?.string(forKey: unitKey) else {
+            return false // Default to imperial (miles)
+        }
+        return savedValue == "kilometers"
+    }
+
+    /// Distance unit abbreviation
+    static var unitAbbreviation: String {
+        isMetric ? "km" : "mi"
+    }
+
+    /// Distance unit full name
+    static var unitName: String {
+        isMetric ? "Kilometers" : "Miles"
+    }
+
+    /// Convert miles to user's preferred unit
+    static func convertFromMiles(_ miles: Double) -> Double {
+        isMetric ? miles * 1.60934 : miles
+    }
+
+    /// Format distance value with unit
+    static func formatDistance(_ miles: Double, decimals: Int = 1) -> String {
+        let value = convertFromMiles(miles)
+        return String(format: "%.\(decimals)f", value)
+    }
+}
+
 struct Day: Identifiable {
     var name: String
     var type: String
     var minutes: Double = 0
-    var miles: Double = 0
+    var miles: Double = 0 // Stored in miles, converted for display
     var id = UUID()
 }
 
@@ -125,17 +161,22 @@ struct BarChart: View {
 
 
 struct PieChartView: View {
-    
-    var current: Double
+
+    var current: Double // Value in miles (will be converted for display if metric)
     var goalRemaining: Double
     var color: Color
-    
+
+    /// Display value converted to user's preferred unit
+    private var displayValue: Double {
+        WidgetUnitHelper.convertFromMiles(current)
+    }
+
     var data: [(type: String, amount: Double)] {
         [(type: "current", amount: current),
          (type: "goal", amount: goalRemaining)
         ]
     }
-    
+
     var body: some View {
         Chart(data, id: \.type) { dataItem in
             SectorMark(angle: .value("Type", dataItem.amount),
@@ -149,7 +190,7 @@ struct PieChartView: View {
         .chartBackground { chartProxy in
             GeometryReader { geometry in
                 let frame = geometry[chartProxy.plotFrame!]
-                Text(String(format: "%.1f", current)).font(.system( size: 10, weight: .heavy)).position(x: frame.midX, y: frame.midY)
+                Text(String(format: "%.1f", displayValue)).font(.system( size: 10, weight: .heavy)).position(x: frame.midX, y: frame.midY)
             }
         }
     }
@@ -401,6 +442,11 @@ struct RunawayWidgetEntryView : View {
         return "Loading..."
     }
     
+    /// Year total converted to preferred unit
+    private var yearTotalDisplay: Double {
+        WidgetUnitHelper.convertFromMiles(entry.miles)
+    }
+
     var body: some View {
         VStack (alignment: .leading) {
             HStack(alignment: .bottom){
@@ -413,17 +459,17 @@ struct RunawayWidgetEntryView : View {
             }
             HStack(alignment: .bottom){
                 VStack(alignment: .leading){
-                    Text("\(String(Calendar.current.component(.year, from: Date()))) Miles:").font(.system(size: 14, weight: .semibold)).foregroundColor(.white).padding(.bottom,1)
-                    Text(String(entry.miles.thousandsOfMiles)).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).foregroundColor(.white).tracking(-1)
+                    Text("\(String(Calendar.current.component(.year, from: Date()))) \(WidgetUnitHelper.unitName):").font(.system(size: 14, weight: .semibold)).foregroundColor(.white).padding(.bottom,1)
+                    Text(yearTotalDisplay.thousandsOfMiles).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).foregroundColor(.white).tracking(-1)
                 }.frame(minWidth: 140).padding(.bottom,8)
                 Spacer()
                 VStack{
                     PieChartView(current: weeklyMileage, goalRemaining: max(0, entry.weeklyGoal - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
-                    Text("Weekly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
+                    Text("Weekly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
                 VStack{
                     PieChartView(current: entry.monthlyMiles, goalRemaining: max(0, entry.monthlyGoal - entry.monthlyMiles), color: Color(red: 0.4, green: 0.8, blue: 0.4)).padding(.bottom,2)
-                    Text("Monthly Miles").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
+                    Text("Monthly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
             }.padding(.top, 16)
             HStack(alignment: .bottom){

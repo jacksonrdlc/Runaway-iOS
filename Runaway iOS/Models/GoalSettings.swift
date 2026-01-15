@@ -114,10 +114,21 @@ final class GoalSettingsStore: ObservableObject {
 
 struct GoalSettingsView: View {
     @ObservedObject var store = GoalSettingsStore.shared
+    @ObservedObject var unitPreferences = UnitPreferences.shared
     @Environment(\.dismiss) var dismiss
 
     @State private var weeklyGoalText: String = ""
     @State private var monthlyGoalText: String = ""
+
+    /// Convert miles to display unit (km if metric)
+    private func toDisplayUnit(_ miles: Double) -> Double {
+        unitPreferences.isMetric ? miles * 1.60934 : miles
+    }
+
+    /// Convert from display unit back to miles
+    private func fromDisplayUnit(_ value: Double) -> Double {
+        unitPreferences.isMetric ? value / 1.60934 : value
+    }
 
     var body: some View {
         NavigationView {
@@ -126,22 +137,22 @@ struct GoalSettingsView: View {
                     HStack {
                         Text("Weekly Goal")
                         Spacer()
-                        TextField("Miles", text: $weeklyGoalText)
+                        TextField(UnitFormatter.distanceUnitName.capitalized, text: $weeklyGoalText)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
-                        Text("mi")
+                        Text(UnitFormatter.distanceUnitAbbreviation)
                             .foregroundColor(.secondary)
                     }
 
                     HStack {
                         Text("Monthly Goal")
                         Spacer()
-                        TextField("Miles", text: $monthlyGoalText)
+                        TextField(UnitFormatter.distanceUnitName.capitalized, text: $monthlyGoalText)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
-                        Text("mi")
+                        Text(UnitFormatter.distanceUnitAbbreviation)
                             .foregroundColor(.secondary)
                     }
                 } header: {
@@ -161,8 +172,7 @@ struct GoalSettingsView: View {
                 Section {
                     Button("Reset to Defaults") {
                         store.resetToDefaults()
-                        weeklyGoalText = String(format: "%.0f", store.settings.weeklyGoalMiles)
-                        monthlyGoalText = String(format: "%.0f", store.settings.monthlyGoalMiles)
+                        loadDisplayValues()
                     }
                     .foregroundColor(.red)
                 }
@@ -177,19 +187,26 @@ struct GoalSettingsView: View {
                 }
             }
             .onAppear {
-                weeklyGoalText = String(format: "%.0f", store.settings.weeklyGoalMiles)
-                monthlyGoalText = String(format: "%.0f", store.settings.monthlyGoalMiles)
+                loadDisplayValues()
             }
         }
     }
 
+    /// Load values from store and convert to display units
+    private func loadDisplayValues() {
+        let weeklyDisplay = toDisplayUnit(store.settings.weeklyGoalMiles)
+        let monthlyDisplay = toDisplayUnit(store.settings.monthlyGoalMiles)
+        weeklyGoalText = String(format: "%.0f", weeklyDisplay)
+        monthlyGoalText = String(format: "%.0f", monthlyDisplay)
+    }
+
     private func saveAndDismiss() {
-        // Parse and save values
+        // Parse values and convert from display unit back to miles for storage
         if let weekly = Double(weeklyGoalText), weekly > 0 {
-            store.settings.weeklyGoalMiles = weekly
+            store.settings.weeklyGoalMiles = fromDisplayUnit(weekly)
         }
         if let monthly = Double(monthlyGoalText), monthly > 0 {
-            store.settings.monthlyGoalMiles = monthly
+            store.settings.monthlyGoalMiles = fromDisplayUnit(monthly)
         }
         dismiss()
     }
