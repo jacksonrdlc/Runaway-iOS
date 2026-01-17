@@ -12,26 +12,36 @@ import Combine
 
 struct PostRecordingView: View {
     @ObservedObject var recordingService: ActivityRecordingService
+    @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var activityName = ""
     @State private var isSaving = false
     @State private var saveError: String?
     @State private var showingSaveError = false
+    @State private var showContent = false
     @FocusState private var isNameFocused: Bool
 
-    // Check if we have a valid route (more than 1 point with actual movement)
+    // MARK: - Computed Properties
+
     private var hasValidRoute: Bool {
         let points = recordingService.gpsService.routePoints
         guard points.count > 1 else { return false }
-
-        // Check if there's actually meaningful distance (more than 10 meters)
         let totalDistance = recordingService.gpsService.totalDistance
         return totalDistance > 10
     }
 
-    private var activityIcon: String {
+    private var isDistanceBasedActivity: Bool {
         let activityType = recordingService.currentSession?.activityType ?? "Run"
+        let distanceTypes = ["run", "walk", "ride", "bike", "cycling", "hike", "swim"]
+        return distanceTypes.contains(activityType.lowercased())
+    }
+
+    private var activityType: String {
+        recordingService.currentSession?.activityType ?? "Run"
+    }
+
+    private var activityIcon: String {
         switch activityType.lowercased() {
         case "run": return "figure.run"
         case "walk": return "figure.walk"
@@ -45,71 +55,100 @@ struct PostRecordingView: View {
     }
 
     private var activityColor: Color {
-        let activityType = recordingService.currentSession?.activityType ?? "Run"
         switch activityType.lowercased() {
-        case "run": return .green
-        case "walk": return .blue
-        case "ride", "bike", "cycling": return .orange
-        case "hike": return .brown
+        case "run": return Color(red: 1.0, green: 0.42, blue: 0.21) // Energetic coral
+        case "walk": return Color(red: 0.29, green: 0.56, blue: 0.85) // Calm blue
+        case "ride", "bike", "cycling": return Color(red: 1.0, green: 0.72, blue: 0) // Vibrant yellow
+        case "hike": return Color(red: 0.18, green: 0.55, blue: 0.30) // Earth green
         case "swim": return .cyan
-        case "yoga": return .purple
-        case "weight training", "workout": return .red
+        case "yoga": return Color(red: 0.61, green: 0.49, blue: 0.85) // Soft purple
+        case "weight training", "workout": return Color(red: 0.90, green: 0.22, blue: 0.21) // Bold red
         default: return .green
         }
     }
 
+    private var congratulatoryMessage: String {
+        let messages: [String] = [
+            "You crushed it!",
+            "Great work!",
+            "Way to show up!",
+            "Awesome effort!",
+            "Nailed it!"
+        ]
+        return messages.randomElement() ?? "Great work!"
+    }
+
+    private var background: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
+    private var cardBackground: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+    }
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    // MARK: - Body
+
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Activity name input - prominent at top
-                    activityNameSection
+        ZStack {
+            background.ignoresSafeArea()
 
-                    // Activity summary metrics
-                    activitySummarySection
+            VStack(spacing: 0) {
+                // Custom header
+                customHeader
 
-                    // Route map preview - only show if valid route exists
-                    if hasValidRoute {
-                        routeSection
-                    }
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Celebration section
+                        celebrationSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
 
-                    // Time statistics
-                    timeStatisticsSection
-                }
-                .padding()
-            }
-            .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
-            .navigationTitle("Activity Summary")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.light, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Discard") {
-                        recordingService.discardRecording()
-                        dismiss()
-                    }
-                    .foregroundColor(.red)
-                    .disabled(isSaving)
-                }
+                        // Hero metric
+                        heroMetricSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1), value: showContent)
 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: saveActivity) {
-                        if isSaving {
-                            HStack {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("Saving...")
-                            }
-                        } else {
-                            Text("Save")
-                                .fontWeight(.semibold)
+                        // Activity name input
+                        activityNameSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.15), value: showContent)
+
+                        // Secondary metrics grid
+                        secondaryMetricsSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showContent)
+
+                        // Route map preview - only show if valid route exists
+                        if hasValidRoute {
+                            routeSection
+                                .opacity(showContent ? 1 : 0)
+                                .offset(y: showContent ? 0 : 20)
+                                .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.25), value: showContent)
                         }
+
+                        // Time details
+                        timeDetailsSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.3), value: showContent)
                     }
-                    .disabled(isSaving || activityName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
                 }
             }
         }
+        .navigationBarHidden(true)
         .alert("Save Error", isPresented: $showingSaveError) {
             Button("OK") { }
         } message: {
@@ -119,26 +158,150 @@ struct PostRecordingView: View {
             if activityName.isEmpty {
                 activityName = recordingService.currentSession?.name ?? ""
             }
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                showContent = true
+            }
         }
+    }
+
+    // MARK: - Custom Header
+
+    private var customHeader: some View {
+        HStack {
+            Button(action: {
+                recordingService.discardRecording()
+                dismiss()
+            }) {
+                Text("Discard")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(
+                        Capsule()
+                            .fill(Color.red.opacity(0.15))
+                    )
+            }
+            .disabled(isSaving)
+
+            Spacer()
+
+            Button(action: saveActivity) {
+                HStack(spacing: 8) {
+                    if isSaving {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .tint(.white)
+                    }
+                    Text(isSaving ? "Saving..." : "Save")
+                        .font(.body)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule()
+                        .fill(activityName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving
+                              ? Color.gray
+                              : activityColor)
+                )
+            }
+            .disabled(isSaving || activityName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - Celebration Section
+
+    private var celebrationSection: some View {
+        VStack(spacing: 16) {
+            // Activity icon with glow effect
+            ZStack {
+                // Glow rings
+                Circle()
+                    .fill(activityColor.opacity(0.1))
+                    .frame(width: 120, height: 120)
+
+                Circle()
+                    .fill(activityColor.opacity(0.15))
+                    .frame(width: 100, height: 100)
+
+                Circle()
+                    .fill(activityColor.opacity(0.2))
+                    .frame(width: 80, height: 80)
+
+                Image(systemName: activityIcon)
+                    .font(.system(size: 36, weight: .medium))
+                    .foregroundColor(activityColor)
+            }
+
+            // Congratulatory message
+            VStack(spacing: 4) {
+                Text(congratulatoryMessage)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(textPrimary)
+
+                Text("\(activityType) Complete")
+                    .font(.subheadline)
+                    .foregroundColor(textSecondary)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    // MARK: - Hero Metric Section
+
+    private var heroMetricSection: some View {
+        VStack(spacing: 8) {
+            if isDistanceBasedActivity {
+                // Distance as hero for runs, walks, rides, etc.
+                Text(UnitFormatter.formatDistance(recordingService.gpsService.totalDistance, decimals: 2, includeUnit: false))
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .foregroundColor(textPrimary)
+                    .monospacedDigit()
+
+                Text(UnitFormatter.distanceUnitName.uppercased())
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(textSecondary)
+                    .tracking(2)
+            } else {
+                // Duration as hero for yoga, strength training, etc.
+                Text(formatTime(recordingService.currentSession?.elapsedTime ?? 0))
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .foregroundColor(textPrimary)
+                    .monospacedDigit()
+
+                Text("DURATION")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(textSecondary)
+                    .tracking(2)
+            }
+        }
+        .padding(.vertical, 8)
     }
 
     // MARK: - Activity Name Section
 
     private var activityNameSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Activity type badge and date
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 // Activity type badge
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: activityIcon)
-                        .font(.body)
-                    Text(recordingService.currentSession?.activityType ?? "Run")
-                        .font(.body)
-                        .fontWeight(.medium)
+                        .font(.caption)
+                    Text(activityType)
+                        .font(.caption)
+                        .fontWeight(.semibold)
                 }
                 .foregroundColor(activityColor)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
                 .background(
                     Capsule()
                         .fill(activityColor.opacity(0.15))
@@ -148,90 +311,110 @@ struct PostRecordingView: View {
 
                 // Date
                 Text(formatDate(recordingService.currentSession?.startTime ?? Date()))
-                    .font(.subheadline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .font(.caption)
+                    .foregroundColor(textSecondary)
             }
 
             // Editable activity name
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Activity Name")
-                        .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
-                    Spacer()
-
-                    Button(action: { isNameFocused = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "pencil")
-                            Text("Edit")
-                        }
-                        .font(.caption)
-                        .foregroundColor(AppTheme.Colors.accent)
-                    }
-                }
-
-                TextField("Enter activity name", text: $activityName)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-                    .focused($isNameFocused)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(ThemeManager.shared.isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(isNameFocused ? AppTheme.Colors.accent : Color.clear, lineWidth: 2)
-                    )
-            }
+            TextField("Name your activity...", text: $activityName)
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundColor(textPrimary)
+                .focused($isNameFocused)
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(themeManager.isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.03))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isNameFocused ? activityColor : Color.clear, lineWidth: 2)
+                )
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .padding(16)
+        .background(cardBackground)
         .cornerRadius(16)
     }
 
-    // MARK: - Activity Summary Section
+    // MARK: - Secondary Metrics Section
 
-    private var activitySummarySection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Summary")
+    private var secondaryMetricsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Stats")
                 .font(.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(textPrimary)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                SummaryMetricCard(
-                    title: "Distance",
-                    value: UnitFormatter.formatDistance(recordingService.gpsService.totalDistance, decimals: 2, includeUnit: false),
-                    unit: UnitFormatter.distanceUnitName,
-                    icon: "road.lanes",
-                    color: .blue
-                )
+            if isDistanceBasedActivity {
+                // Distance-based activity metrics
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    CompactMetricCard(
+                        icon: "clock.fill",
+                        value: formatTime(recordingService.currentSession?.elapsedTime ?? 0),
+                        label: "Duration",
+                        color: .green
+                    )
 
-                SummaryMetricCard(
-                    title: "Time",
-                    value: formatTime(recordingService.currentSession?.elapsedTime ?? 0),
-                    unit: "",
-                    icon: "clock",
-                    color: .green
-                )
+                    CompactMetricCard(
+                        icon: "speedometer",
+                        value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.averagePace),
+                        label: "Avg Pace",
+                        color: .orange
+                    )
 
-                SummaryMetricCard(
-                    title: "Avg Pace",
-                    value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.averagePace),
-                    unit: UnitFormatter.paceUnitLabel,
-                    icon: "speedometer",
-                    color: .orange
-                )
+                    CompactMetricCard(
+                        icon: "gauge.with.dots.needle.67percent",
+                        value: UnitFormatter.formatSpeedValue(recordingService.gpsService.averageSpeed),
+                        label: "Avg Speed (\(UnitFormatter.speedUnitLabel))",
+                        color: .purple
+                    )
 
-                SummaryMetricCard(
-                    title: "Avg Speed",
-                    value: UnitFormatter.formatSpeedValue(recordingService.gpsService.averageSpeed),
-                    unit: UnitFormatter.speedUnitLabel,
-                    icon: "gauge.high",
-                    color: .purple
-                )
+                    if recordingService.gpsService.elevationGain > 0 {
+                        CompactMetricCard(
+                            icon: "mountain.2.fill",
+                            value: String(format: "%.0f", recordingService.gpsService.elevationGain),
+                            label: "Elevation (m)",
+                            color: .brown
+                        )
+                    } else {
+                        CompactMetricCard(
+                            icon: "flame.fill",
+                            value: "--",
+                            label: "Calories",
+                            color: .red
+                        )
+                    }
+                }
+            } else {
+                // Duration-based activity metrics (yoga, strength, etc.)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    CompactMetricCard(
+                        icon: "flame.fill",
+                        value: "--",
+                        label: "Calories",
+                        color: .red
+                    )
+
+                    CompactMetricCard(
+                        icon: "heart.fill",
+                        value: "--",
+                        label: "Avg Heart Rate",
+                        color: .pink
+                    )
+
+                    CompactMetricCard(
+                        icon: "bolt.fill",
+                        value: formatActiveMinutes(recordingService.currentSession?.elapsedTime ?? 0),
+                        label: "Active Minutes",
+                        color: .yellow
+                    )
+
+                    CompactMetricCard(
+                        icon: "star.fill",
+                        value: activityType,
+                        label: "Activity Type",
+                        color: activityColor
+                    )
+                }
             }
         }
     }
@@ -242,55 +425,87 @@ struct PostRecordingView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Route")
                 .font(.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(textPrimary)
 
-            RoutePreviewMap(
-                routePoints: recordingService.gpsService.routePoints
-            )
-            .frame(height: 200)
-            .cornerRadius(12)
+            RoutePreviewMap(routePoints: recordingService.gpsService.routePoints)
+                .frame(height: 180)
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05), lineWidth: 1)
+                )
         }
     }
 
-    // MARK: - Time Statistics Section
+    // MARK: - Time Details Section
 
-    private var timeStatisticsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Time")
-                .font(.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+    private var timeDetailsSection: some View {
+        HStack(spacing: 0) {
+            // Started
+            VStack(spacing: 6) {
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.green)
 
-            HStack {
-                StatItem(
-                    title: "Started",
-                    value: formatStartTime(recordingService.currentSession?.startTime ?? Date()),
-                    icon: "clock.arrow.circlepath"
-                )
+                Text(formatStartTime(recordingService.currentSession?.startTime ?? Date()))
+                    .font(.headline)
+                    .foregroundColor(textPrimary)
 
-                Spacer()
-
-                StatItem(
-                    title: "Ended",
-                    value: formatStartTime(recordingService.currentSession?.endTime ?? Date()),
-                    icon: "flag.checkered"
-                )
-
-                if hasValidRoute {
-                    Spacer()
-
-                    StatItem(
-                        title: "GPS Points",
-                        value: "\(recordingService.gpsService.routePoints.count)",
-                        icon: "location.circle"
-                    )
-                }
+                Text("Started")
+                    .font(.caption)
+                    .foregroundColor(textSecondary)
             }
-            .padding()
-            .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-            .cornerRadius(12)
+            .frame(maxWidth: .infinity)
+
+            // Divider
+            Rectangle()
+                .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                .frame(width: 1, height: 50)
+
+            // Ended
+            VStack(spacing: 6) {
+                Image(systemName: "stop.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.red)
+
+                Text(formatStartTime(recordingService.currentSession?.endTime ?? Date()))
+                    .font(.headline)
+                    .foregroundColor(textPrimary)
+
+                Text("Ended")
+                    .font(.caption)
+                    .foregroundColor(textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            if hasValidRoute {
+                // Divider
+                Rectangle()
+                    .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                    .frame(width: 1, height: 50)
+
+                // GPS Points
+                VStack(spacing: 6) {
+                    Image(systemName: "location.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+
+                    Text("\(recordingService.gpsService.routePoints.count)")
+                        .font(.headline)
+                        .foregroundColor(textPrimary)
+
+                    Text("GPS Points")
+                        .font(.caption)
+                        .foregroundColor(textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
         }
+        .padding(.vertical, 16)
+        .background(cardBackground)
+        .cornerRadius(16)
     }
-    
+
     // MARK: - Methods
 
     private func saveActivity() {
@@ -299,8 +514,6 @@ struct PostRecordingView: View {
         }
 
         isSaving = true
-
-        // Update session name
         recordingService.currentSession?.name = activityName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         Task {
@@ -311,7 +524,6 @@ struct PostRecordingView: View {
                     isSaving = false
 
                     if savedActivity != nil {
-                        // Successfully saved - notify to dismiss all recording sheets
                         NotificationCenter.default.post(name: .activitySavedSuccessfully, object: nil)
                         dismiss()
                     } else {
@@ -328,32 +540,30 @@ struct PostRecordingView: View {
             }
         }
     }
-    
+
     private func formatTime(_ time: TimeInterval) -> String {
         let hours = Int(time) / 3600
         let minutes = (Int(time) % 3600) / 60
         let seconds = Int(time) % 60
-        
+
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%d:%02d", minutes, seconds)
         }
     }
-    
-    private func formatPace(_ pace: Double) -> String {
-        guard pace > 0 && pace < 999 else { return "--:--" }
-        let minutes = Int(pace)
-        let seconds = Int((pace - Double(minutes)) * 60)
-        return String(format: "%d:%02d", minutes, seconds)
+
+    private func formatActiveMinutes(_ time: TimeInterval) -> String {
+        let minutes = Int(time) / 60
+        return "\(minutes)"
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
-    
+
     private func formatStartTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -361,74 +571,45 @@ struct PostRecordingView: View {
     }
 }
 
-// MARK: - Summary Metric Card
-struct SummaryMetricCard: View {
-    let title: String
-    let value: String
-    let unit: String
+// MARK: - Compact Metric Card
+
+struct CompactMetricCard: View {
     let icon: String
+    let value: String
+    let label: String
     let color: Color
-    
+
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-                    .font(.title2)
-                Spacer()
-            }
-            
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(value)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                Text(value)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
 
-                    if !unit.isEmpty {
-                        Text(unit)
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                    }
-                }
-
-                Text(title)
+                Text(label)
                     .font(.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .lineLimit(1)
             }
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
         .cornerRadius(12)
     }
 }
 
-// MARK: - Stat Item
-struct StatItem: View {
-    let title: String
-    let value: String
-    let icon: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .foregroundColor(AppTheme.Colors.accent)
-                .font(.title3)
-
-            Text(value)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-            Text(title)
-                .font(.caption2)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                .multilineTextAlignment(.center)
-        }
-    }
-}
-
 // MARK: - Route Preview Map
+
 struct RoutePreviewMap: UIViewRepresentable {
     let routePoints: [GPSRoutePoint]
 
@@ -436,19 +617,16 @@ struct RoutePreviewMap: UIViewRepresentable {
         let mapInitOptions = MapInitOptions(styleURI: .standard)
         let mapView = MapView(frame: .zero, mapInitOptions: mapInitOptions)
 
-        // Disable interactions for preview using gestures options
         mapView.gestures.options.panEnabled = false
         mapView.gestures.options.pinchEnabled = false
         mapView.gestures.options.rotateEnabled = false
         mapView.gestures.options.pitchEnabled = false
 
-        // Hide ornaments
         mapView.ornaments.compassView.isHidden = true
         mapView.ornaments.scaleBarView.isHidden = true
         mapView.ornaments.logoView.isHidden = true
         mapView.ornaments.attributionButton.isHidden = true
 
-        // Add route when style loads
         mapView.mapboxMap.onStyleLoaded.observe { _ in
             self.addRouteToMap(mapView)
         }.store(in: &context.coordinator.cancellables)
@@ -473,60 +651,41 @@ struct RoutePreviewMap: UIViewRepresentable {
 
         let coordinates = routePoints.map { $0.coordinate }
 
-        // Remove existing sources and layers if they exist
         try? mapView.mapboxMap.removeLayer(withId: "route-layer")
         try? mapView.mapboxMap.removeSource(withId: "route-source")
         try? mapView.mapboxMap.removeLayer(withId: "markers-layer")
         try? mapView.mapboxMap.removeSource(withId: "markers-source")
 
-        // Create LineString from coordinates
         let lineString = LineString(coordinates)
 
-        // Create GeoJSON source for route
         var routeSource = GeoJSONSource(id: "route-source")
         routeSource.data = .geometry(.lineString(lineString))
-
-        // Add route source to map
         try? mapView.mapboxMap.addSource(routeSource)
 
-        // Create line layer for the route
         var lineLayer = LineLayer(id: "route-layer", source: "route-source")
         lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.accent)))
         lineLayer.lineWidth = .constant(4)
         lineLayer.lineCap = .constant(.round)
         lineLayer.lineJoin = .constant(.round)
-
-        // Add route layer to map
         try? mapView.mapboxMap.addLayer(lineLayer)
 
-        // Add start and end markers
         let startPoint = Point(coordinates.first!)
         let endPoint = Point(coordinates.last!)
 
         var features: [Feature] = []
 
-        // Start marker feature
         var startFeature = Feature(geometry: .point(startPoint))
-        startFeature.properties = [
-            "marker-type": .string("start")
-        ]
+        startFeature.properties = ["marker-type": .string("start")]
         features.append(startFeature)
 
-        // End marker feature
         var endFeature = Feature(geometry: .point(endPoint))
-        endFeature.properties = [
-            "marker-type": .string("end")
-        ]
+        endFeature.properties = ["marker-type": .string("end")]
         features.append(endFeature)
 
-        // Create markers source
         var markersSource = GeoJSONSource(id: "markers-source")
         markersSource.data = .featureCollection(FeatureCollection(features: features))
-
-        // Add markers source
         try? mapView.mapboxMap.addSource(markersSource)
 
-        // Create circle layer for markers
         var markersLayer = CircleLayer(id: "markers-layer", source: "markers-source")
         markersLayer.circleRadius = .constant(8)
         markersLayer.circleColor = .expression(
@@ -541,11 +700,8 @@ struct RoutePreviewMap: UIViewRepresentable {
         )
         markersLayer.circleStrokeColor = .constant(StyleColor(.white))
         markersLayer.circleStrokeWidth = .constant(2)
-
-        // Add markers layer
         try? mapView.mapboxMap.addLayer(markersLayer)
 
-        // Calculate bounds and fit camera
         let minLat = coordinates.map { $0.latitude }.min() ?? coordinates[0].latitude
         let maxLat = coordinates.map { $0.latitude }.max() ?? coordinates[0].latitude
         let minLon = coordinates.map { $0.longitude }.min() ?? coordinates[0].longitude
@@ -556,26 +712,18 @@ struct RoutePreviewMap: UIViewRepresentable {
             longitude: (minLon + maxLon) / 2
         )
 
-        // Validate coordinates are not at 0,0 (invalid GPS)
         guard center.latitude != 0 || center.longitude != 0 else {
-            // Default to a reasonable zoom if GPS data is invalid
             let camera = CameraOptions(center: center, zoom: 2)
             mapView.mapboxMap.setCamera(to: camera)
             return
         }
 
-        // Add padding to ensure the route is fully visible
         let latDelta = (maxLat - minLat) * 1.3
         let lonDelta = (maxLon - minLon) * 1.3
+        let maxDelta = max(latDelta, lonDelta, 0.001)
+        let zoom = min(max(log2(360 / maxDelta) - 1, 10), 18)
 
-        // Calculate zoom level from delta, with minimum delta to prevent infinite zoom
-        let maxDelta = max(latDelta, lonDelta, 0.001) // Minimum delta prevents division issues
-        let zoom = min(max(log2(360 / maxDelta) - 1, 10), 18) // Clamp zoom between 10-18
-
-        let camera = CameraOptions(
-            center: center,
-            zoom: zoom
-        )
+        let camera = CameraOptions(center: center, zoom: zoom)
         mapView.mapboxMap.setCamera(to: camera)
     }
 }
