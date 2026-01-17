@@ -14,17 +14,86 @@ struct ActivityDetailView: View {
     let activity: LocalActivity
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var dataManager: DataManager
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
+    @State private var showContent = false
+
+    // MARK: - Computed Properties
+
+    private var isDistanceBasedActivity: Bool {
+        let activityType = activity.type ?? "Run"
+        let distanceTypes = ["run", "walk", "ride", "bike", "cycling", "hike", "swim", "virtualrun", "virtualride", "trailrun", "gravel ride", "mountain bike ride"]
+        return distanceTypes.contains(activityType.lowercased())
+    }
+
+    private var activityType: String {
+        activity.type ?? "Workout"
+    }
+
+    private var activityIcon: String {
+        switch activityType.lowercased() {
+        case "run", "virtualrun": return "figure.run"
+        case "walk": return "figure.walk"
+        case "ride", "bike", "cycling", "virtualride": return "figure.outdoor.cycle"
+        case "hike", "trailrun": return "figure.hiking"
+        case "swim": return "figure.pool.swim"
+        case "yoga": return "figure.mind.and.body"
+        case "weight training", "weighttraining", "workout": return "dumbbell.fill"
+        case "crossfit": return "figure.cross.training"
+        case "elliptical": return "figure.elliptical"
+        case "rowing": return "figure.rowing"
+        case "rock climbing", "rockclimbing": return "figure.climbing"
+        case "alpine ski", "alpineski": return "figure.skiing.downhill"
+        case "snowboard": return "figure.snowboarding"
+        case "mountain bike ride", "mountainbikeride": return "figure.outdoor.cycle"
+        case "gravel ride", "gravelride": return "figure.outdoor.cycle"
+        case "golf": return "figure.golf"
+        default: return "figure.mixed.cardio"
+        }
+    }
+
+    private var activityColor: Color {
+        switch activityType.lowercased() {
+        case "run", "virtualrun", "trailrun": return Color(red: 1.0, green: 0.42, blue: 0.21) // Energetic coral
+        case "walk": return Color(red: 0.29, green: 0.56, blue: 0.85) // Calm blue
+        case "ride", "bike", "cycling", "virtualride", "gravel ride", "gravelride", "mountain bike ride", "mountainbikeride": return Color(red: 1.0, green: 0.72, blue: 0) // Vibrant yellow
+        case "hike": return Color(red: 0.18, green: 0.55, blue: 0.30) // Earth green
+        case "swim": return .cyan
+        case "yoga": return Color(red: 0.61, green: 0.49, blue: 0.85) // Soft purple
+        case "weight training", "weighttraining", "workout", "crossfit": return Color(red: 0.90, green: 0.22, blue: 0.21) // Bold red
+        case "alpine ski", "alpineski", "snowboard": return Color(red: 0.4, green: 0.6, blue: 0.9) // Ice blue
+        case "golf": return Color(red: 0.13, green: 0.55, blue: 0.13) // Golf green
+        default: return AppTheme.Colors.accent
+        }
+    }
+
+    private var background: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
+    private var cardBackground: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+    }
+
+    private var textPrimary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    // MARK: - Body
 
     var body: some View {
         ZStack {
-            (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+            background.ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: 0) {
-                    // Map Section (1/3 of screen if map exists)
+                    // Map Section (if route exists)
                     if let polyline = activity.summary_polyline, !polyline.isEmpty {
                         GeometryReader { geometry in
                             ActivityDetailMapView(summaryPolyline: polyline)
@@ -35,26 +104,37 @@ struct ActivityDetailView: View {
                     }
 
                     // Activity Details Section
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                        // Header
-                        ActivityDetailHeader(activity: activity)
+                    VStack(spacing: 20) {
+                        // Header with activity info
+                        activityHeaderSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
 
-                        // Metrics Grid
-                        ActivityMetricsGrid(activity: activity)
+                        // Hero metric
+                        heroMetricSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1), value: showContent)
 
-                        // Additional Details
-                        ActivityDetailInfo(activity: activity)
+                        // Secondary metrics grid
+                        secondaryMetricsSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.15), value: showContent)
+
+                        // Time details
+                        timeDetailsSection
+                            .opacity(showContent ? 1 : 0)
+                            .offset(y: showContent ? 0 : 20)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showContent)
 
                         Spacer(minLength: 50)
                     }
-                    .padding(AppTheme.Spacing.lg)
-                    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+                    .padding(20)
                 }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.light, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
@@ -63,17 +143,9 @@ struct ActivityDetailView: View {
                     } label: {
                         Label("Delete Activity", systemImage: "trash")
                     }
-
-                    Divider()
-
-                    Button {
-                        dismiss()
-                    } label: {
-                        Label("Done", systemImage: "xmark")
-                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .foregroundColor(AppTheme.Colors.accent)
+                        .foregroundColor(activityColor)
                         .font(.title3)
                 }
             }
@@ -98,7 +170,260 @@ struct ActivityDetailView: View {
                     }
             }
         }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                showContent = true
+            }
+        }
     }
+
+    // MARK: - Activity Header Section
+
+    private var activityHeaderSection: some View {
+        VStack(spacing: 16) {
+            // Activity icon with glow effect
+            ZStack {
+                Circle()
+                    .fill(activityColor.opacity(0.1))
+                    .frame(width: 100, height: 100)
+
+                Circle()
+                    .fill(activityColor.opacity(0.15))
+                    .frame(width: 80, height: 80)
+
+                Circle()
+                    .fill(activityColor.opacity(0.2))
+                    .frame(width: 60, height: 60)
+
+                Image(systemName: activityIcon)
+                    .font(.system(size: 28, weight: .medium))
+                    .foregroundColor(activityColor)
+            }
+
+            // Activity name and type
+            VStack(spacing: 6) {
+                Text(activity.name ?? "Activity")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(textPrimary)
+                    .multilineTextAlignment(.center)
+
+                // Activity type badge
+                HStack(spacing: 6) {
+                    Image(systemName: activityIcon)
+                        .font(.caption)
+                    Text(activityType)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(activityColor)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(activityColor.opacity(0.15))
+                )
+            }
+
+            // Date
+            if let startDate = activity.start_date {
+                Text(formatDate(startDate))
+                    .font(.subheadline)
+                    .foregroundColor(textSecondary)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Hero Metric Section
+
+    private var heroMetricSection: some View {
+        VStack(spacing: 8) {
+            if isDistanceBasedActivity {
+                // Distance as hero for runs, walks, rides, etc.
+                if let distance = activity.distance {
+                    Text(UnitFormatter.formatDistance(distance, decimals: 2, includeUnit: false))
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .foregroundColor(textPrimary)
+                        .monospacedDigit()
+
+                    Text(UnitFormatter.distanceUnitName.uppercased())
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(textSecondary)
+                        .tracking(2)
+                }
+            } else {
+                // Duration as hero for yoga, strength training, etc.
+                if let time = activity.elapsed_time {
+                    Text(formatTime(seconds: time))
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .foregroundColor(textPrimary)
+                        .monospacedDigit()
+
+                    Text("DURATION")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(textSecondary)
+                        .tracking(2)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Secondary Metrics Section
+
+    private var secondaryMetricsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Stats")
+                .font(.headline)
+                .foregroundColor(textPrimary)
+
+            if isDistanceBasedActivity {
+                // Distance-based activity metrics
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    if let time = activity.elapsed_time {
+                        CompactMetricCard(
+                            icon: "clock.fill",
+                            value: formatTime(seconds: time),
+                            label: "Duration",
+                            color: .green
+                        )
+                    }
+
+                    if let distance = activity.distance, let time = activity.elapsed_time, distance > 0 {
+                        let paceSecondsPerMeter = time / distance
+                        CompactMetricCard(
+                            icon: "speedometer",
+                            value: UnitFormatter.formatPace(secondsPerMeter: paceSecondsPerMeter),
+                            label: "Avg Pace",
+                            color: .orange
+                        )
+                    }
+
+                    // Calculate average speed from distance and time
+                    if let distance = activity.distance, let time = activity.elapsed_time, distance > 0, time > 0 {
+                        let avgSpeedMPS = distance / time
+                        CompactMetricCard(
+                            icon: "gauge.with.dots.needle.67percent",
+                            value: UnitFormatter.formatSpeed(avgSpeedMPS),
+                            label: "Avg Speed",
+                            color: .purple
+                        )
+                    }
+                }
+            } else {
+                // Duration-based activity metrics (yoga, strength, etc.)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    CompactMetricCard(
+                        icon: "flame.fill",
+                        value: "--",
+                        label: "Calories",
+                        color: .red
+                    )
+
+                    CompactMetricCard(
+                        icon: "heart.fill",
+                        value: "--",
+                        label: "Avg Heart Rate",
+                        color: .pink
+                    )
+
+                    if let time = activity.elapsed_time {
+                        CompactMetricCard(
+                            icon: "bolt.fill",
+                            value: "\(Int(time / 60))",
+                            label: "Active Minutes",
+                            color: .yellow
+                        )
+                    }
+
+                    CompactMetricCard(
+                        icon: "star.fill",
+                        value: activityType,
+                        label: "Activity Type",
+                        color: activityColor
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Time Details Section
+
+    private var timeDetailsSection: some View {
+        HStack(spacing: 0) {
+            // Started
+            if let startDate = activity.start_date {
+                VStack(spacing: 6) {
+                    Image(systemName: "play.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.green)
+
+                    Text(formatTimeOnly(startDate))
+                        .font(.headline)
+                        .foregroundColor(textPrimary)
+
+                    Text("Started")
+                        .font(.caption)
+                        .foregroundColor(textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+
+                // Divider
+                Rectangle()
+                    .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                    .frame(width: 1, height: 50)
+
+                // Ended
+                if let elapsed = activity.elapsed_time {
+                    let endDate = startDate.addingTimeInterval(elapsed)
+                    VStack(spacing: 6) {
+                        Image(systemName: "stop.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.red)
+
+                        Text(formatTimeOnly(endDate))
+                            .font(.headline)
+                            .foregroundColor(textPrimary)
+
+                        Text("Ended")
+                            .font(.caption)
+                            .foregroundColor(textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+
+            // Route indicator
+            if activity.summary_polyline != nil && !(activity.summary_polyline?.isEmpty ?? true) {
+                Rectangle()
+                    .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                    .frame(width: 1, height: 50)
+
+                VStack(spacing: 6) {
+                    Image(systemName: "location.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.blue)
+
+                    Text("Yes")
+                        .font(.headline)
+                        .foregroundColor(textPrimary)
+
+                    Text("Route")
+                        .font(.caption)
+                        .foregroundColor(textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.vertical, 16)
+        .background(cardBackground)
+        .cornerRadius(16)
+    }
+
+    // MARK: - Helper Methods
 
     private func deleteActivity() {
         let activityId = activity.id
@@ -109,7 +434,6 @@ struct ActivityDetailView: View {
             do {
                 try await ActivityService.deleteActivity(id: activityId)
 
-                // Refresh activities list
                 if let userId = UserSession.shared.userId {
                     await dataManager.loadActivities(for: userId)
                 }
@@ -126,235 +450,30 @@ struct ActivityDetailView: View {
             }
         }
     }
-}
 
-// MARK: - Activity Detail Header
-struct ActivityDetailHeader: View {
-    let activity: LocalActivity
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            HStack {
-                Image(systemName: activityIcon)
-                    .foregroundColor(AppTheme.Colors.accent)
-                    .font(.title)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(activity.name ?? "Unknown Activity")
-                        .font(AppTheme.Typography.title)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                    Text(activity.type ?? "Unknown Type")
-                        .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                }
-
-                Spacer()
-            }
-
-            if let startDate = activity.start_date {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Date & Time")
-                        .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                        .textCase(.uppercase)
-
-                    Text(startDate, style: .date)
-                        .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                    Text(startDate, style: .time)
-                        .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                }
-            }
-        }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(AppTheme.CornerRadius.medium)
-    }
-    
-    private var activityIcon: String {
-        switch (activity.type ?? "").lowercased() {
-        case "run", "running": return "figure.run"
-        case "walk", "walking": return "figure.walk"
-        case "bike", "cycling": return "bicycle"
-        default: return "figure.mixed.cardio"
-        }
-    }
-}
-
-// MARK: - Activity Metrics Grid
-struct ActivityMetricsGrid: View {
-    let activity: LocalActivity
-
-    var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: AppTheme.Spacing.md) {
-            if let distance = activity.distance {
-                DetailMetricCard(
-                    title: "Distance",
-                    value: String(format: "%.2f", distance * 0.000621371),
-                    unit: "miles",
-                    icon: "road.lanes.curved.right",
-                    color: AppTheme.Colors.accent
-                )
-            }
-
-            if let time = activity.elapsed_time {
-                DetailMetricCard(
-                    title: "Duration",
-                    value: formatDetailedTime(seconds: time),
-                    unit: "",
-                    icon: "clock",
-                    color: AppTheme.Colors.accent
-                )
-            }
-
-            if let distance = activity.distance, let time = activity.elapsed_time {
-                DetailMetricCard(
-                    title: "Avg Pace",
-                    value: calculateDetailedPace(distance: distance * 0.000621371, time: time),
-                    unit: "/mile",
-                    icon: "speedometer",
-                    color: AppTheme.Colors.accent
-                )
-            }
-
-            if let distance = activity.distance, let time = activity.elapsed_time {
-                let avgSpeed = (distance * 0.000621371) / (time / 3600) // mph
-                DetailMetricCard(
-                    title: "Avg Speed",
-                    value: String(format: "%.1f", avgSpeed),
-                    unit: "mph",
-                    icon: "gauge.high",
-                    color: AppTheme.Colors.accent
-                )
-            }
-        }
-    }
-    
-    private func formatDetailedTime(seconds: TimeInterval) -> String {
+    private func formatTime(seconds: TimeInterval) -> String {
         let hours = Int(seconds) / 3600
         let minutes = (Int(seconds) % 3600) / 60
         let secs = Int(seconds) % 60
-        
+
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, secs)
         } else {
             return String(format: "%d:%02d", minutes, secs)
         }
     }
-    
-    private func calculateDetailedPace(distance: Double, time: Double) -> String {
-        guard distance > 0, time > 0 else { return "--:--" }
-        let paceInSeconds = time / distance
-        let minutes = Int(paceInSeconds) / 60
-        let seconds = Int(paceInSeconds) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
-}
 
-// MARK: - Detail Metric Card
-struct DetailMetricCard: View {
-    let title: String
-    let value: String
-    let unit: String
-    let icon: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-                    .font(.title2)
-
-                Spacer()
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(value)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                    if !unit.isEmpty {
-                        Text(unit)
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                    }
-                }
-
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                    .textCase(.uppercase)
-            }
-        }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(AppTheme.CornerRadius.medium)
-    }
-}
-
-// MARK: - Activity Detail Info
-struct ActivityDetailInfo: View {
-    let activity: LocalActivity
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            Text("Activity Details")
-                .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-            VStack(spacing: AppTheme.Spacing.sm) {
-                DetailInfoRow(label: "Activity ID", value: "\(activity.id)")
-
-                if let startDate = activity.start_date {
-                    DetailInfoRow(label: "Start Time", value: DateFormatter.detailFormatter.string(from: startDate))
-
-                    if let endDate = calculateEndDate() {
-                        DetailInfoRow(label: "End Time", value: DateFormatter.detailFormatter.string(from: endDate))
-                    }
-                }
-
-                if let polyline = activity.summary_polyline, !polyline.isEmpty {
-                    DetailInfoRow(label: "Route Data", value: "Available")
-                } else {
-                    DetailInfoRow(label: "Route Data", value: "Not Available")
-                }
-            }
-        }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(AppTheme.CornerRadius.medium)
-    }
-    
-    private func calculateEndDate() -> Date? {
-        guard let startDate = activity.start_date,
-              let elapsed = activity.elapsed_time else { return nil }
-        return startDate.addingTimeInterval(elapsed)
-    }
-}
-
-// MARK: - Detail Info Row
-struct DetailInfoRow: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(.subheadline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
-            Spacer()
-
-            Text(value)
-                .font(.subheadline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-        }
+    private func formatTimeOnly(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
