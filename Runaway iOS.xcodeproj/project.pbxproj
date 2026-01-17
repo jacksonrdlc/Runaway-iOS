@@ -597,6 +597,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Runaway uses your health data to calculate your daily readiness score, track recovery, and provide personalized training recommendations based on your sleep, heart rate variability, and resting heart rate.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Runaway saves your workouts to Apple Health so they appear in the Fitness app and contribute to your Activity rings.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Runaway needs background location access to continue tracking your run when your phone is locked or in your pocket.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Runaway needs your location to track your runs and display your route on the map.";
@@ -609,7 +611,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -638,6 +640,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Runaway;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Runaway uses your health data to calculate your daily readiness score, track recovery, and provide personalized training recommendations based on your sleep, heart rate variability, and resting heart rate.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Runaway saves your workouts to Apple Health so they appear in the Fitness app and contribute to your Activity rings.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Runaway needs background location access to continue tracking your run when your phone is locked or in your pocket.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Runaway needs your location to track your runs and display your route on the map.";
@@ -650,7 +654,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -671,7 +675,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOSTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -689,7 +693,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOSTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -705,7 +709,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOSUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -721,7 +725,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOSUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -749,7 +753,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOS.RunawayWidget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -777,7 +781,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOS.RunawayWidget";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
