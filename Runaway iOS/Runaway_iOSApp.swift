@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import Foundation
 import FirebaseCore
 import AppIntents
@@ -19,6 +20,7 @@ struct Runaway_iOSApp: App {
     @StateObject private var stravaService = StravaService()
     @StateObject private var activityRecordingService = ActivityRecordingService()
     @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var syncEngine = SyncEngine.shared
     @State private var router = AppRouter()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
@@ -97,7 +99,9 @@ struct Runaway_iOSApp: App {
                 .environmentObject(realtimeService)
                 .environmentObject(dataManager)
                 .environmentObject(themeManager)
+                .environmentObject(syncEngine)
                 .environment(router)
+                .modelContainer(PersistenceController.shared.container)
                 .onChange(of: themeManager.currentTheme) { _, newTheme in
                     // Update UIKit appearances when theme changes
                     Self.configureAppearance(isDark: newTheme == .dark)
@@ -234,6 +238,12 @@ struct Runaway_iOSApp: App {
         realtimeService.startRealtimeSubscription()
         realtimeService.resumeFromBackground()
 
+        // Start SwiftData sync engine
+        syncEngine.startBackgroundSync()
+        Task {
+            await syncEngine.syncPendingChanges()
+        }
+
         // Resume location updates
         LocationManager.shared.requestLocationPermission()
 
@@ -275,6 +285,9 @@ struct Runaway_iOSApp: App {
 
         // Pause realtime connection monitoring to save battery
         realtimeService.pauseForBackground()
+
+        // Stop SwiftData sync engine
+        syncEngine.stopBackgroundSync()
 
         // Pause analytics timer
         AnalyticsService.shared.pauseForBackground()
