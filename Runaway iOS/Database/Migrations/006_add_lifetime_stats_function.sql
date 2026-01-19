@@ -23,7 +23,7 @@ BEGIN
         'weekly_streak', (
             WITH weeks_with_runs AS (
                 SELECT DISTINCT
-                    DATE_TRUNC('week', TO_TIMESTAMP(activity_date))::DATE as week_start
+                    DATE_TRUNC('week', activity_date)::DATE as week_start
                 FROM activities
                 WHERE athlete_id = p_athlete_id
                 AND activity_type_id IN (SELECT id FROM activity_types WHERE LOWER(name) LIKE '%run%')
