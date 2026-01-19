@@ -60,6 +60,7 @@ struct CustomTabBar: View {
                         .foregroundColor(borderColor),
                     alignment: .top
                 )
+                .ignoresSafeArea(edges: .bottom)
         )
     }
 
