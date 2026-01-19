@@ -4,14 +4,23 @@
 //
 //  Dynamic training plan view - the Plan tab
 //  Shows adaptive weekly plans that update based on recent workouts
+//  Now includes segmented control for Training and Research sections
 //
 
 import SwiftUI
+
+// MARK: - Plan Section Enum
+
+enum PlanSection: String, CaseIterable {
+    case training = "Training"
+    case research = "Research"
+}
 
 struct PlanView: View {
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var viewModel = PlanViewModel()
+    @State private var selectedSection: PlanSection = .training
     @State private var showingWorkoutDetail: DailyWorkout?
     @State private var showingGenerateConfirmation = false
     @State private var showingTrainingGuidelines = false
@@ -27,16 +36,67 @@ struct PlanView: View {
             )
         } else {
             return (
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+                AppTheme.Colors.LightMode.background,
+                AppTheme.Colors.LightMode.cardBackground,
+                AppTheme.Colors.LightMode.textPrimary,
+                AppTheme.Colors.LightMode.textSecondary,
+                AppTheme.Colors.LightMode.surfaceBackground
             )
         }
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            // Segmented Control
+            Picker("Section", selection: $selectedSection) {
+                ForEach(PlanSection.allCases, id: \.self) { section in
+                    Text(section.rawValue).tag(section)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.top, AppTheme.Spacing.sm)
+            .padding(.bottom, AppTheme.Spacing.sm)
+
+            // Content based on selection
+            switch selectedSection {
+            case .training:
+                trainingContent
+            case .research:
+                ResearchContentView()
+                    .environmentObject(themeManager)
+            }
+        }
+        .background(colors.background)
+        .navigationTitle("Plan")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarColorScheme(themeManager.isDarkMode ? .dark : .light, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                if selectedSection == .training {
+                    Button(action: { showingTrainingGuidelines = true }) {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(AppTheme.Colors.accent)
+                    }
+                    .accessibilityLabel("Training Guidelines")
+                }
+            }
+        }
+        .sheet(item: $showingWorkoutDetail) { workout in
+            PlanWorkoutDetailSheet(workout: workout)
+        }
+        .sheet(isPresented: $showingTrainingGuidelines) {
+            TrainingGuidelinesSheet()
+        }
+        .task {
+            await viewModel.loadPlan()
+        }
+    }
+
+    // MARK: - Training Content
+
+    @ViewBuilder
+    private var trainingContent: some View {
         ScrollView {
             VStack(spacing: AppTheme.Spacing.lg) {
                 if viewModel.isLoading {
@@ -97,30 +157,8 @@ struct PlanView: View {
             }
             .padding()
         }
-        .background(colors.background)
-        .navigationTitle("Training Plan")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbarColorScheme(themeManager.isDarkMode ? .dark : .light, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { showingTrainingGuidelines = true }) {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(AppTheme.Colors.accent)
-                }
-                .accessibilityLabel("Training Guidelines")
-            }
-        }
         .refreshable {
             await viewModel.refresh()
-        }
-        .sheet(item: $showingWorkoutDetail) { workout in
-            PlanWorkoutDetailSheet(workout: workout)
-        }
-        .sheet(isPresented: $showingTrainingGuidelines) {
-            TrainingGuidelinesSheet()
-        }
-        .task {
-            await viewModel.loadPlan()
         }
     }
 }

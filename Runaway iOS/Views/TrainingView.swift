@@ -63,6 +63,9 @@ struct TrainingView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 16) {
+                        // 0. Weekly Stats Card (moved from Activities)
+                        WeeklyStatsCard()
+
                         // 1. Adaptive Primary Insight (phase-aware dashboard)
                         if let phaseContext = viewModel.trainingPhaseContext {
                             AdaptivePrimaryInsightCard(
@@ -129,7 +132,7 @@ struct TrainingView: View {
                 }
             }
         }
-        .navigationTitle("Performance")
+        .navigationTitle("Progress")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             #if DEBUG
