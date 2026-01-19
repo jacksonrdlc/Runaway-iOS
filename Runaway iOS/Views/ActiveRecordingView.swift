@@ -29,13 +29,6 @@ struct ActiveRecordingView: View {
     // @StateObject private var audioCoaching = AudioCoachingService()
     private let audioCoachingEnabled = false
 
-    // Activities that require GPS tracking
-    private let gpsActivities = ["run", "walk", "ride", "hike", "swim", "bike", "cycling"]
-
-    private var needsGPS: Bool {
-        gpsActivities.contains(activityType.lowercased())
-    }
-
     private var activityIcon: String {
         switch activityType.lowercased() {
         case "run": return "figure.run"
@@ -264,7 +257,7 @@ struct ActiveRecordingView: View {
                 )
             }
 
-            // Secondary metrics row
+            // Secondary metrics row (max 2 for glanceability)
             HStack(spacing: 12) {
                 secondaryMetricCard(
                     value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.averagePace),
@@ -275,13 +268,6 @@ struct ActiveRecordingView: View {
                     value: UnitFormatter.formatSpeedValue(recordingService.gpsService.currentSpeed),
                     label: "Speed (\(UnitFormatter.speedUnitLabel))"
                 )
-
-                if needsGPS {
-                    secondaryMetricCard(
-                        value: "\(recordingService.gpsService.routePoints.count)",
-                        label: "GPS Points"
-                    )
-                }
             }
         }
         .padding(.horizontal, 20)

@@ -81,19 +81,19 @@ struct BarChart: View {
         days.contains { $0.minutes > 0 }
     }
 
-    // Array of fun empty state messages
+    // Array of encouraging empty state messages (non-judgmental)
     private var emptyStateMessages: [String] {
         [
-            "You better be lacing up your sneakers...",
-            "Those running shoes are looking lonely 👟",
-            "Time to turn those couch miles into real miles!",
-            "Your sneakers are gathering dust...",
-            "The pavement is calling your name!",
-            "Zero miles? Time to change that! 🏃‍♀️",
-            "Your weekly chart is thirsty for some data!",
-            "Ready to paint this chart with some miles?",
-            "Empty bars = time for full effort! 💪",
-            "This chart needs some serious activity love!"
+            "Fresh week, fresh start",
+            "Your next run awaits",
+            "Rest is part of training too",
+            "Ready when you are",
+            "A new week of possibilities",
+            "Every journey starts with one step",
+            "Today is a great day for a run",
+            "Your chart is ready for new adventures",
+            "Take it one day at a time",
+            "Good things come to those who move"
         ]
     }
 
