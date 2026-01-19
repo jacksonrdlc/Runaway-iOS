@@ -467,6 +467,16 @@ struct AppTheme {
         // Pill & Badge Dimensions
         static let pillHeight: CGFloat = 32
         static let badgeSize: CGFloat = 20
+
+        // MARK: - Touch Targets (per UX-DESIGN-PRINCIPLES.md)
+        // Apple HIG minimum
+        static let touchTargetMinimum: CGFloat = 44
+        // Preferred for comfortable tapping
+        static let touchTargetPreferred: CGFloat = 48
+        // Motion context (during active runs) - minimum
+        static let touchTargetMotionMinimum: CGFloat = 60
+        // Motion context (during active runs) - preferred
+        static let touchTargetMotionPreferred: CGFloat = 80
     }
 }
 

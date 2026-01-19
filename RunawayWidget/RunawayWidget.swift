@@ -465,11 +465,11 @@ struct RunawayWidgetEntryView : View {
                 Spacer()
                 VStack{
                     PieChartView(current: weeklyMileage, goalRemaining: max(0, entry.weeklyGoal - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
-                    Text("Weekly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
+                    Text("Weekly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 10, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
                 VStack{
                     PieChartView(current: entry.monthlyMiles, goalRemaining: max(0, entry.monthlyGoal - entry.monthlyMiles), color: Color(red: 0.4, green: 0.8, blue: 0.4)).padding(.bottom,2)
-                    Text("Monthly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 8, weight: .heavy)).foregroundColor(.white)
+                    Text("Monthly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 10, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
             }.padding(.top, 16)
             HStack(alignment: .bottom){

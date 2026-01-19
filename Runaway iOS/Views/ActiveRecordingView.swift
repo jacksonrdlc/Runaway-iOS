@@ -22,8 +22,15 @@ struct ActiveRecordingView: View {
     @State private var showingStopConfirmation = false
     @State private var showingPostRecording = false
     @State private var pulseAnimation = false
+    @State private var expandedMetric: ExpandedMetric? = nil
 
     @StateObject private var timerManager = TimerUpdateManager()
+
+    // Enum to track which metric card is expanded
+    private enum ExpandedMetric {
+        case distance
+        case pace
+    }
 
     // TODO: Re-enable when background audio mode is added back
     // @StateObject private var audioCoaching = AudioCoachingService()
@@ -67,6 +74,10 @@ struct ActiveRecordingView: View {
         themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
     }
 
+    private var textTertiary: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+    }
+
     var body: some View {
         ZStack {
             background.ignoresSafeArea()
@@ -88,13 +99,13 @@ struct ActiveRecordingView: View {
                 // Auto-pause indicator
                 if recordingService.isAutopaused {
                     autoPauseIndicator
-                        .padding(.top, 16)
+                        .padding(.top, AppTheme.Spacing.lg)
                 }
 
                 // Control buttons
                 controlButtons
-                    .padding(.top, 24)
-                    .padding(.bottom, 40)
+                    .padding(.top, AppTheme.Spacing.xxl)
+                    .padding(.bottom, AppTheme.Spacing.huge)
             }
         }
         .navigationBarHidden(true)
@@ -142,7 +153,7 @@ struct ActiveRecordingView: View {
     private var topStatusBar: some View {
         HStack {
             // Activity type indicator
-            HStack(spacing: 8) {
+            HStack(spacing: AppTheme.Spacing.sm) {
                 Image(systemName: activityIcon)
                     .font(.body)
                 Text(activityType)
@@ -150,8 +161,8 @@ struct ActiveRecordingView: View {
                     .fontWeight(.medium)
             }
             .foregroundColor(activityColor)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.md)
             .background(
                 Capsule()
                     .fill(activityColor.opacity(0.15))
@@ -160,7 +171,7 @@ struct ActiveRecordingView: View {
             Spacer()
 
             // Recording state indicator
-            HStack(spacing: 6) {
+            HStack(spacing: AppTheme.Spacing.xs) {
                 Circle()
                     .fill(recordingStateColor)
                     .frame(width: 8, height: 8)
@@ -170,15 +181,15 @@ struct ActiveRecordingView: View {
                     .fontWeight(.medium)
                     .foregroundColor(textSecondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.sm)
             .background(
                 Capsule()
                     .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
             )
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .padding(.horizontal, AppTheme.Spacing.xl)
+        .padding(.top, AppTheme.Spacing.lg)
     }
 
     private var recordingStateColor: Color {
@@ -239,26 +250,76 @@ struct ActiveRecordingView: View {
     // MARK: - Metrics Grid
 
     private var metricsGrid: some View {
-        VStack(spacing: 16) {
-            // Primary metrics row (Distance and Pace)
-            HStack(spacing: 20) {
-                primaryMetricCard(
+        VStack(spacing: AppTheme.Spacing.lg) {
+            // Primary metrics row (Distance and Pace) - tappable for expanded context
+            HStack(spacing: AppTheme.Spacing.xl) {
+                expandablePrimaryMetricCard(
                     value: UnitFormatter.formatDistance(recordingService.gpsService.totalDistance, decimals: 2, includeUnit: false),
                     unit: UnitFormatter.distanceUnitAbbreviation,
                     label: "Distance",
-                    icon: "point.topleft.down.to.point.bottomright.curvepath"
+                    icon: "point.topleft.down.to.point.bottomright.curvepath",
+                    metric: .distance,
+                    expandedContent: {
+                        // Show elapsed time context when expanded
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            VStack(spacing: 2) {
+                                Text(formatTime(timerManager.elapsedTime))
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(textPrimary)
+                                Text("Elapsed")
+                                    .font(.caption2)
+                                    .foregroundColor(textTertiary)
+                            }
+                            Divider().frame(height: 24)
+                            VStack(spacing: 2) {
+                                Text("\(recordingService.gpsService.routePoints.count)")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(textPrimary)
+                                Text("GPS pts")
+                                    .font(.caption2)
+                                    .foregroundColor(textTertiary)
+                            }
+                        }
+                    }
                 )
 
-                primaryMetricCard(
+                expandablePrimaryMetricCard(
                     value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.currentPace),
                     unit: UnitFormatter.paceUnitLabel,
                     label: "Pace",
-                    icon: "speedometer"
+                    icon: "speedometer",
+                    metric: .pace,
+                    expandedContent: {
+                        // Show average pace comparison when expanded
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            VStack(spacing: 2) {
+                                Text(UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.averagePace))
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(textPrimary)
+                                Text("Average")
+                                    .font(.caption2)
+                                    .foregroundColor(textTertiary)
+                            }
+                            Divider().frame(height: 24)
+                            VStack(spacing: 2) {
+                                Text(UnitFormatter.formatSpeedValue(recordingService.gpsService.currentSpeed))
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(textPrimary)
+                                Text(UnitFormatter.speedUnitLabel)
+                                    .font(.caption2)
+                                    .foregroundColor(textTertiary)
+                            }
+                        }
+                    }
                 )
             }
 
             // Secondary metrics row (max 2 for glanceability)
-            HStack(spacing: 12) {
+            HStack(spacing: AppTheme.Spacing.md) {
                 secondaryMetricCard(
                     value: UnitFormatter.formatPaceTime(minutesPerMile: recordingService.gpsService.averagePace),
                     label: "Avg Pace"
@@ -270,12 +331,12 @@ struct ActiveRecordingView: View {
                 )
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, AppTheme.Spacing.xl)
     }
 
     private func primaryMetricCard(value: String, unit: String, label: String, icon: String) -> some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .lastTextBaseline, spacing: 4) {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            HStack(alignment: .lastTextBaseline, spacing: AppTheme.Spacing.xs) {
                 Text(value)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(textPrimary)
@@ -286,7 +347,7 @@ struct ActiveRecordingView: View {
                     .foregroundColor(textSecondary)
             }
 
-            HStack(spacing: 4) {
+            HStack(spacing: AppTheme.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.caption)
                 Text(label)
@@ -295,15 +356,81 @@ struct ActiveRecordingView: View {
             .foregroundColor(textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .padding(.vertical, AppTheme.Spacing.lg)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
                 .fill(themeManager.isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
         )
     }
 
+    /// Expandable primary metric card with tap-to-reveal additional context
+    @ViewBuilder
+    private func expandablePrimaryMetricCard<Content: View>(
+        value: String,
+        unit: String,
+        label: String,
+        icon: String,
+        metric: ExpandedMetric,
+        @ViewBuilder expandedContent: () -> Content
+    ) -> some View {
+        let isExpanded = expandedMetric == metric
+
+        VStack(spacing: AppTheme.Spacing.sm) {
+            // Main metric display
+            HStack(alignment: .lastTextBaseline, spacing: AppTheme.Spacing.xs) {
+                Text(value)
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(textPrimary)
+                    .monospacedDigit()
+                Text(unit)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(textSecondary)
+            }
+
+            // Label with expand indicator
+            HStack(spacing: AppTheme.Spacing.xs) {
+                Image(systemName: icon)
+                    .font(.caption)
+                Text(label)
+                    .font(.caption)
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(textTertiary)
+            }
+            .foregroundColor(textSecondary)
+
+            // Expanded content with animation
+            if isExpanded {
+                Divider()
+                    .background(textTertiary.opacity(0.3))
+                    .padding(.horizontal, AppTheme.Spacing.md)
+
+                expandedContent()
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, AppTheme.Spacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
+                .fill(themeManager.isDarkMode ? Color.white.opacity(isExpanded ? 0.12 : 0.08) : Color.black.opacity(isExpanded ? 0.06 : 0.04))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            impactFeedback.impactOccurred()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                if expandedMetric == metric {
+                    expandedMetric = nil
+                } else {
+                    expandedMetric = metric
+                }
+            }
+        }
+    }
+
     private func secondaryMetricCard(value: String, label: String) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: AppTheme.Spacing.xs) {
             Text(value)
                 .font(.headline)
                 .fontWeight(.semibold)
@@ -314,9 +441,9 @@ struct ActiveRecordingView: View {
                 .foregroundColor(textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, AppTheme.Spacing.md)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
                 .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
         )
     }
@@ -324,33 +451,36 @@ struct ActiveRecordingView: View {
     // MARK: - Auto Pause Indicator
 
     private var autoPauseIndicator: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppTheme.Spacing.sm) {
             Image(systemName: "pause.circle.fill")
                 .foregroundColor(.orange)
             Text("Auto-paused - Start moving to resume")
                 .font(.subheadline)
                 .foregroundColor(textSecondary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.vertical, AppTheme.Spacing.md)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
                 .fill(Color.orange.opacity(0.15))
         )
-        .padding(.horizontal, 20)
+        .padding(.horizontal, AppTheme.Spacing.xl)
     }
 
     // MARK: - Control Buttons
 
     private var controlButtons: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: AppTheme.Spacing.xxl) {
             // Pause/Resume button
             Button(action: togglePauseResume) {
-                VStack(spacing: 6) {
+                VStack(spacing: AppTheme.Spacing.xs) {
                     Image(systemName: pauseResumeIcon)
                         .font(.title)
                         .foregroundColor(.white)
-                        .frame(width: 80, height: 80)
+                        .frame(
+                            width: AppTheme.Layout.touchTargetMotionPreferred,
+                            height: AppTheme.Layout.touchTargetMotionPreferred
+                        )
                         .background(pauseResumeColor, in: Circle())
                         .shadow(color: pauseResumeColor.opacity(0.4), radius: 10, x: 0, y: 4)
 
@@ -365,11 +495,14 @@ struct ActiveRecordingView: View {
 
             // Stop button
             Button(action: triggerStopConfirmation) {
-                VStack(spacing: 6) {
+                VStack(spacing: AppTheme.Spacing.xs) {
                     Image(systemName: "stop.fill")
                         .font(.title)
                         .foregroundColor(.white)
-                        .frame(width: 80, height: 80)
+                        .frame(
+                            width: AppTheme.Layout.touchTargetMotionPreferred,
+                            height: AppTheme.Layout.touchTargetMotionPreferred
+                        )
                         .background(.red, in: Circle())
                         .shadow(color: Color.red.opacity(0.4), radius: 10, x: 0, y: 4)
 
@@ -380,7 +513,7 @@ struct ActiveRecordingView: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, AppTheme.Spacing.xl)
     }
     
     // MARK: - Computed Properties
