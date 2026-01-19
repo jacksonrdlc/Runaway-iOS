@@ -9,13 +9,12 @@ struct ActivitiesView: View {
     @EnvironmentObject var realtimeService: RealtimeService
     @EnvironmentObject var themeManager: ThemeManager
     @State private var selectedActivity: LocalActivity?
-    @State private var showingRecording = false
 
     private var colors: (background: Color, textPrimary: Color, textSecondary: Color) {
         if themeManager.isDarkMode {
             return (AppTheme.Colors.DarkMode.background, AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
         } else {
-            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+            return (AppTheme.Colors.LightMode.background, AppTheme.Colors.LightMode.textPrimary, AppTheme.Colors.LightMode.textSecondary)
         }
     }
 
@@ -53,8 +52,8 @@ struct ActivitiesView: View {
                     } else {
                         ScrollView {
                             VStack(spacing: AppTheme.Spacing.lg) {
-                                // Activity Commitment Card
-                                ActivityCommitmentCard()
+                                // Compact Commitment Card
+                                CompactCommitmentCard()
                                     .padding(.horizontal, AppTheme.Spacing.md)
 
                                 // Empty state
@@ -66,8 +65,8 @@ struct ActivitiesView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
-                            // Activity Commitment Card
-                            ActivityCommitmentCard()
+                            // Compact Commitment Card
+                            CompactCommitmentCard()
                                 .padding(.horizontal, AppTheme.Spacing.md)
 
                             // Activities List
@@ -93,38 +92,11 @@ struct ActivitiesView: View {
                     }
                 }
             }
-            
-            // Floating Action Button
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        showingRecording = true
-                    }) {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.black)
-                            .frame(width: AppTheme.Layout.fabSize, height: AppTheme.Layout.fabSize)
-                            .background(AppTheme.Colors.accentGradient)
-                            .clipShape(Circle())
-                            .themeShadow(.accentGlow)
-                    }
-                    .accessibilityLabel("Start new activity")
-                    .accessibilityHint("Double tap to begin recording a workout")
-                    .padding(.trailing, AppTheme.Layout.fabOffset)
-                    .padding(.bottom, AppTheme.Layout.fabOffset)
-                }
-            }
-            
+
             .sheet(item: $selectedActivity) { activity in
                 NavigationView {
                     ActivityDetailView(activity: activity)
                 }
-            }
-            .fullScreenCover(isPresented: $showingRecording) {
-                PreRecordingView()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

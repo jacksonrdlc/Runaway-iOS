@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Critical Design Documents
+
+**IMPORTANT:** Before making ANY UI/UX changes, review these documents:
+
+- **[UX Design Principles](/.claude/UX-DESIGN-PRINCIPLES.md)** - Core design philosophy, three-tier information architecture, context-aware design patterns, and component guidelines. All UI work MUST follow these principles.
+
 ## Build Commands
 
 ### Development Build

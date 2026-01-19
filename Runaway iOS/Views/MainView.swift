@@ -16,147 +16,77 @@ struct MainView: View {
     @Environment(AppRouter.self) private var router
     @State var selectedTab = 0
     @State var isDataReady: Bool = false
+    @State private var showRecording = false
 
     private var toolbarScheme: ColorScheme {
         themeManager.isDarkMode ? .dark : .light
     }
 
+    private var backgroundColor: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+    }
+
     var body: some View {
         if isDataReady {
-            TabView(selection: $selectedTab) {
-                NavigationStack(path: Bindable(router).path) {
-                    ActivitiesView()
-                        .navigationTitle("Log Book")
-                        .navigationBarTitleDisplayMode(.large)
-                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                        .toolbarBackground(.visible, for: .navigationBar)
-                        .navigationDestination(for: AppRouter.Route.self) { route in
-                            router.destination(for: route)
-                        }
-                }
-                .tabItem {
-                    Label("Feed", systemImage: "newspaper")
-                }
-                .tag(0)
-
-                NavigationStack(path: Bindable(router).path) {
-                    TrainingView()
-                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                        .toolbarBackground(.visible, for: .navigationBar)
-                        .navigationDestination(for: AppRouter.Route.self) { route in
-                            router.destination(for: route)
-                        }
-                }
-                .tabItem {
-                    Label("Performance", systemImage: "chart.bar.fill")
-                }
-                .tag(1)
-
-                NavigationStack(path: Bindable(router).path) {
-                    PlanView()
-                        .environmentObject(dataManager)
-                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                        .toolbarBackground(.visible, for: .navigationBar)
-                        .navigationDestination(for: AppRouter.Route.self) { route in
-                            router.destination(for: route)
-                        }
-                }
-                .tabItem {
-                    Label("Plan", systemImage: "calendar.badge.clock")
-                }
-                .tag(2)
-
-                NavigationStack(path: Bindable(router).path) {
-                    ResearchView()
-                        .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                        .toolbarBackground(.visible, for: .navigationBar)
-                        .navigationDestination(for: AppRouter.Route.self) { route in
-                            router.destination(for: route)
-                        }
-                }
-                .tabItem {
-                    Label("Research", systemImage: "flask")
-                }
-                .tag(3)
-
-                NavigationStack(path: Bindable(router).path) {
-                    Group {
-                        if let athlete = dataManager.athlete, let stats = dataManager.stats {
-                            AthleteView(athlete: athlete, stats: stats)
-                                .navigationTitle("Profile")
+            ZStack(alignment: .bottom) {
+                // Tab Content
+                Group {
+                    switch selectedTab {
+                    case 0:
+                        NavigationStack(path: Bindable(router).path) {
+                            ActivitiesView()
+                                .navigationTitle("Activities")
                                 .navigationBarTitleDisplayMode(.large)
-                                .toolbar {
-                                    ToolbarItem(placement: .navigationBarTrailing) {
-                                        Button(action: {
-                                            router.navigate(to: .settings)
-                                        }) {
-                                            Image(systemName: "gearshape.fill")
-                                                .foregroundColor(AppTheme.Colors.accent)
-                                        }
-                                    }
+                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
+                                .toolbarBackground(.visible, for: .navigationBar)
+                                .navigationDestination(for: AppRouter.Route.self) { route in
+                                    router.destination(for: route)
                                 }
-                        } else if dataManager.isLoadingAthlete {
-                            // Still loading - show spinner
-                            VStack(spacing: AppTheme.Spacing.md) {
-                                ProgressView()
-                                    .scaleEffect(1.2)
-                                    .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
-                                Text("Loading profile...")
-                                    .font(AppTheme.Typography.body)
-                                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
-                            .navigationTitle("Profile")
-                            .navigationBarTitleDisplayMode(.large)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    Button(action: {
-                                        router.navigate(to: .settings)
-                                    }) {
-                                        Image(systemName: "gearshape.fill")
-                                            .foregroundColor(AppTheme.Colors.accent)
-                                    }
-                                }
-                            }
-                        } else {
-                            // Done loading but no profile - attempt reload
-                            ProfileLoadingErrorView(onRetry: {
-                                Task {
-                                    if let userId = userSession.userId {
-                                        await dataManager.loadAllData(for: userId)
-                                    }
-                                }
-                            })
-                            .navigationTitle("Profile")
-                            .navigationBarTitleDisplayMode(.large)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    Button(action: {
-                                        router.navigate(to: .settings)
-                                    }) {
-                                        Image(systemName: "gearshape.fill")
-                                            .foregroundColor(AppTheme.Colors.accent)
-                                    }
-                                }
-                            }
                         }
-                    }
-                    .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                    .toolbarBackground(.visible, for: .navigationBar)
-                    .navigationDestination(for: AppRouter.Route.self) { route in
-                        router.destination(for: route)
+                    case 1:
+                        NavigationStack(path: Bindable(router).path) {
+                            TrainingView()
+                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
+                                .toolbarBackground(.visible, for: .navigationBar)
+                                .navigationDestination(for: AppRouter.Route.self) { route in
+                                    router.destination(for: route)
+                                }
+                        }
+                    case 3:
+                        NavigationStack(path: Bindable(router).path) {
+                            PlanView()
+                                .environmentObject(dataManager)
+                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
+                                .toolbarBackground(.visible, for: .navigationBar)
+                                .navigationDestination(for: AppRouter.Route.self) { route in
+                                    router.destination(for: route)
+                                }
+                        }
+                    case 4:
+                        NavigationStack(path: Bindable(router).path) {
+                            profileContent
+                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
+                                .toolbarBackground(.visible, for: .navigationBar)
+                                .navigationDestination(for: AppRouter.Route.self) { route in
+                                    router.destination(for: route)
+                                }
+                        }
+                    default:
+                        // Tab 2 is Record - handled by showRecording
+                        EmptyView()
                     }
                 }
-                .tabItem {
-                    Label("Profile", systemImage: "person.fill")
-                }
-                .tag(4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.bottom, 80) // Space for custom tab bar
+
+                // Custom Tab Bar
+                CustomTabBar(selectedTab: $selectedTab, showRecording: $showRecording)
             }
-            .accentColor(AppTheme.Colors.accent)
+            .ignoresSafeArea(.keyboard)
+            .background(backgroundColor)
             .onChange(of: selectedTab) { oldTab, newTab in
                 // Track tab selection analytics
-                let tabNames = ["Feed", "Performance", "Plan", "Research", "Profile"]
+                let tabNames = ["Activities", "Progress", "Record", "Plan", "Profile"]
                 let tabName = newTab < tabNames.count ? tabNames[newTab] : "Unknown"
                 AnalyticsService.shared.track(.tabSelected, category: .navigation, properties: [
                     "tab_name": tabName,
@@ -164,11 +94,19 @@ struct MainView: View {
                     "previous_tab": oldTab
                 ])
             }
+            .fullScreenCover(isPresented: $showRecording) {
+                PreRecordingView()
+            }
+            .onChange(of: showRecording) { wasShowing, isShowing in
+                // Return to Activities tab after recording is dismissed
+                if wasShowing && !isShowing {
+                    selectedTab = 0
+                }
+            }
             .task {
                 await loadInitialData()
                 realtimeService.startRealtimeSubscription()
             }
-            .background((themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea())
         } else {
             ZStack {
                 (themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
@@ -205,6 +143,74 @@ struct MainView: View {
             }
             .task {
                 await loadInitialData()
+            }
+        }
+    }
+
+    // MARK: - Profile Content
+
+    @ViewBuilder
+    private var profileContent: some View {
+        Group {
+            if let athlete = dataManager.athlete, let stats = dataManager.stats {
+                AthleteView(athlete: athlete, stats: stats)
+                    .navigationTitle("Profile")
+                    .navigationBarTitleDisplayMode(.large)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button(action: {
+                                router.navigate(to: .settings)
+                            }) {
+                                Image(systemName: "gearshape.fill")
+                                    .foregroundColor(AppTheme.Colors.accent)
+                            }
+                        }
+                    }
+            } else if dataManager.isLoadingAthlete {
+                // Still loading - show spinner
+                VStack(spacing: AppTheme.Spacing.md) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
+                    Text("Loading profile...")
+                        .font(AppTheme.Typography.body)
+                        .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(backgroundColor)
+                .navigationTitle("Profile")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            router.navigate(to: .settings)
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .foregroundColor(AppTheme.Colors.accent)
+                        }
+                    }
+                }
+            } else {
+                // Done loading but no profile - attempt reload
+                ProfileLoadingErrorView(onRetry: {
+                    Task {
+                        if let userId = userSession.userId {
+                            await dataManager.loadAllData(for: userId)
+                        }
+                    }
+                })
+                .navigationTitle("Profile")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            router.navigate(to: .settings)
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .foregroundColor(AppTheme.Colors.accent)
+                        }
+                    }
+                }
             }
         }
     }

@@ -42,7 +42,7 @@ struct AthleteView: View {
                     
                     // Detailed Stats Cards
                     LazyVStack(spacing: AppTheme.Spacing.md) {
-                        WeeklyStatsCard(stats: stats)
+                        AthleteWeeklyStatsCard(stats: stats)
                         MonthlyStatsCard(stats: stats)
                         AllTimeStatsCard(stats: stats)
                     }
@@ -178,8 +178,8 @@ struct QuickStatItem: View {
     }
 }
 
-// MARK: - Weekly Stats Card
-struct WeeklyStatsCard: View {
+// MARK: - Athlete Weekly Stats Card
+struct AthleteWeeklyStatsCard: View {
     @ObservedObject private var themeManager = ThemeManager.shared
 
     let stats: AthleteStats
