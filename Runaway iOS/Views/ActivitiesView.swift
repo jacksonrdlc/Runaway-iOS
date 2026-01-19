@@ -53,6 +53,10 @@ struct ActivitiesView: View {
                     } else {
                         ScrollView {
                             VStack(spacing: AppTheme.Spacing.lg) {
+                                // Weekly Stats Card (shows goal even with 0 activities)
+                                WeeklyStatsCard()
+                                    .padding(.horizontal, AppTheme.Spacing.md)
+
                                 // Activity Commitment Card
                                 ActivityCommitmentCard()
                                     .padding(.horizontal, AppTheme.Spacing.md)
@@ -66,6 +70,10 @@ struct ActivitiesView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
+                            // Weekly Stats Card (Tier 2 - Quick View)
+                            WeeklyStatsCard()
+                                .padding(.horizontal, AppTheme.Spacing.md)
+
                             // Activity Commitment Card
                             ActivityCommitmentCard()
                                 .padding(.horizontal, AppTheme.Spacing.md)

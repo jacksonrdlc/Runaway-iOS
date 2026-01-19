@@ -7,8 +7,12 @@
 
 import SwiftUI
 import CoreLocation
+import UIKit
 
 struct ActiveRecordingView: View {
+    // MARK: - Haptic Feedback
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+    private let notificationFeedback = UINotificationFeedbackGenerator()
     @ObservedObject var recordingService: ActivityRecordingService
     let activityType: String
     let customName: String
@@ -360,7 +364,7 @@ struct ActiveRecordingView: View {
                     Image(systemName: pauseResumeIcon)
                         .font(.title)
                         .foregroundColor(.white)
-                        .frame(width: 70, height: 70)
+                        .frame(width: 80, height: 80)
                         .background(pauseResumeColor, in: Circle())
                         .shadow(color: pauseResumeColor.opacity(0.4), radius: 10, x: 0, y: 4)
 
@@ -374,14 +378,12 @@ struct ActiveRecordingView: View {
             .opacity(recordingService.isAutopaused ? 0.5 : 1.0)
 
             // Stop button
-            Button(action: {
-                showingStopConfirmation = true
-            }) {
+            Button(action: triggerStopConfirmation) {
                 VStack(spacing: 6) {
                     Image(systemName: "stop.fill")
                         .font(.title)
                         .foregroundColor(.white)
-                        .frame(width: 70, height: 70)
+                        .frame(width: 80, height: 80)
                         .background(.red, in: Circle())
                         .shadow(color: Color.red.opacity(0.4), radius: 10, x: 0, y: 4)
 
@@ -433,6 +435,7 @@ struct ActiveRecordingView: View {
     // MARK: - Methods
 
     private func togglePauseResume() {
+        impactFeedback.impactOccurred()
         switch recordingService.state {
         case .recording:
             recordingService.pauseRecording()
@@ -444,13 +447,20 @@ struct ActiveRecordingView: View {
     }
 
     private func stopRecording() {
+        notificationFeedback.notificationOccurred(.success)
         recordingService.stopRecording()
         showingPostRecording = true
     }
 
     private func discardRecording() {
+        notificationFeedback.notificationOccurred(.warning)
         recordingService.discardRecording()
         dismiss()
+    }
+
+    private func triggerStopConfirmation() {
+        impactFeedback.impactOccurred()
+        showingStopConfirmation = true
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
