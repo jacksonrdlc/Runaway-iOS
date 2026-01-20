@@ -25,9 +25,9 @@ struct TabBarButton: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 2) {
             Image(systemName: icon)
-                .font(.system(size: 22))
+                .font(.system(size: 20))
                 .fontWeight(isSelected ? .semibold : .regular)
 
             Text(label)

@@ -36,7 +36,7 @@ struct MainView: View {
                         NavigationStack(path: Bindable(router).path) {
                             ActivitiesView()
                                 .navigationTitle("Activities")
-                                .navigationBarTitleDisplayMode(.large)
+                                .navigationBarTitleDisplayMode(.inline)
                                 .toolbarColorScheme(toolbarScheme, for: .navigationBar)
                                 .toolbarBackground(.visible, for: .navigationBar)
                                 .navigationDestination(for: AppRouter.Route.self) { route in
@@ -77,7 +77,7 @@ struct MainView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.bottom, 80) // Space for custom tab bar
+                .padding(.bottom, 65) // Space for custom tab bar
 
                 // Custom Tab Bar
                 CustomTabBar(selectedTab: $selectedTab, showRecording: $showRecording)
@@ -155,7 +155,7 @@ struct MainView: View {
             if let athlete = dataManager.athlete, let stats = dataManager.stats {
                 AthleteView(athlete: athlete, stats: stats)
                     .navigationTitle("Profile")
-                    .navigationBarTitleDisplayMode(.large)
+                    .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button(action: {
@@ -179,7 +179,7 @@ struct MainView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(backgroundColor)
                 .navigationTitle("Profile")
-                .navigationBarTitleDisplayMode(.large)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {
@@ -200,7 +200,7 @@ struct MainView: View {
                     }
                 })
                 .navigationTitle("Profile")
-                .navigationBarTitleDisplayMode(.large)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button(action: {

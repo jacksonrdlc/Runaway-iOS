@@ -133,7 +133,7 @@ struct TrainingView: View {
             }
         }
         .navigationTitle("Progress")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             #if DEBUG
             ToolbarItem(placement: .navigationBarTrailing) {
