@@ -77,7 +77,7 @@ struct MainView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.bottom, 80) // Space for custom tab bar
+                .padding(.bottom, 65) // Space for custom tab bar
 
                 // Custom Tab Bar
                 CustomTabBar(selectedTab: $selectedTab, showRecording: $showRecording)

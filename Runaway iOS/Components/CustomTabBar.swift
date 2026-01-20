@@ -47,9 +47,9 @@ struct CustomTabBar: View {
             TabBarButton(icon: "person.fill", label: "Profile", isSelected: selectedTab == 4)
                 .onTapGesture { selectedTab = 4 }
         }
-        .padding(.horizontal, AppTheme.Spacing.md)
-        .padding(.top, AppTheme.Spacing.sm)
-        .padding(.bottom, 28) // Account for home indicator
+        .padding(.horizontal, AppTheme.Spacing.sm)
+        .padding(.top, 6)
+        .padding(.bottom, 20) // Account for home indicator
         .background(
             Rectangle()
                 .fill(backgroundColor)
@@ -69,15 +69,15 @@ struct CustomTabBar: View {
             ZStack {
                 Circle()
                     .fill(AppTheme.Colors.accentGradient)
-                    .frame(width: 56, height: 56)
-                    .shadow(color: AppTheme.Colors.accent.opacity(0.4), radius: 8, x: 0, y: 4)
+                    .frame(width: 50, height: 50)
+                    .shadow(color: AppTheme.Colors.accent.opacity(0.4), radius: 6, x: 0, y: 3)
 
                 Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(.black)
             }
         }
-        .offset(y: -12) // Lift above tab bar
+        .offset(y: -8) // Lift above tab bar
     }
 }
 
