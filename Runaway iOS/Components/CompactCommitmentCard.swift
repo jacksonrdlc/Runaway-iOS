@@ -242,33 +242,403 @@ struct FullCommitmentSheet: View {
 
     @ObservedObject private var themeManager = ThemeManager.shared
 
+    @State private var showingActivityPicker = false
+    @State private var showingDeleteConfirmation = false
+    @State private var selectedActivityName = ""
+    @State private var isUpdating = false
+    @State private var showGoalSection = false
+
     private var backgroundColor: Color {
         themeManager.isDarkMode
             ? AppTheme.Colors.DarkMode.background
             : AppTheme.Colors.LightMode.background
     }
 
+    private var textPrimary: Color {
+        themeManager.isDarkMode
+            ? AppTheme.Colors.DarkMode.textPrimary
+            : AppTheme.Colors.LightMode.textPrimary
+    }
+
+    private var textSecondary: Color {
+        themeManager.isDarkMode
+            ? AppTheme.Colors.DarkMode.textSecondary
+            : AppTheme.Colors.LightMode.textSecondary
+    }
+
+    private var commitment: DailyCommitment? {
+        dataManager.todaysCommitment
+    }
+
     var body: some View {
         ZStack {
             backgroundColor.ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    // Embed the full ActivityCommitmentCard
-                    ActivityCommitmentCard()
-                        .environmentObject(dataManager)
+            VStack(spacing: 0) {
+                if let commitment = commitment {
+                    if commitment.isFulfilled {
+                        fulfilledView(commitment)
+                    } else {
+                        activeCommitmentView(commitment)
+                    }
+                } else {
+                    noCommitmentView
                 }
-                .padding(AppTheme.Spacing.md)
             }
         }
-        .navigationTitle("Today's Commitment")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") { dismiss() }
+                    .fontWeight(.medium)
                     .foregroundColor(AppTheme.Colors.accent)
             }
         }
+        .sheet(isPresented: $showingActivityPicker) {
+            ActivityTypePickerSheet(
+                selectedTypeName: $selectedActivityName,
+                title: "Change Activity",
+                subtitle: nil,
+                onSelect: { activityType in
+                    updateCommitment(to: activityType.name)
+                }
+            )
+        }
+        .alert("Remove Commitment?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                deleteCommitment()
+            }
+        } message: {
+            Text("You can set a new one anytime.")
+        }
+    }
+
+    // MARK: - Active Commitment View
+
+    @ViewBuilder
+    private func activeCommitmentView(_ commitment: DailyCommitment) -> some View {
+        VStack(spacing: AppTheme.Spacing.xl) {
+            Spacer()
+                .frame(height: 40)
+
+            // Hero Icon
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Colors.accent.opacity(0.15))
+                    .frame(width: 100, height: 100)
+
+                Image(systemName: commitment.activityType.icon)
+                    .font(.system(size: 44))
+                    .foregroundColor(AppTheme.Colors.accent)
+            }
+
+            // Main Message
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("You're committed to")
+                    .font(.title3)
+                    .foregroundColor(textSecondary)
+
+                Text(commitment.activityType.displayName)
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(textPrimary)
+
+                Text("today")
+                    .font(.title3)
+                    .foregroundColor(textSecondary)
+            }
+
+            // Time Remaining
+            if commitment.timeRemainingToday > 0 {
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Image(systemName: "clock")
+                        .font(.caption)
+                    Text(commitment.timeRemainingText)
+                        .font(.subheadline)
+                }
+                .foregroundColor(textSecondary)
+                .padding(.top, AppTheme.Spacing.sm)
+            }
+
+            Spacer()
+
+            // Goal Section (Optional)
+            goalSection(for: commitment)
+
+            Spacer()
+
+            // Actions
+            VStack(spacing: AppTheme.Spacing.md) {
+                // Change Activity
+                Button(action: {
+                    selectedActivityName = commitment.activityType.displayName
+                    showingActivityPicker = true
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("Change activity")
+                    }
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.Colors.accent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .background(AppTheme.Colors.accent.opacity(0.1))
+                    .cornerRadius(AppTheme.CornerRadius.medium)
+                }
+
+                // Remove
+                Button(action: { showingDeleteConfirmation = true }) {
+                    Text("Remove commitment")
+                        .font(.subheadline)
+                        .foregroundColor(textSecondary)
+                }
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.bottom, AppTheme.Spacing.xl)
+            .disabled(isUpdating)
+            .opacity(isUpdating ? 0.5 : 1)
+        }
+    }
+
+    // MARK: - Goal Section
+
+    @ViewBuilder
+    private func goalSection(for commitment: DailyCommitment) -> some View {
+        let supportsGoal = commitment.activityType.supportsDistanceGoal || commitment.activityType.supportsTimeGoal
+
+        if supportsGoal {
+            VStack(spacing: AppTheme.Spacing.md) {
+                if !showGoalSection {
+                    Button(action: { withAnimation { showGoalSection = true } }) {
+                        HStack(spacing: AppTheme.Spacing.sm) {
+                            Image(systemName: "target")
+                                .foregroundColor(AppTheme.Colors.accent)
+                            Text("Set a goal?")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(textPrimary)
+                            Text("Optional")
+                                .font(.caption)
+                                .foregroundColor(textSecondary)
+                        }
+                        .padding(.horizontal, AppTheme.Spacing.lg)
+                        .padding(.vertical, AppTheme.Spacing.md)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                                .stroke(textSecondary.opacity(0.2), lineWidth: 1)
+                        )
+                    }
+                } else {
+                    goalInputView(for: commitment)
+                }
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+        }
+    }
+
+    @ViewBuilder
+    private func goalInputView(for commitment: DailyCommitment) -> some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            HStack {
+                Text("Today's Goal")
+                    .font(.headline)
+                    .foregroundColor(textPrimary)
+                Spacer()
+                Button(action: { withAnimation { showGoalSection = false } }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(textSecondary)
+                }
+            }
+
+            HStack(spacing: AppTheme.Spacing.md) {
+                if commitment.activityType.supportsDistanceGoal {
+                    GoalOptionButton(
+                        icon: "ruler",
+                        label: "Distance",
+                        sublabel: goalDistanceLabel(for: commitment.activityType)
+                    )
+                }
+
+                if commitment.activityType.supportsTimeGoal {
+                    GoalOptionButton(
+                        icon: "timer",
+                        label: "Time",
+                        sublabel: goalTimeLabel(for: commitment.activityType)
+                    )
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                .fill(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        )
+    }
+
+    private func goalDistanceLabel(for activityType: CommitmentActivityType) -> String {
+        switch activityType {
+        case .run: return "e.g. 3 miles"
+        case .walk: return "e.g. 2 miles"
+        default: return "Set distance"
+        }
+    }
+
+    private func goalTimeLabel(for activityType: CommitmentActivityType) -> String {
+        switch activityType {
+        case .run: return "e.g. 30 min"
+        case .walk: return "e.g. 45 min"
+        case .yoga: return "e.g. 20 min"
+        case .workout: return "e.g. 45 min"
+        }
+    }
+
+    // MARK: - Fulfilled View
+
+    @ViewBuilder
+    private func fulfilledView(_ commitment: DailyCommitment) -> some View {
+        VStack(spacing: AppTheme.Spacing.xl) {
+            Spacer()
+
+            // Hero Icon
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Colors.success.opacity(0.15))
+                    .frame(width: 100, height: 100)
+
+                Image(systemName: "checkmark")
+                    .font(.system(size: 44, weight: .bold))
+                    .foregroundColor(AppTheme.Colors.success)
+            }
+
+            // Message
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("Done! 🎉")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundColor(textPrimary)
+
+                Text("You completed your \(commitment.activityType.displayName.lowercased())")
+                    .font(.title3)
+                    .foregroundColor(textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Spacer()
+            Spacer()
+        }
+    }
+
+    // MARK: - No Commitment View
+
+    @ViewBuilder
+    private var noCommitmentView: some View {
+        VStack(spacing: AppTheme.Spacing.xl) {
+            Spacer()
+
+            Image(systemName: "plus.circle")
+                .font(.system(size: 60))
+                .foregroundColor(textSecondary.opacity(0.5))
+
+            Text("No commitment set")
+                .font(.title2)
+                .foregroundColor(textSecondary)
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Actions
+
+    private func updateCommitment(to activityName: String) {
+        let activityType = mapToCommitmentType(activityName)
+
+        Task {
+            isUpdating = true
+            defer { isUpdating = false }
+
+            do {
+                try await dataManager.updateCommitment(to: activityType)
+            } catch {
+                print("Failed to update commitment: \(error)")
+            }
+        }
+    }
+
+    private func deleteCommitment() {
+        Task {
+            isUpdating = true
+            defer { isUpdating = false }
+
+            do {
+                try await dataManager.deleteCommitment()
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                print("Failed to delete commitment: \(error)")
+            }
+        }
+    }
+
+    private func mapToCommitmentType(_ name: String) -> CommitmentActivityType {
+        switch name.lowercased() {
+        case "run": return .run
+        case "walk": return .walk
+        case "yoga": return .yoga
+        case "weight training", "weighttraining", "workout": return .workout
+        default: return .run
+        }
+    }
+}
+
+// MARK: - Goal Option Button
+
+private struct GoalOptionButton: View {
+    let icon: String
+    let label: String
+    let sublabel: String
+
+    @ObservedObject private var themeManager = ThemeManager.shared
+
+    var body: some View {
+        Button(action: {
+            // TODO: Implement goal setting
+        }) {
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(AppTheme.Colors.accent)
+
+                Text(label)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+                Text(sublabel)
+                    .font(.caption)
+                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, AppTheme.Spacing.md)
+            .background(AppTheme.Colors.accent.opacity(0.08))
+            .cornerRadius(AppTheme.CornerRadius.medium)
+        }
+    }
+}
+
+// MARK: - CommitmentActivityType Extensions
+
+extension CommitmentActivityType {
+    var supportsDistanceGoal: Bool {
+        switch self {
+        case .run, .walk: return true
+        case .yoga, .workout: return false
+        }
+    }
+
+    var supportsTimeGoal: Bool {
+        return true // All activities support time goals
     }
 }
 
