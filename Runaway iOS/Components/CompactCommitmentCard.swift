@@ -15,6 +15,7 @@ struct CompactCommitmentCard: View {
     @State private var isCreatingCommitment = false
 
     @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var goalStore = DailyGoalStore.shared
 
     private var backgroundColor: Color {
         // Slightly lighter/elevated background to stand out from activity cards
@@ -208,6 +209,16 @@ struct CompactCommitmentCard: View {
                 .font(AppTheme.Typography.body)
                 .fontWeight(.semibold)
                 .foregroundColor(textPrimary)
+
+            // Show goal if set
+            if let goal = goalStore.todaysGoal {
+                Text("•")
+                    .foregroundColor(textSecondary)
+                Text(goal.type == .distance ? "\(Int(goal.value)) mi" : "\(Int(goal.value)) min")
+                    .font(AppTheme.Typography.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.Colors.accent)
+            }
         }
 
         if commitment.timeRemainingToday > 0 {
@@ -241,6 +252,7 @@ struct FullCommitmentSheet: View {
     @EnvironmentObject var dataManager: DataManager
 
     @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var goalStore = DailyGoalStore.shared
 
     @State private var showingActivityPicker = false
     @State private var showingDeleteConfirmation = false
@@ -249,9 +261,8 @@ struct FullCommitmentSheet: View {
     @State private var showGoalSection = false
     @State private var selectedGoalType: GoalType? = nil
     @State private var goalValue: String = ""
-    @State private var savedGoal: (type: GoalType, value: Double)? = nil
 
-    enum GoalType {
+    enum GoalType: String {
         case distance, time
     }
 
@@ -417,7 +428,7 @@ struct FullCommitmentSheet: View {
 
         if supportsGoal {
             VStack(spacing: AppTheme.Spacing.md) {
-                if let goal = savedGoal {
+                if let goal = goalStore.todaysGoal {
                     // Show saved goal
                     HStack(spacing: AppTheme.Spacing.sm) {
                         Image(systemName: goal.type == .distance ? "ruler" : "timer")
@@ -435,7 +446,7 @@ struct FullCommitmentSheet: View {
                         Spacer()
 
                         Button(action: {
-                            withAnimation { savedGoal = nil }
+                            withAnimation { goalStore.clearGoal() }
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.body)
@@ -526,9 +537,10 @@ struct FullCommitmentSheet: View {
 
                         Button(action: {
                             if let value = Double(goalValue), value > 0 {
-                                savedGoal = (type: goalType, value: value)
+                                goalStore.setGoal(type: goalType, value: value)
                                 withAnimation {
                                     selectedGoalType = nil
+                                    goalValue = ""
                                     showGoalSection = false
                                 }
                             }
@@ -735,6 +747,65 @@ extension CommitmentActivityType {
 
     var supportsTimeGoal: Bool {
         return true // All activities support time goals
+    }
+}
+
+// MARK: - Daily Goal Store
+
+class DailyGoalStore: ObservableObject {
+    static let shared = DailyGoalStore()
+
+    private let userDefaults = UserDefaults.standard
+    private let goalTypeKey = "dailyGoal_type"
+    private let goalValueKey = "dailyGoal_value"
+    private let goalDateKey = "dailyGoal_date"
+
+    @Published var todaysGoal: (type: FullCommitmentSheet.GoalType, value: Double)?
+
+    private init() {
+        loadGoal()
+    }
+
+    func setGoal(type: FullCommitmentSheet.GoalType, value: Double) {
+        userDefaults.set(type.rawValue, forKey: goalTypeKey)
+        userDefaults.set(value, forKey: goalValueKey)
+        userDefaults.set(Date().startOfDay, forKey: goalDateKey)
+
+        todaysGoal = (type: type, value: value)
+    }
+
+    func clearGoal() {
+        userDefaults.removeObject(forKey: goalTypeKey)
+        userDefaults.removeObject(forKey: goalValueKey)
+        userDefaults.removeObject(forKey: goalDateKey)
+
+        todaysGoal = nil
+    }
+
+    private func loadGoal() {
+        // Check if goal was set today
+        guard let savedDate = userDefaults.object(forKey: goalDateKey) as? Date,
+              Calendar.current.isDate(savedDate, inSameDayAs: Date()) else {
+            // Goal is from a previous day - clear it
+            clearGoal()
+            return
+        }
+
+        guard let typeRaw = userDefaults.string(forKey: goalTypeKey),
+              let type = FullCommitmentSheet.GoalType(rawValue: typeRaw) else {
+            return
+        }
+
+        let value = userDefaults.double(forKey: goalValueKey)
+        if value > 0 {
+            todaysGoal = (type: type, value: value)
+        }
+    }
+}
+
+private extension Date {
+    var startOfDay: Date {
+        Calendar.current.startOfDay(for: self)
     }
 }
 
