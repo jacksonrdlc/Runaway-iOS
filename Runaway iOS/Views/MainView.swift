@@ -18,73 +18,66 @@ struct MainView: View {
     @State var isDataReady: Bool = false
     @State private var showRecording = false
 
-    private var toolbarScheme: ColorScheme {
-        themeManager.isDarkMode ? .dark : .light
-    }
-
     private var backgroundColor: Color {
         themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
     }
 
     var body: some View {
         if isDataReady {
-            ZStack(alignment: .bottom) {
-                // Tab Content
-                Group {
-                    switch selectedTab {
-                    case 0:
-                        NavigationStack(path: Bindable(router).path) {
-                            ActivitiesView()
-                                .navigationTitle("Activities")
-                                .navigationBarTitleDisplayMode(.inline)
-                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                                .toolbarBackground(.visible, for: .navigationBar)
-                                .navigationDestination(for: AppRouter.Route.self) { route in
-                                    router.destination(for: route)
-                                }
-                        }
-                    case 1:
-                        NavigationStack(path: Bindable(router).path) {
-                            TrainingView()
-                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                                .toolbarBackground(.visible, for: .navigationBar)
-                                .navigationDestination(for: AppRouter.Route.self) { route in
-                                    router.destination(for: route)
-                                }
-                        }
-                    case 3:
-                        NavigationStack(path: Bindable(router).path) {
-                            PlanView()
-                                .environmentObject(dataManager)
-                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                                .toolbarBackground(.visible, for: .navigationBar)
-                                .navigationDestination(for: AppRouter.Route.self) { route in
-                                    router.destination(for: route)
-                                }
-                        }
-                    case 4:
-                        NavigationStack(path: Bindable(router).path) {
-                            profileContent
-                                .toolbarColorScheme(toolbarScheme, for: .navigationBar)
-                                .toolbarBackground(.visible, for: .navigationBar)
-                                .navigationDestination(for: AppRouter.Route.self) { route in
-                                    router.destination(for: route)
-                                }
-                        }
-                    default:
-                        // Tab 2 is Record - handled by showRecording
-                        EmptyView()
+            TabView(selection: $selectedTab) {
+                Tab("Activities", systemImage: "figure.run", value: 0) {
+                    NavigationStack(path: Bindable(router).path) {
+                        ActivitiesView()
+                            .navigationTitle("Activities")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .navigationDestination(for: AppRouter.Route.self) { route in
+                                router.destination(for: route)
+                            }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.bottom, 65) // Space for custom tab bar
 
-                // Custom Tab Bar
-                CustomTabBar(selectedTab: $selectedTab, showRecording: $showRecording)
+                Tab("Progress", systemImage: "chart.bar.fill", value: 1) {
+                    NavigationStack(path: Bindable(router).path) {
+                        TrainingView()
+                            .navigationDestination(for: AppRouter.Route.self) { route in
+                                router.destination(for: route)
+                            }
+                    }
+                }
+
+                Tab("Record", systemImage: "plus.circle", value: 2) {
+                    // Empty - handled by tap action
+                    Color.clear
+                }
+
+                Tab("Plan", systemImage: "calendar", value: 3) {
+                    NavigationStack(path: Bindable(router).path) {
+                        PlanView()
+                            .environmentObject(dataManager)
+                            .navigationDestination(for: AppRouter.Route.self) { route in
+                                router.destination(for: route)
+                            }
+                    }
+                }
+
+                Tab("Profile", systemImage: "person", value: 4) {
+                    NavigationStack(path: Bindable(router).path) {
+                        profileContent
+                            .navigationDestination(for: AppRouter.Route.self) { route in
+                                router.destination(for: route)
+                            }
+                    }
+                }
             }
             .ignoresSafeArea(.keyboard)
-            .background(backgroundColor)
             .onChange(of: selectedTab) { oldTab, newTab in
+                // Intercept Record tab - show recording sheet instead
+                if newTab == 2 {
+                    selectedTab = oldTab // Stay on previous tab
+                    showRecording = true
+                    return
+                }
+
                 // Track tab selection analytics
                 let tabNames = ["Activities", "Progress", "Record", "Plan", "Profile"]
                 let tabName = newTab < tabNames.count ? tabNames[newTab] : "Unknown"

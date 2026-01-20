@@ -28,28 +28,28 @@ struct CustomTabBar: View {
     var body: some View {
         HStack(spacing: 0) {
             // Tab 0: Activities
-            TabBarButton(icon: "figure.run", label: "Activities", isSelected: selectedTab == 0)
+            TabBarButton(icon: "figure.run", selectedIcon: "figure.run", label: "Activities", isSelected: selectedTab == 0)
                 .onTapGesture { selectedTab = 0 }
 
             // Tab 1: Progress
-            TabBarButton(icon: "chart.bar.fill", label: "Progress", isSelected: selectedTab == 1)
+            TabBarButton(icon: "chart.bar", selectedIcon: "chart.bar.fill", label: "Progress", isSelected: selectedTab == 1)
                 .onTapGesture { selectedTab = 1 }
 
-            // Center: Record button (larger, prominent)
-            recordButton
-                .frame(maxWidth: .infinity)
+            // Center: Record button
+            TabBarButton(icon: "plus", selectedIcon: "plus", label: "Record", isSelected: false)
+                .onTapGesture { showRecording = true }
 
             // Tab 3: Plan
-            TabBarButton(icon: "calendar.badge.clock", label: "Plan", isSelected: selectedTab == 3)
+            TabBarButton(icon: "calendar", selectedIcon: "calendar", label: "Plan", isSelected: selectedTab == 3)
                 .onTapGesture { selectedTab = 3 }
 
             // Tab 4: Profile
-            TabBarButton(icon: "person.fill", label: "Profile", isSelected: selectedTab == 4)
+            TabBarButton(icon: "person", selectedIcon: "person.fill", label: "Profile", isSelected: selectedTab == 4)
                 .onTapGesture { selectedTab = 4 }
         }
-        .padding(.horizontal, AppTheme.Spacing.sm)
-        .padding(.top, 6)
-        .padding(.bottom, 20) // Account for home indicator
+        .padding(.horizontal, AppTheme.Spacing.xs)
+        .padding(.top, 4)
+        .padding(.bottom, 6) // Safe area handles home indicator
         .background(
             Rectangle()
                 .fill(backgroundColor)
@@ -64,21 +64,6 @@ struct CustomTabBar: View {
         )
     }
 
-    private var recordButton: some View {
-        Button(action: { showRecording = true }) {
-            ZStack {
-                Circle()
-                    .fill(AppTheme.Colors.accentGradient)
-                    .frame(width: 50, height: 50)
-                    .shadow(color: AppTheme.Colors.accent.opacity(0.4), radius: 6, x: 0, y: 3)
-
-                Image(systemName: "plus")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(.black)
-            }
-        }
-        .offset(y: -8) // Lift above tab bar
-    }
 }
 
 #Preview {
