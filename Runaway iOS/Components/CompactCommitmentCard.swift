@@ -10,6 +10,9 @@ import SwiftUI
 struct CompactCommitmentCard: View {
     @EnvironmentObject var dataManager: DataManager
     @State private var showingFullCommitment = false
+    @State private var showingActivityPicker = false
+    @State private var selectedActivityName = ""
+    @State private var isCreatingCommitment = false
 
     @ObservedObject private var themeManager = ThemeManager.shared
 
@@ -37,7 +40,7 @@ struct CompactCommitmentCard: View {
     }
 
     var body: some View {
-        Button(action: { showingFullCommitment = true }) {
+        Button(action: handleTap) {
             HStack(spacing: AppTheme.Spacing.md) {
                 // Status icon
                 statusIcon
@@ -57,10 +60,15 @@ struct CompactCommitmentCard: View {
 
                 Spacer()
 
-                // Action indicator
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(textSecondary)
+                // Loading or action indicator
+                if isCreatingCommitment {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(textSecondary)
+                }
             }
             .padding(AppTheme.Spacing.md)
             .background(
@@ -77,11 +85,59 @@ struct CompactCommitmentCard: View {
             .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
         }
         .buttonStyle(PlainButtonStyle())
+        .disabled(isCreatingCommitment)
         .sheet(isPresented: $showingFullCommitment) {
             NavigationView {
                 FullCommitmentSheet()
                     .environmentObject(dataManager)
             }
+        }
+        .sheet(isPresented: $showingActivityPicker) {
+            ActivityTypePickerSheet(
+                selectedTypeName: $selectedActivityName,
+                title: "Set Today's Commitment",
+                subtitle: "What activity will you commit to today?",
+                onSelect: { activityType in
+                    createCommitment(for: activityType.name)
+                }
+            )
+        }
+    }
+
+    // MARK: - Actions
+
+    private func handleTap() {
+        if dataManager.todaysCommitment != nil {
+            // Has commitment - show full sheet for viewing/editing
+            showingFullCommitment = true
+        } else {
+            // No commitment - go directly to activity picker
+            showingActivityPicker = true
+        }
+    }
+
+    private func createCommitment(for activityName: String) {
+        let activityType = mapToCommitmentType(activityName)
+
+        Task {
+            isCreatingCommitment = true
+            defer { isCreatingCommitment = false }
+
+            do {
+                try await dataManager.createCommitment(activityType)
+            } catch {
+                print("Failed to create commitment: \(error)")
+            }
+        }
+    }
+
+    private func mapToCommitmentType(_ name: String) -> CommitmentActivityType {
+        switch name.lowercased() {
+        case "run": return .run
+        case "walk": return .walk
+        case "yoga": return .yoga
+        case "weight training", "weighttraining", "workout": return .workout
+        default: return .run
         }
     }
 
