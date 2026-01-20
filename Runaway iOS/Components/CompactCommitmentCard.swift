@@ -247,6 +247,13 @@ struct FullCommitmentSheet: View {
     @State private var selectedActivityName = ""
     @State private var isUpdating = false
     @State private var showGoalSection = false
+    @State private var selectedGoalType: GoalType? = nil
+    @State private var goalValue: String = ""
+    @State private var savedGoal: (type: GoalType, value: Double)? = nil
+
+    enum GoalType {
+        case distance, time
+    }
 
     private var backgroundColor: Color {
         themeManager.isDarkMode
@@ -410,7 +417,38 @@ struct FullCommitmentSheet: View {
 
         if supportsGoal {
             VStack(spacing: AppTheme.Spacing.md) {
-                if !showGoalSection {
+                if let goal = savedGoal {
+                    // Show saved goal
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Image(systemName: goal.type == .distance ? "ruler" : "timer")
+                            .foregroundColor(AppTheme.Colors.accent)
+
+                        Text("Goal:")
+                            .font(.subheadline)
+                            .foregroundColor(textSecondary)
+
+                        Text(goal.type == .distance ? "\(Int(goal.value)) mi" : "\(Int(goal.value)) min")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(textPrimary)
+
+                        Spacer()
+
+                        Button(action: {
+                            withAnimation { savedGoal = nil }
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.body)
+                                .foregroundColor(textSecondary.opacity(0.6))
+                        }
+                    }
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.vertical, AppTheme.Spacing.md)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                            .fill(AppTheme.Colors.accent.opacity(0.1))
+                    )
+                } else if !showGoalSection {
                     Button(action: { withAnimation { showGoalSection = true } }) {
                         HStack(spacing: AppTheme.Spacing.sm) {
                             Image(systemName: "target")
@@ -446,27 +484,86 @@ struct FullCommitmentSheet: View {
                     .font(.headline)
                     .foregroundColor(textPrimary)
                 Spacer()
-                Button(action: { withAnimation { showGoalSection = false } }) {
+                Button(action: {
+                    withAnimation {
+                        selectedGoalType = nil
+                        goalValue = ""
+                        showGoalSection = false
+                    }
+                }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(textSecondary)
                 }
             }
 
-            HStack(spacing: AppTheme.Spacing.md) {
-                if commitment.activityType.supportsDistanceGoal {
-                    GoalOptionButton(
-                        icon: "ruler",
-                        label: "Distance",
-                        sublabel: goalDistanceLabel(for: commitment.activityType)
-                    )
-                }
+            if let goalType = selectedGoalType {
+                // Show input for selected goal type
+                VStack(spacing: AppTheme.Spacing.sm) {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        TextField(goalType == .distance ? "0" : "0", text: $goalValue)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(textPrimary)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 80)
 
-                if commitment.activityType.supportsTimeGoal {
-                    GoalOptionButton(
-                        icon: "timer",
-                        label: "Time",
-                        sublabel: goalTimeLabel(for: commitment.activityType)
-                    )
+                        Text(goalType == .distance ? "miles" : "min")
+                            .font(.title3)
+                            .foregroundColor(textSecondary)
+                    }
+
+                    HStack(spacing: AppTheme.Spacing.md) {
+                        Button(action: {
+                            withAnimation { selectedGoalType = nil }
+                            goalValue = ""
+                        }) {
+                            Text("Cancel")
+                                .font(.subheadline)
+                                .foregroundColor(textSecondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.sm)
+                        }
+
+                        Button(action: {
+                            if let value = Double(goalValue), value > 0 {
+                                savedGoal = (type: goalType, value: value)
+                                withAnimation {
+                                    selectedGoalType = nil
+                                    showGoalSection = false
+                                }
+                            }
+                        }) {
+                            Text("Set Goal")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.sm)
+                                .background(AppTheme.Colors.accent)
+                                .cornerRadius(AppTheme.CornerRadius.small)
+                        }
+                    }
+                }
+            } else {
+                // Show goal type options
+                HStack(spacing: AppTheme.Spacing.md) {
+                    if commitment.activityType.supportsDistanceGoal {
+                        GoalOptionButton(
+                            icon: "ruler",
+                            label: "Distance",
+                            sublabel: goalDistanceLabel(for: commitment.activityType),
+                            action: { withAnimation { selectedGoalType = .distance } }
+                        )
+                    }
+
+                    if commitment.activityType.supportsTimeGoal {
+                        GoalOptionButton(
+                            icon: "timer",
+                            label: "Time",
+                            sublabel: goalTimeLabel(for: commitment.activityType),
+                            action: { withAnimation { selectedGoalType = .time } }
+                        )
+                    }
                 }
             }
         }
@@ -598,13 +695,12 @@ private struct GoalOptionButton: View {
     let icon: String
     let label: String
     let sublabel: String
+    let action: () -> Void
 
     @ObservedObject private var themeManager = ThemeManager.shared
 
     var body: some View {
-        Button(action: {
-            // TODO: Implement goal setting
-        }) {
+        Button(action: action) {
             VStack(spacing: AppTheme.Spacing.xs) {
                 Image(systemName: icon)
                     .font(.title2)
