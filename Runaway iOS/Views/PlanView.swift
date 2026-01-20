@@ -69,7 +69,7 @@ struct PlanView: View {
         }
         .background(colors.background)
         .navigationTitle("Plan")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(themeManager.isDarkMode ? .dark : .light, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {

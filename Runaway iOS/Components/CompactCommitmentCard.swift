@@ -14,9 +14,14 @@ struct CompactCommitmentCard: View {
     @ObservedObject private var themeManager = ThemeManager.shared
 
     private var backgroundColor: Color {
+        // Slightly lighter/elevated background to stand out from activity cards
         themeManager.isDarkMode
-            ? AppTheme.Colors.DarkMode.cardBackground
+            ? AppTheme.Colors.DarkMode.surfaceBackground
             : AppTheme.Colors.LightMode.cardBackground
+    }
+
+    private var accentTint: Color {
+        AppTheme.Colors.accent.opacity(0.08)
     }
 
     private var textPrimary: Color {
@@ -58,9 +63,18 @@ struct CompactCommitmentCard: View {
                     .foregroundColor(textSecondary)
             }
             .padding(AppTheme.Spacing.md)
-            .background(backgroundColor)
+            .background(
+                ZStack {
+                    backgroundColor
+                    accentTint // Subtle accent overlay to stand out
+                }
+            )
             .cornerRadius(AppTheme.CornerRadius.medium)
-            .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                    .stroke(AppTheme.Colors.accent.opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingFullCommitment) {
