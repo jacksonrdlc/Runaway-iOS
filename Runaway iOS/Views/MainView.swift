@@ -15,6 +15,7 @@ struct MainView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(AppRouter.self) private var router
     @State var selectedTab = 0
+    @State private var previousTab = 0
     @State var isDataReady: Bool = false
     @State private var showRecording = false
 
@@ -73,10 +74,13 @@ struct MainView: View {
             .onChange(of: selectedTab) { oldTab, newTab in
                 // Intercept Record tab - show recording sheet instead
                 if newTab == 2 {
-                    selectedTab = oldTab // Stay on previous tab
+                    selectedTab = previousTab // Stay on previous tab
                     showRecording = true
                     return
                 }
+
+                // Update previous tab for next time
+                previousTab = newTab
 
                 // Track tab selection analytics
                 let tabNames = ["Activities", "Progress", "Record", "Plan", "Profile"]
