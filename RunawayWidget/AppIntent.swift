@@ -49,7 +49,8 @@ struct ActivityTypeQuery: EntityQuery {
             ActivityTypeEntity(id: "swim", name: "Swim", color: "#00CED1"),
             ActivityTypeEntity(id: "elliptical", name: "Elliptical", color: "#9370DB"),
             ActivityTypeEntity(id: "rowing", name: "Rowing", color: "#FF8C00"),
-            ActivityTypeEntity(id: "stairmaster", name: "Stairmaster", color: "#32CD32")
+            ActivityTypeEntity(id: "stairmaster", name: "Stairmaster", color: "#32CD32"),
+            ActivityTypeEntity(id: "golf", name: "Golf", color: "#4CAF50")
         ]
     }
 }
