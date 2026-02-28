@@ -129,7 +129,7 @@ final class WidgetSyncService {
                     let isWidgetRelevant = ["run", "trail run", "trailrun", "trail_run", "walk",
                                            "weight training", "weighttraining", "yoga",
                                            "bike ride", "bike_ride", "hike", "swim",
-                                           "elliptical", "rowing", "stairmaster"].contains(normalizedType)
+                                           "elliptical", "rowing", "stairmaster", "golf"].contains(normalizedType)
 
                     if isWidgetRelevant {
                         result.widgetActivities.append(activity)
@@ -273,7 +273,7 @@ final class WidgetSyncService {
                     let isWidgetRelevant = ["run", "trail run", "trailrun", "trail_run", "walk",
                                            "weight training", "weighttraining", "yoga",
                                            "bike ride", "bike_ride", "hike", "swim",
-                                           "elliptical", "rowing", "stairmaster"].contains(normalizedType)
+                                           "elliptical", "rowing", "stairmaster", "golf"].contains(normalizedType)
 
                     guard isWidgetRelevant else { continue }
 
