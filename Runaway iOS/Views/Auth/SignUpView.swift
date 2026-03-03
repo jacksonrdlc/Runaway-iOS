@@ -9,7 +9,7 @@ import SwiftUI
 import Combine
 
 struct SignUpView: View {
-    @EnvironmentObject var userSession: UserSession
+    @Environment(UserSession.self) var userSession
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(\.dismiss) private var dismiss
 
@@ -188,7 +188,7 @@ struct SignUpView: View {
                     dismiss()
                 }
             )
-            .environmentObject(userSession)
+            .environment(userSession)
             .environmentObject(themeManager)
         }
     }
@@ -323,7 +323,7 @@ class SignUpViewModel: ObservableObject {
 #Preview {
     NavigationStack {
         SignUpView()
-            .environmentObject(UserSession.shared)
+            .environment(UserSession.shared)
             .environmentObject(ThemeManager.shared)
     }
 }

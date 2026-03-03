@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SignInEmailView: View {
-    @EnvironmentObject var userSession: UserSession
+    @Environment(UserSession.self) var userSession
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(\.dismiss) private var dismiss
 
@@ -137,7 +137,7 @@ struct SignInEmailView: View {
         }
         .navigationDestination(isPresented: $showSignUp) {
             SignUpView()
-                .environmentObject(userSession)
+                .environment(userSession)
                 .environmentObject(themeManager)
         }
         .alert("Sign In Failed", isPresented: $showError) {
@@ -227,7 +227,7 @@ class SignInEmailViewModel: ObservableObject {
 #Preview {
     NavigationStack {
         SignInEmailView()
-            .environmentObject(UserSession.shared)
+            .environment(UserSession.shared)
             .environmentObject(ThemeManager.shared)
     }
 }

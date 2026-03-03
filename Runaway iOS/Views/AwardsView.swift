@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - Full Awards View
 
 struct AwardsView: View {
-    @EnvironmentObject private var dataManager: DataManager
+    @Environment(DataManager.self) private var dataManager
     @ObservedObject private var awardsService = AwardsService.shared
     @State private var awardsData: [(award: AwardDefinition, isEarned: Bool, progress: Double)] = []
     @State private var selectedCategory: AwardCategory? = nil
@@ -309,7 +309,7 @@ struct AwardBadgeView: View {
 // MARK: - Awards Preview Section (for AthleteView)
 
 struct AwardsPreviewSection: View {
-    @EnvironmentObject private var dataManager: DataManager
+    @Environment(DataManager.self) private var dataManager
     @Environment(AppRouter.self) private var router
     @ObservedObject private var awardsService = AwardsService.shared
     @State private var earnedAwards: [(award: AwardDefinition, earnedDate: Date?)] = []

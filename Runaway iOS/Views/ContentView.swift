@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var userSession: UserSession
+    @Environment(UserSession.self) var userSession
 
     var body: some View {
         if userSession.isCheckingAuth || userSession.isCheckingOnboarding {
@@ -28,6 +28,6 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-            .environmentObject(UserSession.shared)
+            .environment(UserSession.shared)
     }
 }

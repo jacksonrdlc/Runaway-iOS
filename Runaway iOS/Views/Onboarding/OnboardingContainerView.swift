@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - Onboarding Container View
 
 struct OnboardingContainerView: View {
-    @EnvironmentObject var userSession: UserSession
+    @Environment(UserSession.self) var userSession
     @StateObject private var viewModel = OnboardingViewModel()
 
     var body: some View {
@@ -326,5 +326,5 @@ struct OnboardingProgressBar: View {
 
 #Preview {
     OnboardingContainerView()
-        .environmentObject(UserSession.shared)
+        .environment(UserSession.shared)
 }

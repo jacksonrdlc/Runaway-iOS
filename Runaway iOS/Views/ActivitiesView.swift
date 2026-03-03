@@ -4,9 +4,9 @@ import UIKit
 import WidgetKit
 
 struct ActivitiesView: View {
-    @EnvironmentObject var userSession: UserSession
-    @EnvironmentObject var dataManager: DataManager
-    @EnvironmentObject var realtimeService: RealtimeService
+    @Environment(UserSession.self) var userSession
+    @Environment(DataManager.self) var dataManager
+    @Environment(RealtimeService.self) var realtimeService
     @EnvironmentObject var themeManager: ThemeManager
     @State private var selectedActivity: LocalActivity?
 
@@ -152,8 +152,8 @@ struct EmptyActivitiesView: View {
 struct ActivitiesView_Previews: PreviewProvider {
     static var previews: some View {
         ActivitiesView()
-            .environmentObject(UserSession.shared)
-            .environmentObject(DataManager.shared)
-            .environmentObject(RealtimeService.shared)
+            .environment(UserSession.shared)
+            .environment(DataManager.shared)
+            .environment(RealtimeService.shared)
     }
 }

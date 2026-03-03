@@ -51,7 +51,7 @@ extension Date {
     func startOfWeek() -> TimeInterval {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
-        let startOfWeek = calendar.date(from: components)!
+        let startOfWeek = calendar.date(from: components) ?? self
         return startOfWeek.timeIntervalSince1970
     }
     
@@ -59,6 +59,14 @@ extension Date {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "EEEE"
         return dateFormatter.string(from: self)
+    }
+}
+
+// Calendar extension
+extension Calendar {
+    /// Safe wrapper for date(byAdding:value:to:) that falls back to the base date on nil
+    func safeDate(byAdding component: Component, value: Int, to date: Date) -> Date {
+        self.date(byAdding: component, value: value, to: date) ?? date
     }
 }
 

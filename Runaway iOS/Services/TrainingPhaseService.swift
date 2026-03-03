@@ -102,7 +102,7 @@ class TrainingPhaseService {
     private static func detectPhaseFromActivities(_ activities: [Activity]) -> TrainingPhaseContext {
         let recentActivities = activities.filter { activity in
             guard let date = activity.date else { return false }
-            return date >= Calendar.current.date(byAdding: .day, value: -28, to: Date())!
+            return date >= Calendar.current.safeDate(byAdding: .day, value: -28, to: Date())
         }
 
         let weeklyVolumes = calculateWeeklyVolumes(from: activities)
@@ -274,7 +274,7 @@ class TrainingPhaseService {
 
         let last7Days = activities.filter { activity in
             guard let date = activity.date else { return false }
-            return date >= Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+            return date >= Calendar.current.safeDate(byAdding: .day, value: -7, to: Date())
         }
 
         let restDays = 7 - Set(last7Days.compactMap { $0.date?.phaseStartOfDay }).count
@@ -355,8 +355,8 @@ class TrainingPhaseService {
         var weeklyVolumes: [Double] = []
 
         for weekOffset in 0..<8 {
-            let weekStart = calendar.date(byAdding: .weekOfYear, value: -weekOffset, to: Date())!.phaseStartOfWeek
-            let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart)!
+            let weekStart = calendar.safeDate(byAdding: .weekOfYear, value: -weekOffset, to: Date()).phaseStartOfWeek
+            let weekEnd = calendar.safeDate(byAdding: .day, value: 7, to: weekStart)
 
             let weekActivities = activities.filter { activity in
                 guard let date = activity.date else { return false }
@@ -400,7 +400,7 @@ class TrainingPhaseService {
         // Count backwards from today
         while activityDates.contains(currentDate) {
             streakDays += 1
-            currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate)!
+            currentDate = calendar.safeDate(byAdding: .day, value: -1, to: currentDate)
         }
 
         return streakDays

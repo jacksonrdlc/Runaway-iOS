@@ -148,7 +148,7 @@ class TrainingPlanService {
         let daysUntilSunday = weekday == 1 ? 7 : (8 - weekday)
 
         // Get next Sunday at start of day (midnight)
-        let nextSunday = calendar.date(byAdding: .day, value: daysUntilSunday, to: calendar.startOfDay(for: today))!
+        let nextSunday = calendar.safeDate(byAdding: .day, value: daysUntilSunday, to: calendar.startOfDay(for: today))
         return nextSunday
     }
 
@@ -745,7 +745,7 @@ class TrainingPlanService {
         goal: RunningGoal?
     ) -> WeeklyTrainingPlan {
         let calendar = Calendar.current
-        let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate)!
+        let weekEndDate = calendar.safeDate(byAdding: .day, value: 6, to: weekStartDate)
 
         var workouts: [DailyWorkout] = []
 
@@ -763,7 +763,7 @@ class TrainingPlanService {
 
         // Monday - Upper Body Strength
         workouts.append(createWorkout(
-            date: calendar.date(byAdding: .day, value: 1, to: weekStartDate)!,
+            date: calendar.safeDate(byAdding: .day, value: 1, to: weekStartDate),
             dayOfWeek: .monday,
             type: .upperBody,
             title: "Upper Body Strength",
@@ -782,7 +782,7 @@ class TrainingPlanService {
 
         // Tuesday - Easy Run
         workouts.append(createWorkout(
-            date: calendar.date(byAdding: .day, value: 2, to: weekStartDate)!,
+            date: calendar.safeDate(byAdding: .day, value: 2, to: weekStartDate),
             dayOfWeek: .tuesday,
             type: .easyRun,
             title: "Easy Run",
@@ -794,7 +794,7 @@ class TrainingPlanService {
 
         // Wednesday - Lower Body Strength
         workouts.append(createWorkout(
-            date: calendar.date(byAdding: .day, value: 3, to: weekStartDate)!,
+            date: calendar.safeDate(byAdding: .day, value: 3, to: weekStartDate),
             dayOfWeek: .wednesday,
             type: .lowerBody,
             title: "Lower Body Strength",
@@ -812,7 +812,7 @@ class TrainingPlanService {
 
         // Thursday - Tempo Run
         workouts.append(createWorkout(
-            date: calendar.date(byAdding: .day, value: 4, to: weekStartDate)!,
+            date: calendar.safeDate(byAdding: .day, value: 4, to: weekStartDate),
             dayOfWeek: .thursday,
             type: .tempoRun,
             title: "Tempo Run",
@@ -824,7 +824,7 @@ class TrainingPlanService {
 
         // Friday - Yoga & Mobility
         workouts.append(createWorkout(
-            date: calendar.date(byAdding: .day, value: 5, to: weekStartDate)!,
+            date: calendar.safeDate(byAdding: .day, value: 5, to: weekStartDate),
             dayOfWeek: .friday,
             type: .yoga,
             title: "Yoga & Mobility",
@@ -834,7 +834,7 @@ class TrainingPlanService {
 
         // Saturday - Easy Run + Core
         workouts.append(createWorkout(
-            date: calendar.date(byAdding: .day, value: 6, to: weekStartDate)!,
+            date: calendar.safeDate(byAdding: .day, value: 6, to: weekStartDate),
             dayOfWeek: .saturday,
             type: .easyRun,
             title: "Easy Run + Core",
@@ -905,14 +905,14 @@ class TrainingPlanService {
         let weekday = calendar.component(.weekday, from: today)
         // weekday: 1 = Sunday, 2 = Monday, etc.
         let daysToSubtract = weekday - 1
-        return calendar.date(byAdding: .day, value: -daysToSubtract, to: calendar.startOfDay(for: today))!
+        return calendar.safeDate(byAdding: .day, value: -daysToSubtract, to: calendar.startOfDay(for: today))
     }
 
     /// Get dates for all days in the current week (Sunday to Saturday)
     static func currentWeekDates() -> [Date] {
         let sunday = currentWeekSunday()
         let calendar = Calendar.current
-        return (0..<7).map { calendar.date(byAdding: .day, value: $0, to: sunday)! }
+        return (0..<7).map { calendar.safeDate(byAdding: .day, value: $0, to: sunday) }
     }
 }
 

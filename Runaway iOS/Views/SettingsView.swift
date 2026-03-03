@@ -22,8 +22,8 @@ class GarminAuthPresentationContext: NSObject, ASWebAuthenticationPresentationCo
 }
 
 struct SettingsView: View {
-    @EnvironmentObject var userSession: UserSession
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(UserSession.self) var userSession
+    @Environment(DataManager.self) var dataManager
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(\.dismiss) private var dismiss
     @StateObject private var stravaService = StravaService()
@@ -1303,8 +1303,8 @@ struct GarminIntegrationRow: View {
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         SettingsView()
-            .environmentObject(UserSession.shared)
-            .environmentObject(DataManager.shared)
+            .environment(UserSession.shared)
+            .environment(DataManager.shared)
             .environmentObject(ThemeManager.shared)
     }
 }

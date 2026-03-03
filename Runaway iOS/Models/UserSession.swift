@@ -2,30 +2,31 @@ import SwiftUI
 import Foundation
 import Supabase
 import WidgetKit
+import Observation
 
 /// Unified user session manager combining authentication and profile management
-/// Replaces the previous AuthManager + UserManager pattern for clearer state management
 @MainActor
-public final class UserSession: ObservableObject {
-    // MARK: - Published Properties
+@Observable
+public final class UserSession {
+    // MARK: - Observable Properties
 
     /// Authentication state
-    @Published public var isAuthenticated = false
+    public var isAuthenticated = false
 
     /// Checking authentication state (for initial load)
-    @Published public var isCheckingAuth = true
+    public var isCheckingAuth = true
 
     /// Supabase authentication user
-    @Published public var currentUser: Supabase.User?
+    public var currentUser: Supabase.User?
 
     /// User profile from custom User model
-    @Published public var profileUser: User?
+    public var profileUser: User?
 
     /// Onboarding completion state
-    @Published public var hasCompletedOnboarding = true
+    public var hasCompletedOnboarding = true
 
     /// Loading onboarding state
-    @Published public var isCheckingOnboarding = false
+    public var isCheckingOnboarding = false
 
     /// Flag to prevent re-checking onboarding after user completes it in this session
     private var onboardingCompletedInSession = false
@@ -125,6 +126,11 @@ public final class UserSession: ObservableObject {
         // Store the athlete ID so it's available before profile is loaded
         await MainActor.run {
             self.storedAthleteId = athleteId
+        }
+
+        // Write credentials to App Group so widget can make direct Supabase calls
+        if let athleteId = athleteId {
+            writeWidgetCredentials(athleteId: athleteId)
         }
 
         // Check onboarding status using the athlete ID
@@ -247,6 +253,21 @@ public final class UserSession: ObservableObject {
         // Check onboarding status now that we have the athlete ID
         Task {
             await checkOnboardingStatus()
+        }
+    }
+
+    // MARK: - Widget Credential Sharing
+
+    /// Write Supabase credentials and athlete ID to the App Group so the widget
+    /// can make direct REST calls (e.g. SetDailyCommitmentIntent).
+    private func writeWidgetCredentials(athleteId: Int) {
+        guard let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier) else { return }
+        defaults.set(athleteId, forKey: AppConstants.WidgetKeys.athleteId)
+        if let url = SupabaseConfiguration.supabaseURL {
+            defaults.set(url, forKey: AppConstants.WidgetKeys.supabaseURL)
+        }
+        if let key = SupabaseConfiguration.supabaseKey {
+            defaults.set(key, forKey: AppConstants.WidgetKeys.supabaseKey)
         }
     }
 

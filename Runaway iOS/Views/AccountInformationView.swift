@@ -9,7 +9,7 @@ import SwiftUI
 import PhotosUI
 
 struct AccountInformationView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var firstname: String = ""
@@ -272,6 +272,6 @@ struct InfoRow: View {
 struct AccountInformationView_Previews: PreviewProvider {
     static var previews: some View {
         AccountInformationView()
-            .environmentObject(DataManager.shared)
+            .environment(DataManager.shared)
     }
 }

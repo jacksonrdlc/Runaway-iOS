@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ChatView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @StateObject private var viewModel = ChatViewModel()
     @State private var messageText = ""
     @State private var showingAnalysisSheet = false
@@ -579,7 +579,7 @@ struct ChatView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
             ChatView()
-                .environmentObject(DataManager.shared)
+                .environment(DataManager.shared)
         }
     }
 }

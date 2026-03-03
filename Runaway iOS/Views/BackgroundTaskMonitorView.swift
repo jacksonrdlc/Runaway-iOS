@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct BackgroundTaskMonitorView: View {
-    @StateObject private var realtimeService = RealtimeService.shared
+    @State private var realtimeService = RealtimeService.shared
     @State private var showingDetails = false
     
     var body: some View {

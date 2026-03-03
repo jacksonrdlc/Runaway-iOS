@@ -58,7 +58,7 @@ class HealthKitDataReader {
         // Get sleep samples for the night before the given date
         let calendar = Calendar.current
         let endOfDay = calendar.startOfDay(for: date).addingTimeInterval(12 * 60 * 60) // noon
-        let startOfNight = calendar.date(byAdding: .hour, value: -18, to: endOfDay)! // 6pm previous day
+        let startOfNight = calendar.safeDate(byAdding: .hour, value: -18, to: endOfDay) // 6pm previous day
 
         let predicate = HKQuery.predicateForSamples(
             withStart: startOfNight,
@@ -166,7 +166,7 @@ class HealthKitDataReader {
 
         let calendar = Calendar.current
         let endDate = calendar.startOfDay(for: date).addingTimeInterval(24 * 60 * 60)
-        let startDate = calendar.date(byAdding: .day, value: -days, to: endDate)!
+        let startDate = calendar.safeDate(byAdding: .day, value: -days, to: endDate)
 
         let predicate = HKQuery.predicateForSamples(
             withStart: startDate,
@@ -238,7 +238,7 @@ class HealthKitDataReader {
 
         let calendar = Calendar.current
         let endDate = calendar.startOfDay(for: date).addingTimeInterval(24 * 60 * 60)
-        let startDate = calendar.date(byAdding: .day, value: -days, to: endDate)!
+        let startDate = calendar.safeDate(byAdding: .day, value: -days, to: endDate)
 
         let predicate = HKQuery.predicateForSamples(
             withStart: startDate,

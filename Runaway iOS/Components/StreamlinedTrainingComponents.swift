@@ -182,7 +182,7 @@ struct ReadinessCalculationSheet: View {
 // MARK: - Today's Focus Card
 
 struct TodaysFocusCard: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @StateObject private var restDayService = RestDayService.shared
     @State private var showingWorkoutDetail = false
 
@@ -439,7 +439,7 @@ private enum TodayFocusState {
 // MARK: - Week Progress Row
 
 struct WeekProgressRow: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @StateObject private var restDayService = RestDayService.shared
 
     private var weekEntries: [WeekDayEntry] {
@@ -887,7 +887,7 @@ struct WeekDayActivityTile: View {
 // MARK: - Coach Insight Card
 
 struct CoachInsightCard: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @StateObject private var readinessService = ReadinessService.shared
     let onAskCoach: () -> Void
 
@@ -946,7 +946,7 @@ struct CoachInsightCard: View {
 // MARK: - Key Metrics Grid
 
 struct KeyMetricsGrid: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     let quickWinsData: QuickWinsResponse?
 
     var body: some View {
@@ -1142,7 +1142,7 @@ struct KeyMetricTile: View {
 // MARK: - This Week's Activities
 
 struct ThisWeekActivitiesSection: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
 
     private var thisWeekActivities: [Activity] {
         let calendar = Calendar.current
@@ -1494,5 +1494,5 @@ struct ExplorePill: View {
         }
         .padding()
     }
-    .environmentObject(DataManager.shared)
+    .environment(DataManager.shared)
 }

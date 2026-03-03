@@ -9,12 +9,14 @@
 import Foundation
 import SwiftUI
 import WidgetKit
+import Observation
 
 // MARK: - Centralized Data Manager
 // Acts as a facade/coordinator for focused stores while maintaining backward compatibility
 
 @MainActor
-class DataManager: ObservableObject {
+@Observable
+class DataManager {
 
     // MARK: - Focused Stores
 
@@ -24,19 +26,19 @@ class DataManager: ObservableObject {
     private let goalManager: GoalManager
     private let widgetSyncService: WidgetSyncService
 
-    // MARK: - Published Properties (Forwarded from stores for backward compatibility)
+    // MARK: - Observable Properties (Forwarded from stores)
 
-    @Published var activities: [Activity] = []
-    @Published var athlete: Athlete?
-    @Published var stats: AthleteStats?
-    @Published var currentGoal: RunningGoal?
-    @Published var todaysCommitment: DailyCommitment?
-    @Published var currentWeeklyPlan: WeeklyTrainingPlan?
-    @Published var isLoadingActivities = false
-    @Published var isLoadingAthlete = false
-    @Published var isLoadingCommitment = false
-    @Published var isRegeneratingPlan = false
-    @Published var lastDataRefresh: Date?
+    var activities: [Activity] = []
+    var athlete: Athlete?
+    var stats: AthleteStats?
+    var currentGoal: RunningGoal?
+    var todaysCommitment: DailyCommitment?
+    var currentWeeklyPlan: WeeklyTrainingPlan?
+    var isLoadingActivities = false
+    var isLoadingAthlete = false
+    var isLoadingCommitment = false
+    var isRegeneratingPlan = false
+    var lastDataRefresh: Date?
 
     // MARK: - Singleton
 

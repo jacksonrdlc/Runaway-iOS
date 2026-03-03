@@ -10,7 +10,7 @@ import SwiftUI
 // MARK: - Activity Commitment Card
 
 struct ActivityCommitmentCard: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @State private var selectedActivityType: CommitmentActivityType = .run
     @State private var showingCommitmentPicker = false
     @State private var errorMessage: String?
@@ -69,7 +69,7 @@ struct ActivityCommitmentCard: View {
                     showingCommitmentPicker: $showingCommitmentPicker,
                     onCommitmentCreated: createCommitment
                 )
-                .environmentObject(CommitmentManager.shared)
+                .environment(CommitmentManager.shared)
             }
 
             // Error message
@@ -155,7 +155,7 @@ struct ActivityCommitmentCard: View {
 // MARK: - No Commitment View
 
 struct NoCommitmentView: View {
-    @EnvironmentObject var commitmentManager: CommitmentManager
+    @Environment(CommitmentManager.self) var commitmentManager
     @Binding var selectedActivityType: CommitmentActivityType
     @Binding var showingCommitmentPicker: Bool
     let onCommitmentCreated: () -> Void
@@ -243,7 +243,7 @@ struct NoCommitmentView: View {
 // MARK: - Active Commitment View
 
 struct ActiveCommitmentView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     let initialCommitment: DailyCommitment
     @State private var currentTime = Date()
     @State private var showingEditSheet = false

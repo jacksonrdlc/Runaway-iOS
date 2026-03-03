@@ -16,7 +16,6 @@ final class WidgetSyncService {
 
     // MARK: - Constants
 
-    private static let appGroupIdentifier = "group.com.jackrudelic.runawayios"
     private static let debounceInterval: TimeInterval = 0.5
 
     // MARK: - Private Properties
@@ -52,7 +51,6 @@ final class WidgetSyncService {
     func updateWidgetDataFromDatabase(athleteId: Int, activities: [Activity]) {
         // Don't cancel if already running - let it complete
         guard updateTask == nil else {
-            print("🔄 WidgetSyncService: Update already in progress, skipping")
             return
         }
 
@@ -95,124 +93,18 @@ final class WidgetSyncService {
 
     private func performWidgetUpdate(with activities: [Activity]) async {
         await Task.detached(priority: .utility) { [activities] in
-            guard let userDefaults = UserDefaults(suiteName: Self.appGroupIdentifier) else {
-                print("❌ WidgetSyncService: Failed to access shared UserDefaults")
+            guard let userDefaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier) else {
                 return
             }
 
             autoreleasepool {
-                // Clear existing data
-                let arrayKeys = ["sunArray", "monArray", "tueArray", "wedArray", "thuArray", "friArray", "satArray"]
-                arrayKeys.forEach { userDefaults.removeObject(forKey: $0) }
+                AppConstants.WidgetKeys.allDayKeys.forEach { userDefaults.removeObject(forKey: $0) }
 
-                // Calculate date ranges
-                let currentYear = Calendar.current.component(.year, from: Date())
-                let currentMonth = Calendar.current.component(.month, from: Date())
-                let weekStartDate = Date().startOfWeek()
-
-                // Single-pass filtering
-                struct FilteredActivities {
-                    var widgetActivities: [Activity] = []
-                    var yearlyRunning: [Activity] = []
-                    var monthlyRunning: [Activity] = []
-                }
-
-                let filtered = activities.reduce(into: FilteredActivities()) { result, activity in
-                    let normalizedType = (activity.type ?? "").lowercased()
-
-                    let dateInterval = activity.activity_date ?? activity.start_date
-                    let activityDate = dateInterval.map { Date(timeIntervalSince1970: $0) }
-                    let activityYear = activityDate.map { Calendar.current.component(.year, from: $0) }
-                    let activityMonth = activityDate.map { Calendar.current.component(.month, from: $0) }
-
-                    // Widget-relevant activity types
-                    let isWidgetRelevant = ["run", "trail run", "trailrun", "trail_run", "walk",
-                                           "weight training", "weighttraining", "yoga",
-                                           "bike ride", "bike_ride", "hike", "swim",
-                                           "elliptical", "rowing", "stairmaster", "golf"].contains(normalizedType)
-
-                    if isWidgetRelevant {
-                        result.widgetActivities.append(activity)
-                    }
-
-                    let isRunning = normalizedType.contains("run")
-
-                    if isRunning && activityYear == currentYear {
-                        result.yearlyRunning.append(activity)
-
-                        if activityMonth == currentMonth {
-                            result.monthlyRunning.append(activity)
-                        }
-                    }
-                }
-
-                // Calculate totals
-                let yearlyMiles = filtered.yearlyRunning.reduce(0) { $0 + ($1.distance ?? 0.0) } * 0.000621371
-                let monthlyMiles = filtered.monthlyRunning.reduce(0) { $0 + ($1.distance ?? 0.0) } * 0.000621371
-                let totalRuns = filtered.yearlyRunning.count
-
-                // Store totals
-                userDefaults.set(yearlyMiles, forKey: "miles")
-                userDefaults.set(monthlyMiles, forKey: "monthlyMiles")
-                userDefaults.set(totalRuns, forKey: "runs")
-
-                // Process weekly activities
-                var weeklyArrays: [String: [String]] = [
-                    "Sunday": [], "Monday": [], "Tuesday": [],
-                    "Wednesday": [], "Thursday": [], "Friday": [], "Saturday": []
-                ]
-
-                let encoder = JSONEncoder()
-
-                for activity in filtered.widgetActivities {
-                    let activityDateInterval = activity.activity_date ?? activity.start_date
-
-                    guard let dateInterval = activityDateInterval,
-                          let distance = activity.distance,
-                          let elapsedTime = activity.elapsed_time,
-                          dateInterval > weekStartDate else {
-                        continue
-                    }
-
-                    let dayOfWeek = Date(timeIntervalSince1970: dateInterval).dayOfTheWeek
-
-                    // Normalize activity types for widget
-                    var normalizedType = activity.type ?? "Run"
-                    if normalizedType.lowercased() == "weighttraining" {
-                        normalizedType = "Weight Training"
-                    }
-                    if normalizedType.lowercased() == "trailrun" {
-                        normalizedType = "Trail Run"
-                    }
-
-                    let raActivity = RAActivity(
-                        day: String(dayOfWeek.prefix(2)),
-                        type: normalizedType,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60
-                    )
-
-                    do {
-                        let jsonData = try encoder.encode(raActivity)
-                        if let jsonString = String(data: jsonData, encoding: .utf8) {
-                            weeklyArrays[dayOfWeek]?.append(jsonString)
-                        }
-                    } catch {
-                        print("❌ WidgetSyncService: Failed to encode activity: \(error)")
-                    }
-                }
-
-                // Store weekly arrays
-                userDefaults.set(weeklyArrays["Sunday"], forKey: "sunArray")
-                userDefaults.set(weeklyArrays["Monday"], forKey: "monArray")
-                userDefaults.set(weeklyArrays["Tuesday"], forKey: "tueArray")
-                userDefaults.set(weeklyArrays["Wednesday"], forKey: "wedArray")
-                userDefaults.set(weeklyArrays["Thursday"], forKey: "thuArray")
-                userDefaults.set(weeklyArrays["Friday"], forKey: "friArray")
-                userDefaults.set(weeklyArrays["Saturday"], forKey: "satArray")
+                let filtered = Self.filterActivities(activities)
+                Self.storeAggregateStats(filtered, to: userDefaults)
+                Self.storeWeeklyActivities(filtered.widgetActivities, to: userDefaults)
             }
 
-            // Trigger widget refresh
             await MainActor.run {
                 WidgetCenter.shared.reloadAllTimelines()
             }
@@ -222,115 +114,135 @@ final class WidgetSyncService {
     // MARK: - Database-Based Widget Update
 
     private func performDatabaseWidgetUpdate(athleteId: Int, activities: [Activity]) async {
-        // Fetch stats from database (not affected by pagination)
         let yearlyStats: ActivityService.YearlyRunningStats
         let monthlyStats: ActivityService.MonthlyRunningStats
-
-        print("🔄 WidgetSyncService: Fetching stats from database for athlete \(athleteId)...")
 
         do {
             yearlyStats = try await ActivityService.getYearlyRunningStats(athleteId: athleteId)
             monthlyStats = try await ActivityService.getMonthlyRunningStats(athleteId: athleteId)
-            print("✅ WidgetSyncService: DB stats fetched - \(yearlyStats.total_runs) runs, \(yearlyStats.total_distance_miles) miles YTD")
         } catch {
-            print("❌ WidgetSyncService: Failed to fetch stats from database: \(error)")
-            print("❌ WidgetSyncService: Falling back to client-side calculation")
             // Fall back to client-side calculation
             await performWidgetUpdate(with: activities)
             return
         }
 
         await Task.detached(priority: .utility) { [activities, yearlyStats, monthlyStats] in
-            guard let userDefaults = UserDefaults(suiteName: Self.appGroupIdentifier) else {
-                print("❌ WidgetSyncService: Failed to access shared UserDefaults")
+            guard let userDefaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier) else {
                 return
             }
 
             autoreleasepool {
-                // Clear existing weekly data
-                let arrayKeys = ["sunArray", "monArray", "tueArray", "wedArray", "thuArray", "friArray", "satArray"]
-                arrayKeys.forEach { userDefaults.removeObject(forKey: $0) }
+                AppConstants.WidgetKeys.allDayKeys.forEach { userDefaults.removeObject(forKey: $0) }
 
                 // Store database-fetched totals (accurate regardless of pagination)
-                userDefaults.set(yearlyStats.total_distance_miles, forKey: "miles")
-                userDefaults.set(monthlyStats.total_distance_miles, forKey: "monthlyMiles")
-                userDefaults.set(yearlyStats.total_runs, forKey: "runs")
+                userDefaults.set(yearlyStats.total_distance_miles, forKey: AppConstants.WidgetKeys.yearlyMiles)
+                userDefaults.set(monthlyStats.total_distance_miles, forKey: AppConstants.WidgetKeys.monthlyMiles)
+                userDefaults.set(yearlyStats.total_runs, forKey: AppConstants.WidgetKeys.totalRuns)
 
-                // Process weekly activities (only need current week, so pagination doesn't affect this)
+                // Process weekly activities (current week only, not affected by pagination)
                 let weekStartDate = Date().startOfWeek()
-
-                var weeklyArrays: [String: [String]] = [
-                    "Sunday": [], "Monday": [], "Tuesday": [],
-                    "Wednesday": [], "Thursday": [], "Friday": [], "Saturday": []
-                ]
-
-                let encoder = JSONEncoder()
-
-                for activity in activities {
+                let weeklyActivities = activities.filter { activity in
+                    guard let dateInterval = activity.activity_date ?? activity.start_date else { return false }
                     let normalizedType = (activity.type ?? "").lowercased()
-
-                    // Widget-relevant activity types
-                    let isWidgetRelevant = ["run", "trail run", "trailrun", "trail_run", "walk",
-                                           "weight training", "weighttraining", "yoga",
-                                           "bike ride", "bike_ride", "hike", "swim",
-                                           "elliptical", "rowing", "stairmaster", "golf"].contains(normalizedType)
-
-                    guard isWidgetRelevant else { continue }
-
-                    let activityDateInterval = activity.activity_date ?? activity.start_date
-
-                    guard let dateInterval = activityDateInterval,
-                          let distance = activity.distance,
-                          let elapsedTime = activity.elapsed_time,
-                          dateInterval > weekStartDate else {
-                        continue
-                    }
-
-                    let dayOfWeek = Date(timeIntervalSince1970: dateInterval).dayOfTheWeek
-
-                    // Normalize activity types for widget
-                    var displayType = activity.type ?? "Run"
-                    if displayType.lowercased() == "weighttraining" {
-                        displayType = "Weight Training"
-                    }
-                    if displayType.lowercased() == "trailrun" {
-                        displayType = "Trail Run"
-                    }
-
-                    let raActivity = RAActivity(
-                        day: String(dayOfWeek.prefix(2)),
-                        type: displayType,
-                        distance: distance * 0.000621371,
-                        time: elapsedTime / 60
-                    )
-
-                    do {
-                        let jsonData = try encoder.encode(raActivity)
-                        if let jsonString = String(data: jsonData, encoding: .utf8) {
-                            weeklyArrays[dayOfWeek]?.append(jsonString)
-                        }
-                    } catch {
-                        print("❌ WidgetSyncService: Failed to encode activity: \(error)")
-                    }
+                    return dateInterval > weekStartDate && AppConstants.ActivityTypes.widgetRelevant.contains(normalizedType)
                 }
-
-                // Store weekly arrays
-                userDefaults.set(weeklyArrays["Sunday"], forKey: "sunArray")
-                userDefaults.set(weeklyArrays["Monday"], forKey: "monArray")
-                userDefaults.set(weeklyArrays["Tuesday"], forKey: "tueArray")
-                userDefaults.set(weeklyArrays["Wednesday"], forKey: "wedArray")
-                userDefaults.set(weeklyArrays["Thursday"], forKey: "thuArray")
-                userDefaults.set(weeklyArrays["Friday"], forKey: "friArray")
-                userDefaults.set(weeklyArrays["Saturday"], forKey: "satArray")
+                Self.storeWeeklyActivities(weeklyActivities, to: userDefaults)
             }
 
-            // Trigger widget refresh
             await MainActor.run {
                 WidgetCenter.shared.reloadAllTimelines()
             }
         }.value
+    }
 
-        print("✅ WidgetSyncService: Updated widget with database stats - \(yearlyStats.total_runs) runs, \(String(format: "%.1f", yearlyStats.total_distance_miles)) miles YTD")
+    // MARK: - Filtering
+
+    private struct FilteredActivities {
+        var widgetActivities: [Activity] = []
+        var yearlyRunning: [Activity] = []
+        var monthlyRunning: [Activity] = []
+    }
+
+    nonisolated private static func filterActivities(_ activities: [Activity]) -> FilteredActivities {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let currentMonth = Calendar.current.component(.month, from: Date())
+        let weekStartDate = Date().startOfWeek()
+
+        return activities.reduce(into: FilteredActivities()) { result, activity in
+            let normalizedType = (activity.type ?? "").lowercased()
+
+            let dateInterval = activity.activity_date ?? activity.start_date
+            let activityDate = dateInterval.map { Date(timeIntervalSince1970: $0) }
+            let activityYear = activityDate.map { Calendar.current.component(.year, from: $0) }
+            let activityMonth = activityDate.map { Calendar.current.component(.month, from: $0) }
+
+            if AppConstants.ActivityTypes.widgetRelevant.contains(normalizedType) {
+                if let dateInterval, dateInterval > weekStartDate {
+                    result.widgetActivities.append(activity)
+                }
+            }
+
+            if normalizedType.contains("run") && activityYear == currentYear {
+                result.yearlyRunning.append(activity)
+                if activityMonth == currentMonth {
+                    result.monthlyRunning.append(activity)
+                }
+            }
+        }
+    }
+
+    // MARK: - Storage Helpers
+
+    nonisolated private static func storeAggregateStats(_ filtered: FilteredActivities, to userDefaults: UserDefaults) {
+        let yearlyMiles = filtered.yearlyRunning.reduce(0) { $0 + ($1.distance ?? 0.0) } * AppConstants.Conversion.metersToMiles
+        let monthlyMiles = filtered.monthlyRunning.reduce(0) { $0 + ($1.distance ?? 0.0) } * AppConstants.Conversion.metersToMiles
+        let totalRuns = filtered.yearlyRunning.count
+
+        userDefaults.set(yearlyMiles, forKey: AppConstants.WidgetKeys.yearlyMiles)
+        userDefaults.set(monthlyMiles, forKey: AppConstants.WidgetKeys.monthlyMiles)
+        userDefaults.set(totalRuns, forKey: AppConstants.WidgetKeys.totalRuns)
+    }
+
+    nonisolated private static func storeWeeklyActivities(_ activities: [Activity], to userDefaults: UserDefaults) {
+        var weeklyArrays: [String: [String]] = [
+            "Sunday": [], "Monday": [], "Tuesday": [],
+            "Wednesday": [], "Thursday": [], "Friday": [], "Saturday": []
+        ]
+
+        let encoder = JSONEncoder()
+
+        for activity in activities {
+            guard let dateInterval = activity.activity_date ?? activity.start_date,
+                  let distance = activity.distance,
+                  let elapsedTime = activity.elapsed_time else {
+                continue
+            }
+
+            let dayOfWeek = Date(timeIntervalSince1970: dateInterval).dayOfTheWeek
+            let displayType = AppConstants.ActivityTypes.normalize(activity.type ?? "Run")
+
+            let raActivity = RAActivity(
+                day: String(dayOfWeek.prefix(2)),
+                type: displayType,
+                distance: distance * AppConstants.Conversion.metersToMiles,
+                time: elapsedTime * AppConstants.Conversion.secondsToMinutes
+            )
+
+            do {
+                let jsonData = try encoder.encode(raActivity)
+                if let jsonString = String(data: jsonData, encoding: .utf8) {
+                    weeklyArrays[dayOfWeek]?.append(jsonString)
+                }
+            } catch {
+                #if DEBUG
+                print("❌ WidgetSyncService: Failed to encode activity: \(error)")
+                #endif
+            }
+        }
+
+        for (dayName, key) in AppConstants.WidgetKeys.dayKeys {
+            userDefaults.set(weeklyArrays[dayName], forKey: key)
+        }
     }
 
     // MARK: - Background Task Management

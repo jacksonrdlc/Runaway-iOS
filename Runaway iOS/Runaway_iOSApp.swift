@@ -14,9 +14,9 @@ import HealthKit
 
 @main
 struct Runaway_iOSApp: App {
-    @StateObject private var userSession = UserSession.shared
-    @StateObject private var realtimeService = RealtimeService.shared
-    @StateObject private var dataManager = DataManager.shared
+    @State private var userSession = UserSession.shared
+    @State private var realtimeService = RealtimeService.shared
+    @State private var dataManager = DataManager.shared
     @StateObject private var stravaService = StravaService()
     @StateObject private var activityRecordingService = ActivityRecordingService()
     @StateObject private var themeManager = ThemeManager.shared
@@ -95,9 +95,9 @@ struct Runaway_iOSApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
-                .environmentObject(userSession)
-                .environmentObject(realtimeService)
-                .environmentObject(dataManager)
+                .environment(userSession)
+                .environment(realtimeService)
+                .environment(dataManager)
                 .environmentObject(themeManager)
                 .environmentObject(syncEngine)
                 .environment(router)

@@ -360,7 +360,7 @@ struct GoalReadinessSection: View {
 // MARK: - Weekly Training Plan Section
 
 struct WeeklyPlanSection: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @State private var isLoading = false
     @State private var isGenerating = false
     @State private var selectedWorkout: DailyWorkout?

@@ -11,7 +11,7 @@ import Charts
 import Foundation
 
 struct AnalysisView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @StateObject private var analyzer = RunningAnalyzer()
 
     var body: some View {

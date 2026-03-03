@@ -9,9 +9,9 @@ import WidgetKit
 import Supabase
 
 struct MainView: View {
-    @EnvironmentObject var userSession: UserSession
-    @EnvironmentObject var realtimeService: RealtimeService
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(UserSession.self) var userSession
+    @Environment(RealtimeService.self) var realtimeService
+    @Environment(DataManager.self) var dataManager
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(AppRouter.self) private var router
     @State var selectedTab = 0
@@ -54,7 +54,6 @@ struct MainView: View {
                 Tab("Plan", systemImage: "calendar", value: 3) {
                     NavigationStack(path: Bindable(router).path) {
                         PlanView()
-                            .environmentObject(dataManager)
                             .navigationDestination(for: AppRouter.Route.self) { route in
                                 router.destination(for: route)
                             }

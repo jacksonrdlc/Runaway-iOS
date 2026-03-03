@@ -13,7 +13,7 @@ import Combine
 struct ActivityDetailView: View {
     let activity: LocalActivity
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @ObservedObject private var themeManager = ThemeManager.shared
 
     @State private var showDeleteConfirmation = false

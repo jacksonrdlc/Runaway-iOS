@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct CompactCommitmentCard: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @State private var showingFullCommitment = false
     @State private var showingActivityPicker = false
     @State private var selectedActivityName = ""
@@ -90,7 +90,7 @@ struct CompactCommitmentCard: View {
         .sheet(isPresented: $showingFullCommitment) {
             NavigationView {
                 FullCommitmentSheet()
-                    .environmentObject(dataManager)
+                    .environment(dataManager)
             }
         }
         .sheet(isPresented: $showingActivityPicker) {
@@ -249,7 +249,7 @@ struct CompactCommitmentCard: View {
 
 struct FullCommitmentSheet: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
 
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var goalStore = DailyGoalStore.shared
@@ -813,12 +813,12 @@ private extension Date {
     CompactCommitmentCard()
         .padding()
         .background(Color.gray.opacity(0.1))
-        .environmentObject(DataManager.shared)
+        .environment(DataManager.shared)
 }
 
 #Preview("No Commitment") {
     CompactCommitmentCard()
         .padding()
         .background(Color.gray.opacity(0.1))
-        .environmentObject(DataManager.shared)
+        .environment(DataManager.shared)
 }

@@ -6,10 +6,12 @@
 //
 
 import Foundation
+import Observation
+import WidgetKit
 
 // MARK: - Commitment Manager Protocol
 
-protocol CommitmentManagerProtocol: ObservableObject {
+protocol CommitmentManagerProtocol: AnyObject {
     var todaysCommitment: DailyCommitment? { get }
     var isLoading: Bool { get }
     var suggestedMicroCommitment: MicroCommitmentType? { get }
@@ -29,16 +31,17 @@ protocol CommitmentManagerProtocol: ObservableObject {
 // MARK: - Commitment Manager
 
 @MainActor
-final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
+@Observable
+final class CommitmentManager: CommitmentManagerProtocol {
 
-    // MARK: - Published Properties
+    // MARK: - Observable Properties
 
-    @Published private(set) var todaysCommitment: DailyCommitment?
-    @Published private(set) var isLoading = false
-    @Published private(set) var suggestedMicroCommitment: MicroCommitmentType?
-    @Published private(set) var shouldOfferMicroCommitment: Bool = false
-    @Published private(set) var commitmentLevelCounts: (micro: Int, mini: Int, standard: Int) = (0, 0, 0)
-    @Published private(set) var suggestedLevel: CommitmentLevel = .standard
+    private(set) var todaysCommitment: DailyCommitment?
+    private(set) var isLoading = false
+    private(set) var suggestedMicroCommitment: MicroCommitmentType?
+    private(set) var shouldOfferMicroCommitment: Bool = false
+    private(set) var commitmentLevelCounts: (micro: Int, mini: Int, standard: Int) = (0, 0, 0)
+    private(set) var suggestedLevel: CommitmentLevel = .standard
 
     // MARK: - Private Properties
 
@@ -62,6 +65,7 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
 
         do {
             self.todaysCommitment = try await repository.getTodaysCommitment(userId: userId)
+            syncCommitmentToWidget()
 
             // Load micro-commitment suggestions
             await loadMicroCommitmentSuggestions(for: userId)
@@ -103,6 +107,7 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
             let commitment = DailyCommitment(athleteId: userId, activityType: activityType)
             let createdCommitment = try await repository.createCommitment(commitment)
             self.todaysCommitment = createdCommitment
+            syncCommitmentToWidget()
         } catch {
             print("❌ CommitmentManager: Failed to create commitment: \(error)")
             throw error
@@ -123,6 +128,7 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
             let commitment = DailyCommitment(athleteId: userId, microCommitmentType: type)
             let createdCommitment = try await repository.createCommitment(commitment)
             self.todaysCommitment = createdCommitment
+            syncCommitmentToWidget()
             print("✅ CommitmentManager: Created micro-commitment: \(type.displayName)")
         } catch {
             print("❌ CommitmentManager: Failed to create micro-commitment: \(error)")
@@ -145,6 +151,7 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
         do {
             let fulfilledCommitment = try await CommitmentService.completeMicroCommitment(commitmentId: commitmentId)
             self.todaysCommitment = fulfilledCommitment
+            syncCommitmentToWidget()
 
             // Trigger celebration
             CelebrationService.shared.celebrate(for: fulfilledCommitment)
@@ -188,6 +195,7 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
             )
             let result = try await repository.updateCommitment(updatedCommitment)
             self.todaysCommitment = result
+            syncCommitmentToWidget()
             print("✅ CommitmentManager: Updated commitment to \(activityType.displayName)")
         } catch {
             print("❌ CommitmentManager: Failed to update commitment: \(error)")
@@ -208,6 +216,7 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
         do {
             try await repository.deleteCommitment(id: commitmentId)
             self.todaysCommitment = nil
+            syncCommitmentToWidget()
             print("✅ CommitmentManager: Deleted commitment")
         } catch {
             print("❌ CommitmentManager: Failed to delete commitment: \(error)")
@@ -251,6 +260,21 @@ final class CommitmentManager: ObservableObject, CommitmentManagerProtocol {
         }
 
         await loadTodaysCommitment(for: userId)
+    }
+
+    // MARK: - Widget Sync
+
+    /// Sync today's commitment to the App Group so the widget reflects current state.
+    private func syncCommitmentToWidget() {
+        guard let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier) else { return }
+        if let commitment = todaysCommitment {
+            defaults.set(commitment.activityType.rawValue, forKey: AppConstants.WidgetKeys.todaysCommitmentType)
+            defaults.set(commitment.isFulfilled, forKey: AppConstants.WidgetKeys.todaysCommitmentFulfilled)
+        } else {
+            defaults.removeObject(forKey: AppConstants.WidgetKeys.todaysCommitmentType)
+            defaults.removeObject(forKey: AppConstants.WidgetKeys.todaysCommitmentFulfilled)
+        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 

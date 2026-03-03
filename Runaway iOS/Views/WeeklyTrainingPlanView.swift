@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct WeeklyTrainingPlanView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @State private var weeklyPlan: WeeklyTrainingPlan?
     @State private var isLoading = false
     @State private var isGenerating = false
@@ -475,6 +475,6 @@ struct ExerciseRow: View {
 #Preview {
     NavigationView {
         WeeklyTrainingPlanView()
-            .environmentObject(DataManager.shared)
+            .environment(DataManager.shared)
     }
 }

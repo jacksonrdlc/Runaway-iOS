@@ -9,7 +9,7 @@ import SwiftUI
 import AuthenticationServices
 
 struct SignInView: View {
-    @EnvironmentObject var userSession: UserSession
+    @Environment(UserSession.self) var userSession
     @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var viewModel = SignInViewModel()
 
@@ -79,12 +79,12 @@ struct SignInView: View {
             }
             .navigationDestination(isPresented: $showEmailSignIn) {
                 SignInEmailView()
-                    .environmentObject(userSession)
+                    .environment(userSession)
                     .environmentObject(themeManager)
             }
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView()
-                    .environmentObject(userSession)
+                    .environment(userSession)
                     .environmentObject(themeManager)
             }
             .alert("Sign In Error", isPresented: $showError) {
@@ -265,6 +265,6 @@ enum SHA256Hash {
 
 #Preview {
     SignInView()
-        .environmentObject(UserSession.shared)
+        .environment(UserSession.shared)
         .environmentObject(ThemeManager.shared)
 }

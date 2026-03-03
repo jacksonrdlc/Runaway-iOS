@@ -27,7 +27,10 @@ class APIRequestManager {
         // Check if request is already in progress
         if let existingTask = pendingRequests[key] {
             return try await withTimeout(timeout: timeout) {
-                return try await existingTask.value as! T
+                guard let value = try await existingTask.value as? T else {
+                    throw APIRequestError.duplicateRequest
+                }
+                return value
             }
         }
 
@@ -53,7 +56,10 @@ class APIRequestManager {
         }
 
         return try await withTimeout(timeout: timeout) {
-            return try await task.value as! T
+            guard let value = try await task.value as? T else {
+                throw APIRequestError.duplicateRequest
+            }
+            return value
         }
     }
 
@@ -71,7 +77,9 @@ class APIRequestManager {
             }
 
             // Return the first one to complete
-            let result = try await group.next()!
+            guard let result = try await group.next() else {
+                throw APIRequestError.cancelled
+            }
             group.cancelAll()
             return result
         }

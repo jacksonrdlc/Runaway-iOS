@@ -183,7 +183,7 @@ struct AthleteWeeklyStatsCard: View {
     @ObservedObject private var themeManager = ThemeManager.shared
 
     let stats: AthleteStats
-    @EnvironmentObject private var dataManager: DataManager
+    @Environment(DataManager.self) private var dataManager
     @State private var weeklyRuns = 0
     @State private var weeklyDistanceValue: Double = 0.0
     @State private var weeklyTime = "0h 0m"
@@ -303,7 +303,7 @@ struct MonthlyStatsCard: View {
     @ObservedObject private var themeManager = ThemeManager.shared
 
     let stats: AthleteStats
-    @EnvironmentObject private var dataManager: DataManager
+    @Environment(DataManager.self) private var dataManager
     @State private var monthlyRuns = 0
     @State private var monthlyDistanceValue: Double = 0.0
     @State private var averagePace = "0:00"

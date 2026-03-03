@@ -10,7 +10,7 @@ import Supabase
 
 struct EmailVerificationPendingView: View {
     @EnvironmentObject var themeManager: ThemeManager
-    @EnvironmentObject var userSession: UserSession
+    @Environment(UserSession.self) var userSession
     @Environment(\.dismiss) private var dismiss
 
     let email: String

@@ -70,6 +70,8 @@ struct SimpleEntry: TimelineEntry {
     let selectedActivities: [ActivityTypeEntity]
     let weeklyGoal: Double
     let monthlyGoal: Double
+    let todaysCommitmentType: String?
+    let todaysCommitmentFulfilled: Bool
 }
 
 struct BarChart: View {
@@ -215,12 +217,12 @@ struct Provider: AppIntentTimelineProvider {
     private let defaultMonthlyGoal: Double = 80.0
 
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal)
+        SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal, todaysCommitmentType: nil, todaysCommitmentFulfilled: false)
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
         let activities = configuration.selectedActivities ?? defaultActivities
-        return SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal)
+        return SimpleEntry(date: Date(), miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal, todaysCommitmentType: nil, todaysCommitmentFulfilled: false)
     }
     
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
@@ -229,9 +231,11 @@ struct Provider: AppIntentTimelineProvider {
         let activities = configuration.selectedActivities ?? defaultActivities
 
         for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal)
+            let entryDate = Calendar.current.safeDate(byAdding: .hour, value: hourOffset, to: currentDate)
+            var entry = SimpleEntry(date: entryDate, miles: 0.0, monthlyMiles: 0.0, runs: 0, days: [], selectedActivities: activities, weeklyGoal: defaultWeeklyGoal, monthlyGoal: defaultMonthlyGoal, todaysCommitmentType: nil, todaysCommitmentFulfilled: false)
             if let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") {
+                let commitmentType = userDefaults.string(forKey: "todays_commitment_type")
+                let commitmentFulfilled = userDefaults.bool(forKey: "todays_commitment_fulfilled")
                 let miles = userDefaults.double(forKey: "miles")
                 let runs = userDefaults.integer(forKey: "runs")
                 let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
@@ -262,13 +266,15 @@ struct Provider: AppIntentTimelineProvider {
                 print("🔵   Friday: \(friArray.count) activities")
                 print("🔵   Saturday: \(satArray.count) activities")
 
+                #if DEBUG
                 // Log sample activity data for debugging
-                if !sunArray.isEmpty {
-                    print("🔵   Sample Sunday activity: \(sunArray.first!)")
+                if let sunSample = sunArray.first {
+                    print("🔵   Sample Sunday activity: \(sunSample)")
                 }
-                if !monArray.isEmpty {
-                    print("🔵   Sample Monday activity: \(monArray.first!)")
+                if let monSample = monArray.first {
+                    print("🔵   Sample Monday activity: \(monSample)")
                 }
+                #endif
                 
                 
                 var sundayActivities: Array<Activity> = []
@@ -416,7 +422,7 @@ struct Provider: AppIntentTimelineProvider {
                     print("🔵   \(day.name): \(day.type) - \(day.minutes) min - \(day.miles) mi")
                 }
 
-                entry = SimpleEntry(date: entryDate, miles: miles, monthlyMiles: monthlyMiles, runs: runs, days: daysData, selectedActivities: activities, weeklyGoal: finalWeeklyGoal, monthlyGoal: finalMonthlyGoal)
+                entry = SimpleEntry(date: entryDate, miles: miles, monthlyMiles: monthlyMiles, runs: runs, days: daysData, selectedActivities: activities, weeklyGoal: finalWeeklyGoal, monthlyGoal: finalMonthlyGoal, todaysCommitmentType: commitmentType, todaysCommitmentFulfilled: commitmentFulfilled)
             }
             entries.append(entry)
         }
@@ -472,6 +478,10 @@ struct RunawayWidgetEntryView : View {
                     Text("Monthly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 10, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
             }.padding(.top, 16)
+            CommitmentWidgetSection(
+                commitmentType: entry.todaysCommitmentType,
+                isFulfilled: entry.todaysCommitmentFulfilled
+            )
             HStack(alignment: .bottom){
                 Spacer()
                 Text("Last Updated:").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
@@ -481,6 +491,50 @@ struct RunawayWidgetEntryView : View {
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Commitment Widget Section
+
+struct CommitmentWidgetSection: View {
+    let commitmentType: String?
+    let isFulfilled: Bool
+
+    private func iconName(for type: CommitmentActivityAppEnum) -> String {
+        type.iconName
+    }
+
+    var body: some View {
+        if let type = commitmentType {
+            // Commitment set — show status
+            HStack(spacing: 6) {
+                Image(systemName: isFulfilled ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(isFulfilled ? .green : .white.opacity(0.6))
+                Text("Today: \(type.capitalized)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(isFulfilled ? .green : .white.opacity(0.8))
+                Spacer()
+            }
+            .padding(.top, 4)
+        } else {
+            // No commitment — show tappable buttons
+            HStack(spacing: 12) {
+                Text("Commit:")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.6))
+                ForEach([CommitmentActivityAppEnum.run, .walk, .workout, .yoga], id: \.rawValue) { type in
+                    Button(intent: SetDailyCommitmentIntent(activityType: type)) {
+                        Image(systemName: type.iconName)
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.85))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+            .padding(.top, 4)
+        }
     }
 }
 
@@ -542,6 +596,6 @@ extension Double {
         ActivityTypeEntity(id: "weight_training", name: "Weight Training", color: "#FFB300"),
         ActivityTypeEntity(id: "yoga", name: "Yoga", color: "#CC66CC")
     ]
-    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: 20.0, monthlyGoal: 80.0)
-    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: 20.0, monthlyGoal: 80.0)
+    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: 20.0, monthlyGoal: 80.0, todaysCommitmentType: nil, todaysCommitmentFulfilled: false)
+    SimpleEntry(date: .now, miles: 0.0, monthlyMiles: 0, runs: 0, days: [], selectedActivities: defaultActivities, weeklyGoal: 20.0, monthlyGoal: 80.0, todaysCommitmentType: nil, todaysCommitmentFulfilled: false)
 }

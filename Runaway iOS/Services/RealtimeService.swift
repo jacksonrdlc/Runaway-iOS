@@ -5,10 +5,11 @@ import BackgroundTasks
 import WidgetKit
 
 @MainActor
-public final class RealtimeService: ObservableObject {
-    @Published public var isConnected = false
-    @Published public var lastUpdateTime: Date?
-    @Published public var connectionHealth: ConnectionHealth = .unknown
+@Observable
+public final class RealtimeService {
+    public var isConnected = false
+    public var lastUpdateTime: Date?
+    public var connectionHealth: ConnectionHealth = .unknown
     
     public enum ConnectionHealth {
         case healthy

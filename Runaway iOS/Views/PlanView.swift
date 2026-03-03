@@ -17,7 +17,7 @@ enum PlanSection: String, CaseIterable {
 }
 
 struct PlanView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var viewModel = PlanViewModel()
     @State private var selectedSection: PlanSection = .training
@@ -1159,7 +1159,7 @@ struct PlanView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
             PlanView()
-                .environmentObject(DataManager.shared)
+                .environment(DataManager.shared)
         }
     }
 }

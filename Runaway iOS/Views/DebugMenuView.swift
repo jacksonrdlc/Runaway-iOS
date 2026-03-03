@@ -10,7 +10,7 @@ import UserNotifications
 import FirebaseMessaging
 
 struct DebugMenuView: View {
-    @StateObject private var realtimeService = RealtimeService.shared
+    @State private var realtimeService = RealtimeService.shared
     @State private var showingBackgroundMonitor = false
     @State private var fcmToken: String = "Loading..."
     @State private var notificationStatus: String = "Unknown"

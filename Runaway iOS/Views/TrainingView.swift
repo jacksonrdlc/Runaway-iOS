@@ -14,7 +14,7 @@
 import SwiftUI
 
 struct TrainingView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(AppRouter.self) private var router
     @StateObject private var viewModel = TrainingViewModel()
@@ -180,7 +180,6 @@ struct TrainingView: View {
         .sheet(isPresented: $showingCoachChat) {
             NavigationView {
                 ChatView()
-                    .environmentObject(dataManager)
             }
         }
     }
@@ -283,7 +282,7 @@ struct TrainingView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
             TrainingView()
-                .environmentObject(DataManager.shared)
+                .environment(DataManager.shared)
         }
     }
 }

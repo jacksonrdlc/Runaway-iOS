@@ -8,18 +8,18 @@
 import SwiftUI
 
 struct LoginView: View {
-    @EnvironmentObject var userSession: UserSession
+    @Environment(UserSession.self) var userSession
     @EnvironmentObject var themeManager: ThemeManager
 
     var body: some View {
         SignInView()
-            .environmentObject(userSession)
+            .environment(userSession)
             .environmentObject(themeManager)
     }
 }
 
 #Preview {
     LoginView()
-        .environmentObject(UserSession.shared)
+        .environment(UserSession.shared)
         .environmentObject(ThemeManager.shared)
 }

@@ -6,10 +6,11 @@
 //
 
 import Foundation
+import Observation
 
 // MARK: - Goal Manager Protocol
 
-protocol GoalManagerProtocol: ObservableObject {
+protocol GoalManagerProtocol: AnyObject {
     var currentGoal: RunningGoal? { get }
     var isLoading: Bool { get }
 
@@ -20,12 +21,13 @@ protocol GoalManagerProtocol: ObservableObject {
 // MARK: - Goal Manager
 
 @MainActor
-final class GoalManager: ObservableObject, GoalManagerProtocol {
+@Observable
+final class GoalManager: GoalManagerProtocol {
 
-    // MARK: - Published Properties
+    // MARK: - Observable Properties
 
-    @Published private(set) var currentGoal: RunningGoal?
-    @Published private(set) var isLoading = false
+    private(set) var currentGoal: RunningGoal?
+    private(set) var isLoading = false
 
     // MARK: - Singleton
 

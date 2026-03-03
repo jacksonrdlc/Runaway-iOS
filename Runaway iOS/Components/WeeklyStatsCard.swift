@@ -13,7 +13,7 @@ import SwiftUI
 /// Tier 2 Quick View component for the dashboard
 /// Shows 3-5 primary stats with trend indicators, scannable in 2-3 seconds
 struct WeeklyStatsCard: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Environment(DataManager.self) var dataManager
     @ObservedObject private var goalStore = GoalSettingsStore.shared
     @ObservedObject private var themeManager = ThemeManager.shared
 
@@ -356,5 +356,5 @@ struct WeeklyActivityStats {
             .padding()
     }
     .background(Color.gray.opacity(0.1))
-    .environmentObject(DataManager.shared)
+    .environment(DataManager.shared)
 }

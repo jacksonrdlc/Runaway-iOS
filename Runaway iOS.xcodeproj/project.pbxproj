@@ -100,6 +100,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"GoogleService-Info.plist",
+				Utils/AppConstants.swift,
+				Utils/DateExtensions.swift,
 			);
 			target = 8EEECCCB2D64D02B0053014A /* RunawayWidgetExtension */;
 		};
