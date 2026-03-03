@@ -78,9 +78,10 @@ struct CommitmentWidgetEntryView: View {
                     .foregroundColor(.white.opacity(0.35))
                     .tracking(0.8)
                 Spacer()
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(.yellow.opacity(0.6))
+                Text("Runaway")
+                    .font(.system(size: 16, weight: .heavy))
+                    .italic()
+                    .foregroundColor(.white)
             }
             .padding(.bottom, 10)
 
