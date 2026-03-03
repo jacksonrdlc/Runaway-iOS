@@ -12,10 +12,11 @@ import WidgetKit
 // MARK: - Activity Type Enum
 
 enum CommitmentActivityAppEnum: String, AppEnum {
-    case run
-    case walk
-    case workout
-    case yoga
+    // rawValues match CommitmentActivityType in the main app so Supabase rows decode correctly
+    case run = "Run"
+    case walk = "Walk"
+    case workout = "Weight Training"
+    case yoga = "Yoga"
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation { "Activity Type" }
     static var caseDisplayRepresentations: [Self: DisplayRepresentation] = [
@@ -34,7 +35,14 @@ enum CommitmentActivityAppEnum: String, AppEnum {
         }
     }
 
-    var displayName: String { rawValue.capitalized }
+    var displayName: String {
+        switch self {
+        case .run: return "Run"
+        case .walk: return "Walk"
+        case .workout: return "Workout"
+        case .yoga: return "Yoga"
+        }
+    }
 }
 
 // MARK: - AppIntent

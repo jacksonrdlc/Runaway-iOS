@@ -234,6 +234,11 @@ struct Runaway_iOSApp: App {
     private func handleAppBecameActive() {
         print("📱 App became active - resuming services")
 
+        // Refresh commitment in case user set it via widget while app was backgrounded
+        Task {
+            await CommitmentManager.shared.refresh()
+        }
+
         // Resume realtime services
         realtimeService.startRealtimeSubscription()
         realtimeService.resumeFromBackground()

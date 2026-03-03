@@ -478,10 +478,6 @@ struct RunawayWidgetEntryView : View {
                     Text("Monthly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 10, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
             }.padding(.top, 16)
-            CommitmentWidgetSection(
-                commitmentType: entry.todaysCommitmentType,
-                isFulfilled: entry.todaysCommitmentFulfilled
-            )
             HStack(alignment: .bottom){
                 Spacer()
                 Text("Last Updated:").font(.system(size: 9)).foregroundColor(.white.opacity(0.7))
@@ -491,50 +487,6 @@ struct RunawayWidgetEntryView : View {
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 4)
-    }
-}
-
-// MARK: - Commitment Widget Section
-
-struct CommitmentWidgetSection: View {
-    let commitmentType: String?
-    let isFulfilled: Bool
-
-    private func iconName(for type: CommitmentActivityAppEnum) -> String {
-        type.iconName
-    }
-
-    var body: some View {
-        if let type = commitmentType {
-            // Commitment set — show status
-            HStack(spacing: 6) {
-                Image(systemName: isFulfilled ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(isFulfilled ? .green : .white.opacity(0.6))
-                Text("Today: \(type.capitalized)")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isFulfilled ? .green : .white.opacity(0.8))
-                Spacer()
-            }
-            .padding(.top, 4)
-        } else {
-            // No commitment — show tappable buttons
-            HStack(spacing: 12) {
-                Text("Commit:")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.6))
-                ForEach([CommitmentActivityAppEnum.run, .walk, .workout, .yoga], id: \.rawValue) { type in
-                    Button(intent: SetDailyCommitmentIntent(activityType: type)) {
-                        Image(systemName: type.iconName)
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.85))
-                    }
-                    .buttonStyle(.plain)
-                }
-                Spacer()
-            }
-            .padding(.top, 4)
-        }
     }
 }
 
