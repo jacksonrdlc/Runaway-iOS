@@ -2,8 +2,7 @@
 //  RunawayShortcuts.swift
 //  Runaway iOS
 //
-//  App Shortcuts provider for Siri integration
-//  Enables phrases like "Start my run with Runaway"
+//  App Shortcuts for Siri / Shortcuts integration
 //
 
 import AppIntents
@@ -12,76 +11,37 @@ import AppIntents
 struct RunawayShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
-            intent: StartRunIntent(),
+            intent: CheckTrainingPhaseIntent(),
             phrases: [
-                "Start my run with \(.applicationName)",
-                "Start a run with \(.applicationName)",
-                "Start running with \(.applicationName)",
-                "Begin my run with \(.applicationName)",
-                "Let's run with \(.applicationName)",
-                "Start \(.applicationName) run",
-                "Go for a run with \(.applicationName)"
+                "What's my training phase with \(.applicationName)",
+                "Where am I in training with \(.applicationName)",
+                "Check my training with \(.applicationName)",
+                "What does \(.applicationName) say about my training"
             ],
-            shortTitle: "Start Run",
-            systemImageName: "figure.run"
+            shortTitle: "Training Phase",
+            systemImageName: "chart.bar.fill"
         )
 
         AppShortcut(
-            intent: StopRunIntent(),
+            intent: GetDailyBriefIntent(),
             phrases: [
-                "Stop my run with \(.applicationName)",
-                "Stop running with \(.applicationName)",
-                "End my run with \(.applicationName)",
-                "Finish my run with \(.applicationName)",
-                "Stop \(.applicationName)"
+                "Give me my daily brief with \(.applicationName)",
+                "What's my \(.applicationName) daily brief",
+                "Open my training brief with \(.applicationName)"
             ],
-            shortTitle: "Stop Run",
-            systemImageName: "stop.fill"
+            shortTitle: "Daily Brief",
+            systemImageName: "sun.max.fill"
         )
 
         AppShortcut(
-            intent: PauseRunIntent(),
+            intent: CheckRaceCountdownIntent(),
             phrases: [
-                "Pause my run with \(.applicationName)",
-                "Pause \(.applicationName)",
-                "Take a break with \(.applicationName)"
+                "How many days until my race with \(.applicationName)",
+                "Race countdown with \(.applicationName)",
+                "When is my race with \(.applicationName)"
             ],
-            shortTitle: "Pause Run",
-            systemImageName: "pause.fill"
+            shortTitle: "Race Countdown",
+            systemImageName: "flag.checkered"
         )
-
-        AppShortcut(
-            intent: ResumeRunIntent(),
-            phrases: [
-                "Resume my run with \(.applicationName)",
-                "Continue my run with \(.applicationName)",
-                "Resume \(.applicationName)"
-            ],
-            shortTitle: "Resume Run",
-            systemImageName: "play.fill"
-        )
-    }
-}
-
-// MARK: - Activity Type Enum for Intents
-
-@available(iOS 16.0, *)
-enum RunawayActivityType: String, AppEnum {
-    case run = "Run"
-    case walk = "Walk"
-    case bike = "Bike"
-    case hike = "Hike"
-
-    static var typeDisplayRepresentation: TypeDisplayRepresentation {
-        TypeDisplayRepresentation(name: "Activity Type")
-    }
-
-    static var caseDisplayRepresentations: [RunawayActivityType: DisplayRepresentation] {
-        [
-            .run: DisplayRepresentation(title: "Run", image: .init(systemName: "figure.run")),
-            .walk: DisplayRepresentation(title: "Walk", image: .init(systemName: "figure.walk")),
-            .bike: DisplayRepresentation(title: "Bike", image: .init(systemName: "figure.outdoor.cycle")),
-            .hike: DisplayRepresentation(title: "Hike", image: .init(systemName: "figure.hiking"))
-        ]
     }
 }
