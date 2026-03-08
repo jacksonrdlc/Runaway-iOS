@@ -77,7 +77,7 @@ struct AdaptivePrimaryInsightCard: View {
 
 struct PhaseIndicatorHeader: View {
     let phaseContext: TrainingPhaseContext
-    private var isUrgent: Bool { phaseContext.urgency == .urgent || phaseContext.urgency == .raceDay }
+    private var isUrgent: Bool { phaseContext.urgency == .high || phaseContext.urgency == .critical }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
