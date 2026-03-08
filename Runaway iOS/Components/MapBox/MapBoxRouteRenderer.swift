@@ -83,7 +83,7 @@ struct PaceColorMap {
 
 /// Renders routes on MapBox map with optional pace gradient
 class MapBoxRouteRenderer {
-    private let polylineService = PolylineEncodingService()
+
 
     // Source and layer IDs
     private let routeSourceId = "route-source"
@@ -103,7 +103,7 @@ class MapBoxRouteRenderer {
         showMarkers: Bool = false
     ) {
         // Decode polyline
-        let coordinates = polylineService.decode(polyline: polyline)
+        let coordinates = decodePolyline(polyline)
 
         guard !coordinates.isEmpty else {
             #if DEBUG
@@ -452,4 +452,13 @@ extension MapBoxRouteRenderer {
 
         return segments
     }
+}
+
+// MARK: - Polyline Decoding (inlined — no longer needs PolylineEncodingService)
+
+import Polyline
+
+private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
+    let polyline = Polyline(encodedPolyline: encoded)
+    return polyline.coordinates ?? []
 }

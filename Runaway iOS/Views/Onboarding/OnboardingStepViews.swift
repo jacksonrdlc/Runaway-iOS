@@ -527,169 +527,42 @@ struct ExperienceLevelCard: View {
 }
 
 // MARK: - Movement Test View
+// NOTE: Cadence assessment removed (recording stack removed). Onboarding step skipped.
 
 struct OnboardingMovementTestView: View {
     let onContinue: () -> Void
     let onSkip: () -> Void
     let onResult: (MovementTestResult) -> Void
 
-    @StateObject private var cadenceService = CadenceAssessmentService.shared
-
     var body: some View {
         VStack(spacing: 24) {
-            // Header
             VStack(spacing: 8) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 50))
+                Image(systemName: "figure.run.circle.fill")
+                    .font(.system(size: 60))
                     .foregroundColor(.green)
 
-                Text("Quick Movement Test")
+                Text("You're Almost Set")
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Text("March in place for 30 seconds to assess your natural cadence")
+                Text("Runaway will analyze your running data from Strava and HealthKit to personalize your experience.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
-            .padding(.top, 40)
+            .padding(.top, 60)
 
             Spacer()
 
-            // Test area
-            if cadenceService.isRunning {
-                // Running test
-                VStack(spacing: 24) {
-                    // Progress ring
-                    ZStack {
-                        Circle()
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 8)
-                            .frame(width: 150, height: 150)
-
-                        Circle()
-                            .trim(from: 0, to: cadenceService.progress)
-                            .stroke(Color.green, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                            .frame(width: 150, height: 150)
-                            .rotationEffect(.degrees(-90))
-
-                        VStack {
-                            Text("\(Int(cadenceService.progress * 30))s")
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                            Text("of 30s")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    // Live cadence
-                    VStack(spacing: 4) {
-                        Text("\(Int(cadenceService.currentCadence))")
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
-                            .foregroundColor(.green)
-                        Text("steps/min")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text("Keep marching!")
-                        .font(.headline)
-                        .foregroundColor(.green)
-                }
-            } else if let result = cadenceService.testResult {
-                // Results
-                VStack(spacing: 20) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.green)
-
-                    VStack(spacing: 8) {
-                        Text("Your Cadence")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-
-                        Text("\(Int(result.averageCadence)) steps/min")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-
-                        Text(result.cadenceAssessment.rawValue)
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .foregroundColor(result.cadenceAssessment.color)
-                    }
-
-                    Text(result.cadenceAssessment.recommendation)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-            } else {
-                // Ready to start
-                VStack(spacing: 16) {
-                    Image(systemName: "figure.walk")
-                        .font(.system(size: 80))
-                        .foregroundColor(.gray)
-
-                    Text("Tap Start when ready")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-
-                    if !cadenceService.isAvailable {
-                        Text("Motion sensors not available on this device")
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                    }
-                }
-            }
-
-            Spacer()
-
-            // Buttons
-            VStack(spacing: 12) {
-                if cadenceService.isRunning {
-                    Button(action: { cadenceService.cancelTest() }) {
-                        Text("Cancel")
-                            .font(.headline)
-                            .foregroundColor(.red)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red.opacity(0.1))
-                            .cornerRadius(16)
-                    }
-                } else if cadenceService.testResult != nil {
-                    Button(action: {
-                        if let result = cadenceService.testResult {
-                            onResult(result)
-                        }
-                        onContinue()
-                    }) {
-                        Text("Continue")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(16)
-                    }
-                } else {
-                    Button(action: { cadenceService.startTest() }) {
-                        Text("Start Test")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(cadenceService.isAvailable ? Color.green : Color.gray)
-                            .cornerRadius(16)
-                    }
-                    .disabled(!cadenceService.isAvailable)
-
-                    Button(action: onSkip) {
-                        Text("Skip this step")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
+            Button(action: onContinue) {
+                Text("Continue")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
+                    .cornerRadius(16)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
