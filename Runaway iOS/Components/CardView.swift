@@ -1,8 +1,6 @@
 //
 //  CardView.swift
-//  RunawayUI
-//
-//  Created by Jack Rudelic on 7/22/24.
+//  Runaway iOS
 //
 
 import SwiftUI
@@ -11,45 +9,33 @@ import CoreLocation
 import UIKit
 import Combine
 
-// Create simplified card view
 struct CardView: View {
     let activity: LocalActivity
     let onTap: (() -> Void)?
     let previousActivities: [LocalActivity]
-    @State var image: UIImage?
     @State private var isPressed = false
 
-    private var colors: (cardBg: Color, textPrimary: Color, textSecondary: Color, textTertiary: Color) {
-        if ThemeManager.shared.isDarkMode {
-            return (
-                AppTheme.Colors.DarkMode.cardBackground,
-                AppTheme.Colors.DarkMode.textPrimary,
-                AppTheme.Colors.DarkMode.textSecondary,
-                AppTheme.Colors.DarkMode.textTertiary
-            )
-        } else {
-            return (
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
-            )
-        }
+    private var hasValidRoute: Bool {
+        guard let polyline = activity.summary_polyline, !polyline.isEmpty else { return false }
+        guard let distance = activity.distance, distance >= 80 else { return false }
+        return true
     }
 
-    // Check if we have a valid route worth displaying
-    private var hasValidRoute: Bool {
-        // Must have a non-empty polyline
-        guard let polyline = activity.summary_polyline, !polyline.isEmpty else {
-            return false
-        }
+    private var activityColor: Color {
+        AppTheme.Colors.activityColor(for: activity.type ?? "")
+    }
 
-        // Must have meaningful distance (at least 80 meters)
-        guard let distance = activity.distance, distance >= 80 else {
-            return false
+    private var activityIcon: String {
+        switch (activity.type ?? "").lowercased() {
+        case "run", "running", "trail run", "trailrun": return "figure.run"
+        case "walk", "walking": return "figure.walk"
+        case "bike", "cycling", "ride": return "bicycle"
+        case "yoga": return "figure.mind.and.body"
+        case "weight training", "weighttraining": return "dumbbell.fill"
+        case "swim", "swimming": return "figure.pool.swim"
+        case "hike", "hiking": return "figure.hiking"
+        default: return "figure.mixed.cardio"
         }
-
-        return true
     }
 
     init(activity: LocalActivity, previousActivities: [LocalActivity] = [], onTap: (() -> Void)? = nil) {
@@ -59,609 +45,290 @@ struct CardView: View {
     }
 
     var body: some View {
-        Button(action: {
-            print("🔥 CardView button pressed for activity: \(activity.name ?? "Unknown")")
-            onTap?()
-        }) {
+        Button(action: { onTap?() }) {
             VStack(alignment: .leading, spacing: 0) {
-                // Main content area
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-                    // Header with activity info and date
-                    HStack {
-                        HStack(spacing: AppTheme.Spacing.xs) {
-                            Image(systemName: activityIcon)
-                                .foregroundColor(AppTheme.Colors.activityColor(for: activity.type ?? ""))
-                                .font(.title2)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(activity.name ?? "Unknown Activity")
-                                    .font(AppTheme.Typography.headline)
-                                    .foregroundColor(colors.textPrimary)
-
-                                Text(activity.type ?? "Unknown Type")
-                                    .font(AppTheme.Typography.caption)
-                                    .foregroundColor(colors.textSecondary)
-                            }
-                        }
-
-                        Spacer()
-
-                        if let startDate = activity.start_date {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(startDate, style: .date)
-                                    .font(AppTheme.Typography.caption)
-                                    .foregroundColor(colors.textSecondary)
-
-                                Text(startDate, style: .time)
-                                    .font(AppTheme.Typography.caption)
-                                    .foregroundColor(colors.textTertiary)
-
-                                Text(timeAgoString(from: startDate))
-                                    .font(.caption2)
-                                    .foregroundColor(colors.textTertiary)
-                            }
-                        }
-                    }
-
-                    // Map view with modern styling - only show if there's a valid route with meaningful distance
-                    if hasValidRoute {
+                // ── MAP HERO ───────────────────────────────────────────────
+                if hasValidRoute {
+                    ZStack(alignment: .bottomLeading) {
                         ActivityMapView(summaryPolyline: activity.summary_polyline!)
-                            .frame(height: AppTheme.Layout.mapPreviewHeight)
-                            .cornerRadius(AppTheme.CornerRadius.medium)
-                            .themeShadow(.light)
+                            .frame(height: 220)
+
+                        HStack(spacing: 8) {
+                            Image(systemName: activityIcon)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(activityColor)
+                            Text(activity.name ?? "Activity")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial)
+                        .background(Color.black.opacity(0.45))
+                        .cornerRadius(10)
+                        .padding(14)
                     }
+                    .clipShape(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 16,
+                            bottomLeadingRadius: 0,
+                            bottomTrailingRadius: 0,
+                            topTrailingRadius: 16
+                        )
+                    )
+                }
 
-                    // Metrics row with modern styling
-                    HStack(spacing: AppTheme.Spacing.lg) {
-                        if let distance = activity.distance, UnitFormatter.metersToPreferredUnit(distance) >= 0.1 {
-                            MetricPill(
-                                icon: AppIcons.distance,
-                                value: UnitFormatter.formatDistance(distance, decimals: 2, includeUnit: false),
-                                unit: UnitFormatter.distanceUnitAbbreviation,
-                                color: AppTheme.Colors.accent
-                            )
-                        }
+                // ── CONTENT ────────────────────────────────────────────────
+                VStack(alignment: .leading, spacing: 14) {
 
-                        if let time = activity.elapsed_time {
-                            MetricPill(
-                                icon: AppIcons.time,
-                                value: formatTime(seconds: time),
-                                unit: "",
-                                color: AppTheme.Colors.accent
-                            )
-                        }
-
-                        if let distance = activity.distance, let time = activity.elapsed_time, UnitFormatter.metersToPreferredUnit(distance) >= 0.1 {
-                            MetricPill(
-                                icon: AppIcons.pace,
-                                value: calculatePaceFromMeters(distance: distance, time: time),
-                                unit: UnitFormatter.paceUnitLabel,
-                                color: AppTheme.Colors.accent
-                            )
+                    HStack(alignment: .top) {
+                        if !hasValidRoute {
+                            HStack(spacing: 10) {
+                                ZStack {
+                                    Circle()
+                                        .fill(activityColor.opacity(0.15))
+                                        .frame(width: 38, height: 38)
+                                    Image(systemName: activityIcon)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(activityColor)
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(activity.name ?? "Activity")
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
+                                    Text(activity.type ?? "")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                }
+                            }
+                        } else {
+                            HStack(spacing: 6) {
+                                Image(systemName: activityIcon)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(activityColor)
+                                Text((activity.type ?? "Run").capitalized)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                            }
                         }
 
                         Spacer()
+
+                        if let date = activity.start_date {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(date, format: .dateTime.month(.abbreviated).day())
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                                Text(timeAgoString(from: date))
+                                    .font(.system(size: 11))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                            }
+                        }
+                    }
+
+                    // ── HERO METRIC ────────────────────────────────────────
+                    if let distance = activity.distance, AppConstants.Conversion.metersToMiles * distance >= 0.1 {
+                        let miles = distance * AppConstants.Conversion.metersToMiles
+                        HStack(alignment: .firstTextBaseline, spacing: 3) {
+                            Text(String(format: miles >= 10 ? "%.1f" : "%.2f", miles))
+                                .font(.system(size: 38, weight: .bold, design: .rounded))
+                                .foregroundColor(activityColor)
+                                .monospacedDigit()
+                            Text(UnitFormatter.distanceUnitAbbreviation)
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                                .padding(.bottom, 4)
+                        }
+                    }
+
+                    // ── SUPPORTING STATS ───────────────────────────────────
+                    HStack(spacing: 0) {
+                        if let time = activity.elapsed_time {
+                            miniStat(value: formatElapsed(seconds: time), label: "time", icon: "clock")
+                        }
+                        if let distance = activity.distance, let time = activity.elapsed_time, distance >= 80 {
+                            Spacer()
+                            miniStat(
+                                value: calcPace(distance: distance, time: time),
+                                label: UnitFormatter.paceUnitLabel,
+                                icon: "gauge.medium"
+                            )
+                        }
+                        if let qi = quickInsight() {
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Image(systemName: qi.icon)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(qi.color)
+                                Text(qi.label)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(qi.color)
+                            }
+                        }
                     }
                 }
-                .padding(AppTheme.Spacing.md)
-
-                // AI Insights Banner - Full width at bottom
-                if let insights = generateInsights() {
-                    AIInsightsBanner(insights: insights)
-                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
-            .contentShape(Rectangle()) // Make entire card tappable
         }
         .buttonStyle(PlainButtonStyle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityCardLabel)
-        .accessibilityHint("Double tap to view activity details")
-        .accessibilityAddTraits(.isButton)
-        .background(colors.cardBg)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: ThemeManager.shared.isDarkMode ? .black.opacity(0.3) : .black.opacity(0.08), radius: ThemeManager.shared.isDarkMode ? 8 : 4, x: 0, y: ThemeManager.shared.isDarkMode ? 4 : 2)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(isPressed ? 0.12 : 0.07), lineWidth: 1)
+        )
         .scaleEffect(isPressed ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isPressed)
-        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
-            isPressed = pressing
-        }, perform: {})
-    }
-    
-    private var activityIcon: String {
-        switch (activity.type ?? "").lowercased() {
-        case "run", "running": return "figure.run"
-        case "trail run", "trail_run", "trailrun": return "figure.run"
-        case "walk", "walking": return "figure.walk"
-        case "bike", "cycling": return "bicycle"
-        case "yoga": return "figure.mind.and.body"
-        default: return "figure.mixed.cardio"
-        }
+        .animation(.easeOut(duration: 0.12), value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { isPressed = $0 }, perform: {})
     }
 
-    private var accessibilityCardLabel: String {
-        var label = "\(activity.name ?? "Activity"), \(activity.type ?? "unknown type")"
-
-        if let date = activity.start_date {
-            label += ", \(date.formatted(date: .abbreviated, time: .shortened))"
+    private func miniStat(value: String, label: String, icon: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+            Text(value)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
         }
-
-        if let distance = activity.distance {
-            label += ", \(UnitFormatter.formatDistance(distance, decimals: 2, includeUnit: true))"
-        }
-
-        if let time = activity.elapsed_time {
-            label += ", \(formatTime(seconds: time))"
-        }
-
-        if let distance = activity.distance, let time = activity.elapsed_time {
-            let pace = calculatePaceFromMeters(distance: distance, time: time)
-            label += ", pace \(pace)\(UnitFormatter.paceUnitLabel)"
-        }
-
-        return label
     }
 
-    private func calculatePace(distance: Double, time: Double) -> String {
+    private struct QuickInsightData { let label: String; let icon: String; let color: Color }
+    private func quickInsight() -> QuickInsightData? {
+        guard let cd = activity.distance, let ct = activity.elapsed_time, cd > 0,
+              previousActivities.count >= 3 else { return nil }
+        let cp = (ct / 60) / (cd * 0.000621371)
+        let similar = previousActivities.filter {
+            let pt = ($0.type ?? "").lowercased().replacingOccurrences(of: " ", with: "")
+            let at = (activity.type ?? "").lowercased().replacingOccurrences(of: " ", with: "")
+            return pt == at && ($0.distance ?? 0) > 0 && ($0.elapsed_time ?? 0) > 0
+        }
+        guard similar.count >= 3 else { return nil }
+        let ap = similar.reduce(0.0) { s, a in
+            guard let d = a.distance, let t = a.elapsed_time, d > 0 else { return s }
+            return s + (t / 60) / (d * 0.000621371)
+        } / Double(similar.count)
+        let pct = ((ap - cp) / ap) * 100
+        if pct >= 5 { return QuickInsightData(label: "\(Int(pct))% faster", icon: "arrow.up.right", color: AppTheme.Colors.success) }
+        if pct <= -5 { return QuickInsightData(label: "\(Int(abs(pct)))% slower", icon: "arrow.down.right", color: AppTheme.Colors.DarkMode.textTertiary) }
+        return nil
+    }
+
+    private func calcPace(distance: Double, time: Double) -> String {
         guard distance > 0, time > 0 else { return "--:--" }
-        let paceInSeconds = time / distance
-        let minutes = Int(paceInSeconds) / 60
-        let seconds = Int(paceInSeconds) % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        return UnitFormatter.formatPaceTime(minutesPerMile: (time / 60) / (distance * 0.000621371))
     }
 
-    /// Calculate pace from distance in meters and time in seconds
-    private func calculatePaceFromMeters(distance: Double, time: Double) -> String {
-        guard distance > 0, time > 0 else { return "--:--" }
-        // Convert to minutes per mile first (internal format)
-        let miles = distance * 0.000621371
-        let minutesPerMile = (time / 60) / miles
-        // Use UnitFormatter to convert if needed
-        return UnitFormatter.formatPaceTime(minutesPerMile: minutesPerMile)
+    private func formatElapsed(seconds: TimeInterval) -> String {
+        let h = Int(seconds) / 3600; let m = (Int(seconds) % 3600) / 60
+        return h > 0 ? "\(h)h \(m)m" : "\(m)m"
     }
 
     private func timeAgoString(from date: Date) -> String {
-        let timeInterval = Date().timeIntervalSince(date)
-
-        if timeInterval < 60 {
-            return "just now"
-        } else if timeInterval < 3600 {
-            let minutes = Int(timeInterval / 60)
-            return "\(minutes)m ago"
-        } else if timeInterval < 86400 {
-            let hours = Int(timeInterval / 3600)
-            return "\(hours)h ago"
-        } else if timeInterval < 2592000 { // 30 days
-            let days = Int(timeInterval / 86400)
-            return "\(days)d ago"
-        } else {
-            // For older activities, just show the date
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            return formatter.string(from: date)
-        }
-    }
-
-    private func generateInsights() -> ActivityInsight? {
-        guard let currentDistance = activity.distance,
-              let currentTime = activity.elapsed_time,
-              currentDistance > 0, currentTime > 0 else {
-            return nil
-        }
-
-        // Helper function to normalize activity type for comparison
-        func normalizeType(_ type: String?) -> String {
-            return type?
-                .lowercased()
-                .replacingOccurrences(of: " ", with: "")
-                .replacingOccurrences(of: "_", with: "")
-                .replacingOccurrences(of: "-", with: "")
-                ?? ""
-        }
-
-        // Get similar activities from the last 30 days (same type)
-        let calendar = Calendar.current
-        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        let currentTypeNormalized = normalizeType(activity.type)
-
-        let recentSimilarActivities = previousActivities.filter { previous in
-            guard let prevDate = previous.start_date,
-                  prevDate > thirtyDaysAgo,
-                  normalizeType(previous.type) == currentTypeNormalized,
-                  let prevDistance = previous.distance,
-                  let prevTime = previous.elapsed_time,
-                  prevDistance > 0, prevTime > 0 else {
-                return false
-            }
-            return true
-        }
-
-        guard recentSimilarActivities.count >= 3 else {
-            return nil // Need at least 3 activities for comparison
-        }
-
-        // Calculate current pace (min/mile)
-        let currentPace = (currentTime / 60) / (currentDistance * 0.000621371)
-
-        // Calculate average pace from recent activities
-        let avgPace = recentSimilarActivities.reduce(0.0) { sum, act in
-            guard let dist = act.distance, let time = act.elapsed_time, dist > 0 else { return sum }
-            return sum + ((time / 60) / (dist * 0.000621371))
-        } / Double(recentSimilarActivities.count)
-
-        // Pace change percentage
-        let paceChange = ((avgPace - currentPace) / avgPace) * 100
-
-        // Generate insight
-        var insights: [String] = []
-
-        if abs(paceChange) >= 3 {
-            if paceChange > 0 {
-                insights.append("🚀 \(Int(paceChange))% faster than avg")
-            } else {
-                insights.append("🐢 \(Int(abs(paceChange)))% slower than avg")
-            }
-        }
-
-        // Distance comparison
-        let avgDistance = recentSimilarActivities.reduce(0.0) { sum, act in
-            sum + (act.distance ?? 0)
-        } / Double(recentSimilarActivities.count)
-
-        let distanceChange = ((currentDistance - avgDistance) / avgDistance) * 100
-
-        if abs(distanceChange) >= 10 {
-            if distanceChange > 0 {
-                insights.append("📈 \(Int(distanceChange))% longer run")
-            } else {
-                insights.append("📉 \(Int(abs(distanceChange)))% shorter run")
-            }
-        }
-
-        // Estimate VO2 max change (simple approximation)
-        // VO2 max roughly correlates with pace improvement
-        if paceChange >= 5 {
-            insights.append("💪 Fitness improving")
-        }
-
-        return insights.isEmpty ? nil : ActivityInsight(messages: insights)
+        let i = Date().timeIntervalSince(date)
+        if i < 3600 { return "\(Int(i / 60))m ago" }
+        if i < 86400 { return "\(Int(i / 3600))h ago" }
+        if i < 2592000 { return "\(Int(i / 86400))d ago" }
+        let f = DateFormatter(); f.dateStyle = .medium; return f.string(from: date)
     }
 }
 
-// MARK: - Activity Insight Model
-
-struct ActivityInsight {
-    let messages: [String]
-}
-
-// MARK: - AI Insights Banner
-
+// MARK: - Legacy compat
+struct ActivityInsight { let messages: [String] }
 struct AIInsightsBanner: View {
     let insights: ActivityInsight
-
-    private var colors: (cardBg: Color, textPrimary: Color, surface: Color) {
-        if ThemeManager.shared.isDarkMode {
-            return (
-                AppTheme.Colors.DarkMode.cardBackground,
-                AppTheme.Colors.DarkMode.textPrimary,
-                AppTheme.Colors.DarkMode.surfaceBackground
-            )
-        } else {
-            return (
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
-            )
-        }
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Left section - Label
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(colors.textPrimary)
-
-                    Text("AI INSIGHTS")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(colors.textPrimary)
-                        .textCase(.uppercase)
-                }
-
-                if let firstInsight = insights.messages.first {
-                    Text(firstInsight)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(colors.textPrimary)
-                }
-            }
-
-            Spacer()
-
-            // Right section - Additional insights
-            if insights.messages.count > 1 {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("PERFORMANCE")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(colors.textPrimary)
-                        .textCase(.uppercase)
-
-                    ForEach(insights.messages.dropFirst(), id: \.self) { message in
-                        Text(message)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(colors.textPrimary)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(colors.surface)
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 0,
-                bottomLeadingRadius: AppTheme.CornerRadius.large,
-                bottomTrailingRadius: AppTheme.CornerRadius.large,
-                topTrailingRadius: 0
-            )
-        )
-    }
+    var body: some View { EmptyView() }
 }
+
+// MARK: - ActivityMapView
 
 struct ActivityMapView: UIViewRepresentable {
     let summaryPolyline: String?
 
     func makeUIView(context: Context) -> MapView {
-        let mapInitOptions = MapInitOptions(styleURI: .standard)
-        let mapView = MapView(frame: .zero, mapInitOptions: mapInitOptions)
-
-        // Disable interactions using gestures options
-        mapView.gestures.options.panEnabled = false
-        mapView.gestures.options.pinchEnabled = false
-        mapView.gestures.options.rotateEnabled = false
-        mapView.gestures.options.pitchEnabled = false
-
-        // Configure camera
-        mapView.mapboxMap.setCamera(to: CameraOptions(zoom: 14))
-
-        // Add route when style loads
-        mapView.mapboxMap.onStyleLoaded.observe { _ in
-            self.addRouteToMap(mapView)
-        }.store(in: &context.coordinator.cancellables)
-
-        return mapView
+        let mv = MapView(frame: .zero, mapInitOptions: MapInitOptions(styleURI: .dark))
+        mv.gestures.options.panEnabled = false
+        mv.gestures.options.pinchEnabled = false
+        mv.gestures.options.rotateEnabled = false
+        mv.gestures.options.pitchEnabled = false
+        mv.mapboxMap.setCamera(to: CameraOptions(zoom: 14))
+        mv.mapboxMap.onStyleLoaded.observe { _ in self.addRouteToMap(mv) }.store(in: &context.coordinator.cancellables)
+        return mv
     }
 
-    func updateUIView(_ mapView: MapView, context: Context) {
-        // Route is added via onStyleLoaded callback
-        addRouteToMap(mapView)
-    }
+    func updateUIView(_ mv: MapView, context: Context) { addRouteToMap(mv) }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    class Coordinator { var cancellables = Set<AnyCancelable>() }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    class Coordinator {
-        var cancellables = Set<AnyCancelable>()
-    }
-
-    private func addRouteToMap(_ mapView: MapView) {
-        guard let polyline = summaryPolyline else { return }
-
-        // Decode the polyline
-        let coordinates = decodePolyline(polyline)
-
-        guard !coordinates.isEmpty else { return }
-
-        // Remove existing route source and layer if they exist
-        try? mapView.mapboxMap.removeLayer(withId: "route-layer")
-        try? mapView.mapboxMap.removeSource(withId: "route-source")
-
-        // Convert coordinates to LineString
-        let lineCoordinates = coordinates.map { coord in
-            CLLocationCoordinate2D(latitude: coord.latitude, longitude: coord.longitude)
-        }
-
-        let lineString = LineString(lineCoordinates)
-
-        // Create GeoJSON source
-        var source = GeoJSONSource(id: "route-source")
-        source.data = .geometry(.lineString(lineString))
-
-        // Add source to map
-        try? mapView.mapboxMap.addSource(source)
-
-        // Create line layer for the route
-        var lineLayer = LineLayer(id: "route-layer", source: "route-source")
-        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.accent)))
-        lineLayer.lineWidth = .constant(4)
-        lineLayer.lineCap = .constant(.round)
-        lineLayer.lineJoin = .constant(.round)
-
-        // Add layer to map
-        try? mapView.mapboxMap.addLayer(lineLayer)
-
-        // Calculate bounds and fit camera
-        if let firstCoordinate = coordinates.first {
-            let minLat = coordinates.map { $0.latitude }.min() ?? firstCoordinate.latitude
-            let maxLat = coordinates.map { $0.latitude }.max() ?? firstCoordinate.latitude
-            let minLon = coordinates.map { $0.longitude }.min() ?? firstCoordinate.longitude
-            let maxLon = coordinates.map { $0.longitude }.max() ?? firstCoordinate.longitude
-
-            let center = CLLocationCoordinate2D(
-                latitude: (minLat + maxLat) / 2,
-                longitude: (minLon + maxLon) / 2
-            )
-
-            // Add padding to ensure the route is fully visible
-            let latDelta = (maxLat - minLat) * 1.5
-            let lonDelta = (maxLon - minLon) * 1.5
-
-            // Calculate zoom level from delta
-            let maxDelta = max(latDelta, lonDelta)
-            let zoom = log2(360 / maxDelta) - 1
-
-            let camera = CameraOptions(center: center, zoom: zoom)
-            mapView.mapboxMap.setCamera(to: camera)
+    private func addRouteToMap(_ mv: MapView) {
+        guard let poly = summaryPolyline else { return }
+        let coords = decodePolyline(poly)
+        guard !coords.isEmpty else { return }
+        try? mv.mapboxMap.removeLayer(withId: "route-layer")
+        try? mv.mapboxMap.removeSource(withId: "route-source")
+        let ls = LineString(coords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) })
+        var src = GeoJSONSource(id: "route-source"); src.data = .geometry(.lineString(ls))
+        try? mv.mapboxMap.addSource(src)
+        var l = LineLayer(id: "route-layer", source: "route-source")
+        l.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.warmAmber)))
+        l.lineWidth = .constant(3.5)
+        l.lineCap = .constant(.round); l.lineJoin = .constant(.round)
+        try? mv.mapboxMap.addLayer(l)
+        if let first = coords.first {
+            let minLat = coords.map(\.latitude).min() ?? first.latitude
+            let maxLat = coords.map(\.latitude).max() ?? first.latitude
+            let minLon = coords.map(\.longitude).min() ?? first.longitude
+            let maxLon = coords.map(\.longitude).max() ?? first.longitude
+            let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
+            let zoom = log2(360 / max((maxLat - minLat) * 1.5, (maxLon - minLon) * 1.5)) - 1
+            mv.mapboxMap.setCamera(to: CameraOptions(center: center, zoom: zoom))
         }
     }
-    
-    private func decodePolyline(_ encodedPolyline: String) -> [CLLocationCoordinate2D] {
-        // Enhanced unescape logic for polyline string
-        var unescapedPolyline = encodedPolyline
-        
-        // Handle multiple levels of escaping in order
-        // First pass: handle double backslashes
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\\\\\", with: "\\\\")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\\\", with: "\\")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\", with: "\\")
-        
-        // Second pass: handle escaped quotes and other characters
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\"", with: "\"")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\'", with: "'")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\n", with: "\n")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\r", with: "\r")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\t", with: "\t")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\/", with: "/")
-        
-        // Handle JSON-style escaping if present
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\u0022", with: "\"")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\u0027", with: "'")
-        
-        // Remove any remaining quote wrapping
-        if unescapedPolyline.hasPrefix("\"") && unescapedPolyline.hasSuffix("\"") {
-            unescapedPolyline = String(unescapedPolyline.dropFirst().dropLast())
+
+    private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
+        var s = encoded
+        for (a, b) in [("\\\\\\\\", "\\\\"), ("\\\\\\", "\\"), ("\\\\", "\\"), ("\\\"", "\""), ("\\/", "/")] {
+            s = s.replacingOccurrences(of: a, with: b)
         }
-        
-        print("🗺️ Original polyline: \(encodedPolyline.prefix(50))...")
-        print("🗺️ Unescaped polyline: \(unescapedPolyline.prefix(50))...")
-        print("🗺️ Polyline length: \(unescapedPolyline.count)")
-        
-        var coordinates: [CLLocationCoordinate2D] = []
-        let chars = Array(unescapedPolyline)
-        var index = 0
-        var lat = 0
-        var lng = 0
-        
-        while index < chars.count {
-            // Decode latitude
-            var shift = 0
-            var result = 0
-            var byte: Int
-            
-            repeat {
-                if index >= chars.count { break }
-                byte = Int(chars[index].asciiValue!) - 63
-                result |= (byte & 0x1F) << shift
-                shift += 5
-                index += 1
-            } while byte >= 0x20
-            
-            let deltaLat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1)
-            lat += deltaLat
-            
-            // Decode longitude
-            shift = 0
-            result = 0
-            
-            repeat {
-                if index >= chars.count { break }
-                byte = Int(chars[index].asciiValue!) - 63
-                result |= (byte & 0x1F) << shift
-                shift += 5
-                index += 1
-            } while byte >= 0x20
-            
-            let deltaLng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1)
-            lng += deltaLng
-            
-            let coordinate = CLLocationCoordinate2D(
-                latitude: Double(lat) / 1e5,
-                longitude: Double(lng) / 1e5
-            )
-            coordinates.append(coordinate)
+        if s.hasPrefix("\"") && s.hasSuffix("\"") { s = String(s.dropFirst().dropLast()) }
+        var result: [CLLocationCoordinate2D] = []; let chars = Array(s); var idx = 0, lat = 0, lng = 0
+        while idx < chars.count {
+            var shift = 0, res = 0, byte: Int
+            repeat { if idx >= chars.count { break }; byte = Int(chars[idx].asciiValue!) - 63; res |= (byte & 0x1F) << shift; shift += 5; idx += 1 } while byte >= 0x20
+            lat += (res & 1) != 0 ? ~(res >> 1) : (res >> 1); shift = 0; res = 0
+            repeat { if idx >= chars.count { break }; byte = Int(chars[idx].asciiValue!) - 63; res |= (byte & 0x1F) << shift; shift += 5; idx += 1 } while byte >= 0x20
+            lng += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            result.append(CLLocationCoordinate2D(latitude: Double(lat)/1e5, longitude: Double(lng)/1e5))
         }
-        
-        print("🗺️ Decoded \(coordinates.count) coordinates")
-        if let first = coordinates.first, let last = coordinates.last {
-            print("🗺️ First coordinate: \(first.latitude), \(first.longitude)")
-            print("🗺️ Last coordinate: \(last.latitude), \(last.longitude)")
-        }
-        
-        return coordinates
+        return result
     }
 }
 
-struct RoutePoint: Identifiable {
-    let id = UUID()
-    let coordinate: CLLocationCoordinate2D
-}
-
-struct MapPolyline: Shape {
-    let coordinates: [CLLocationCoordinate2D]
-    
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        
-        let points = coordinates.map { coordinate -> CGPoint in
-            let lat = coordinate.latitude
-            let lon = coordinate.longitude
-            let x = rect.width * (lon + 180) / 360
-            let y = rect.height * (1 - (lat + 90) / 180)
-            return CGPoint(x: x, y: y)
-        }
-        
-        path.move(to: points[0])
-        for point in points.dropFirst() {
-            path.addLine(to: point)
-        }
-        
-        return path
-    }
-}
+// MARK: - Compat stubs
+struct RoutePoint: Identifiable { let id = UUID(); let coordinate: CLLocationCoordinate2D }
+struct SnapshotView: View { var snapshot: UIImage?; var body: some View { EmptyView() } }
+struct MapPolyline: Shape { let coordinates: [CLLocationCoordinate2D]; func path(in rect: CGRect) -> Path { Path() } }
 
 private func formatTime(seconds: TimeInterval) -> String {
-    let hours = Int(seconds) / 3600
-    let minutes = (Int(seconds) % 3600) / 60
-    
-    if hours > 0 {
-        return "\(hours)h \(minutes)m"
-    } else {
-        return "\(minutes)m"
-    }
-}
-
-struct SnapshotView: View {
-    var snapshot: UIImage?
-    
-    var body: some View {
-        if let snapshot {
-            Image(uiImage: snapshot)
-        } else {
-            EmptyView() // Or a placeholder
-                .frame(height: 200) // Match map height
-                .background(Color.gray.opacity(0.2))
-        }
-    }
+    let h = Int(seconds) / 3600; let m = (Int(seconds) % 3600) / 60
+    return h > 0 ? "\(h)h \(m)m" : "\(m)m"
 }
 
 fileprivate struct ModifierCornerRadiusWithBorder: ViewModifier {
-    var radius: CGFloat
-    var borderLineWidth: CGFloat = 1
-    var borderColor: Color = .gray
-    var antialiased: Bool = true
-    
+    var radius: CGFloat; var borderLineWidth: CGFloat = 1; var borderColor: Color = .gray; var antialiased: Bool = true
     func body(content: Content) -> some View {
-        content
-            .cornerRadius(self.radius, antialiased: self.antialiased)
-            .overlay(
-                RoundedRectangle(cornerRadius: self.radius)
-                    .inset(by: self.borderLineWidth)
-                    .strokeBorder(self.borderColor, lineWidth: self.borderLineWidth, antialiased: self.antialiased)
-            )
+        content.cornerRadius(radius, antialiased: antialiased)
+            .overlay(RoundedRectangle(cornerRadius: radius).inset(by: borderLineWidth).strokeBorder(borderColor, lineWidth: borderLineWidth, antialiased: antialiased))
     }
 }
-
 extension View {
     func cornerRadiusWithBorder(radius: CGFloat, borderLineWidth: CGFloat = 1, borderColor: Color = .gray, antialiased: Bool = true) -> some View {
         modifier(ModifierCornerRadiusWithBorder(radius: radius, borderLineWidth: borderLineWidth, borderColor: borderColor, antialiased: antialiased))

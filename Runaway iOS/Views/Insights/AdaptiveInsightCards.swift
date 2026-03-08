@@ -73,35 +73,57 @@ struct AdaptivePrimaryInsightCard: View {
     }
 }
 
-// MARK: - Phase Indicator Header
+// MARK: - Phase Indicator Header (Twin Voice Banner)
 
 struct PhaseIndicatorHeader: View {
     let phaseContext: TrainingPhaseContext
+    private var isUrgent: Bool { phaseContext.urgency == .urgent || phaseContext.urgency == .raceDay }
 
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Image(systemName: phaseContext.phase.icon)
-                .font(.title3)
-                .foregroundColor(phaseContext.phase.color)
+        VStack(alignment: .leading, spacing: 12) {
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(phaseContext.twinMessage)
-                    .font(AppTheme.Typography.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                if let submessage = phaseContext.twinSubmessage {
-                    Text(submessage)
-                        .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                        .lineLimit(2)
+            // Phase badge row
+            HStack(spacing: 6) {
+                Image(systemName: phaseContext.phase.icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(phaseContext.phase.color)
+                Text(phaseContext.phase.displayName.uppercased())
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(phaseContext.phase.color)
+                    .kerning(1.2)
+                Spacer()
+                if let days = phaseContext.daysUntilRace, days <= 14 {
+                    Text("\(days)D")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(phaseContext.phase.color).cornerRadius(6)
                 }
             }
 
-            Spacer()
+            // Twin Voice — hero line
+            Text(phaseContext.twinMessage)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.white)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Data point
+            if let sub = phaseContext.twinSubmessage {
+                Text(sub)
+                    .font(.system(size: 14))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding()
-        .background(phaseContext.phase.color.opacity(0.1))
+        .padding(16)
+        .background(isUrgent ? phaseContext.phase.color.opacity(0.18) : Color.white.opacity(0.04))
+        .overlay(
+            Rectangle()
+                .fill(phaseContext.phase.color)
+                .frame(width: 3)
+                .cornerRadius(1.5),
+            alignment: .leading
+        )
     }
 }
 
