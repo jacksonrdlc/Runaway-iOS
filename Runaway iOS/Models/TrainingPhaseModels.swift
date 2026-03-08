@@ -14,7 +14,12 @@ import SwiftUI
 enum TrainingPhase: String, CaseIterable, Codable {
     case newUser = "new_user"           // < 5 activities
     case rampingUp = "ramping_up"       // Building volume
-    case tapering = "tapering"          // Reducing volume before race
+    case base = "base"                  // Base building phase (> 6 weeks out)
+    case build = "build"                // Focused building (4-6 weeks out)
+    case peak = "peak"                  // Peak intensity (2-4 weeks out)
+    case taper = "taper"                // Reducing volume before race (1-2 weeks out)
+    case raceWeek = "race_week"         // Final week before race
+    case raceDay = "race_day"           // Today is the race
     case detraining = "detraining"      // Extended break, losing fitness
     case steady = "steady"              // Consistent training
     case recovery = "recovery"          // Fatigued, needs rest
@@ -23,7 +28,12 @@ enum TrainingPhase: String, CaseIterable, Codable {
         switch self {
         case .newUser: return "Getting Started"
         case .rampingUp: return "Building Up"
-        case .tapering: return "Race Ready"
+        case .base: return "Base Phase"
+        case .build: return "Final Build"
+        case .peak: return "Peak Intensity"
+        case .taper: return "Tapering"
+        case .raceWeek: return "Race Week"
+        case .raceDay: return "Race Day"
         case .detraining: return "Returning"
         case .steady: return "Consistent"
         case .recovery: return "Recovery"
@@ -34,7 +44,12 @@ enum TrainingPhase: String, CaseIterable, Codable {
         switch self {
         case .newUser: return "figure.run.circle"
         case .rampingUp: return "arrow.up.right.circle.fill"
-        case .tapering: return "flag.checkered.circle.fill"
+        case .base: return "circle.dashed"
+        case .build: return "arrow.up.right.circle.fill"
+        case .peak: return "flame.circle.fill"
+        case .taper: return "flag.checkered.circle.fill"
+        case .raceWeek: return "bolt.circle.fill"
+        case .raceDay: return "trophy.circle.fill"
         case .detraining: return "arrow.counterclockwise.circle"
         case .steady: return "equal.circle.fill"
         case .recovery: return "bed.double.circle.fill"
@@ -45,7 +60,12 @@ enum TrainingPhase: String, CaseIterable, Codable {
         switch self {
         case .newUser: return .blue
         case .rampingUp: return .green
-        case .tapering: return .purple
+        case .base: return .cyan
+        case .build: return .orange // Amber on web
+        case .peak: return .orange
+        case .taper: return .indigo
+        case .raceWeek: return .red
+        case .raceDay: return Color(red: 0.96, green: 0.62, blue: 0.04) // Warm Amber
         case .detraining: return .orange
         case .steady: return .cyan
         case .recovery: return .pink
@@ -58,8 +78,18 @@ enum TrainingPhase: String, CaseIterable, Codable {
             return "You're just getting started! Focus on building consistency."
         case .rampingUp:
             return "Your training volume is increasing. Great progress!"
-        case .tapering:
+        case .base:
+            return "Laying the foundation. Focus on easy miles and aerobic base."
+        case .build:
+            return "Volume is peaking. This is the hardest part of the cycle."
+        case .peak:
+            return "Intensity is highest. Focus on race-specific workouts."
+        case .taper:
             return "You're tapering. Trust your training and prepare to race."
+        case .raceWeek:
+            return "Final preparations. Keep legs moving but prioritize rest."
+        case .raceDay:
+            return "It's time. What do you run on?"
         case .detraining:
             return "Time to rebuild. Start easy and gradually increase."
         case .steady:
@@ -82,7 +112,36 @@ struct TrainingPhaseContext {
     let streakDays: Int
     let daysUntilRace: Int? // If goal race is set
     let recoveryStatus: String?
+    let acwr: Double
     let recommendations: [String]
+    
+    // Declarative voice data
+    var twinMessage: String {
+        TwinVoiceService.generateInsight(
+            phase: phase,
+            acwr: acwr,
+            weeklyVolumeKm: weeklyVolumeKm,
+            volumeChange: volumeChange
+        ).message
+    }
+    
+    var twinSubmessage: String? {
+        TwinVoiceService.generateInsight(
+            phase: phase,
+            acwr: acwr,
+            weeklyVolumeKm: weeklyVolumeKm,
+            volumeChange: volumeChange
+        ).submessage
+    }
+    
+    var urgency: TwinVoiceService.UrgencyLevel {
+        TwinVoiceService.generateInsight(
+            phase: phase,
+            acwr: acwr,
+            weeklyVolumeKm: weeklyVolumeKm,
+            volumeChange: volumeChange
+        ).urgency
+    }
 
     var weeklyVolumeMiles: Double {
         weeklyVolumeKm * 0.621371
@@ -138,9 +197,9 @@ enum InsightCardType: String, CaseIterable {
         switch phase {
         case .newUser: return .progressionBasics
         case .rampingUp: return .volumeConsistency
-        case .tapering: return .taperMetrics
+        case .taper, .raceWeek, .raceDay: return .taperMetrics
         case .detraining: return .returnToRunning
-        case .steady: return .volumeConsistency
+        case .steady, .base, .build, .peak: return .volumeConsistency
         case .recovery: return .recoveryReadiness
         }
     }
@@ -168,6 +227,9 @@ struct TaperMetrics {
     }
 
     var taperStatus: String {
+        if daysUntilRace == 0 { return "Race Day" }
+        if daysUntilRace <= 7 { return "Final Prep" }
+        
         let diff = currentVolumePercent - targetVolumePercent
         if abs(diff) < 5 {
             return "On Track"
@@ -179,6 +241,9 @@ struct TaperMetrics {
     }
 
     var taperStatusColor: Color {
+        if daysUntilRace == 0 { return Color(red: 0.96, green: 0.62, blue: 0.04) }
+        if daysUntilRace <= 7 { return .red }
+        
         let diff = currentVolumePercent - targetVolumePercent
         if abs(diff) < 5 {
             return .green
@@ -215,7 +280,7 @@ struct VolumeConsistencyMetrics {
     }
 
     var targetWeeklyMiles: Double? {
-        targetWeeklyKm.map { $0 * 0.621371 }
+        targetWeeklyKm.map { /bin/bash * 0.621371 }
     }
 
     var consistencyLevel: String {

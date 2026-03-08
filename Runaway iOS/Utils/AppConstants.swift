@@ -32,6 +32,14 @@ enum AppConstants {
         static let todaysCommitmentFulfilled = "todays_commitment_fulfilled"
         static let currentLocation = "currentLocation"
 
+        // Training Phase & Race Keys
+        static let currentPhase = "current_training_phase"
+        static let currentPhaseIcon = "current_phase_icon"
+        static let daysUntilRace = "days_until_race"
+        static let nextRaceName = "next_race_name"
+        static let twinMessage = "widget_twin_message"
+        static let volumeChange = "widget_volume_change"
+
         static let dayKeys: [String: String] = [
             "Sunday": "sunArray",
             "Monday": "monArray",

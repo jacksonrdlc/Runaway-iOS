@@ -23,11 +23,43 @@ class TrainingPhaseService {
 
     // MARK: - Phase Detection
 
-    /// Detect the current training phase based on activities and training load data
+    /// Detect the current training phase based on activities, goals, and training load data
     static func detectPhase(
         activities: [Activity],
-        trainingLoad: TrainingLoadAnalysis?
+        trainingLoad: TrainingLoadAnalysis?,
+        goal: RunningGoal? = nil
     ) -> TrainingPhaseContext {
+
+        // Check for proactive race-based phase first
+        if let goal = goal {
+            let calendar = Calendar.current
+            let startOfToday = calendar.startOfDay(for: Date())
+            let startOfDeadline = calendar.startOfDay(for: goal.deadline)
+            
+            let components = calendar.dateComponents([.day], from: startOfToday, to: startOfDeadline)
+            if let daysOut = components.day {
+                // If it's a future race, use proactive logic
+                if daysOut >= 0 {
+                    let phase: TrainingPhase
+                    switch daysOut {
+                    case 0: phase = .raceDay
+                    case 1...7: phase = .raceWeek
+                    case 8...14: phase = .taper
+                    case 15...28: phase = .peak
+                    case 29...42: phase = .build
+                    default: phase = .base
+                    }
+                    
+                    return createContext(
+                        phase: phase,
+                        confidence: 1.0,
+                        activities: activities,
+                        trainingLoad: trainingLoad,
+                        daysUntilRace: daysOut
+                    )
+                }
+            }
+        }
 
         let activityCount = activities.count
 
@@ -76,7 +108,7 @@ class TrainingPhaseService {
             phase = .rampingUp
             confidence = 0.9
         case "tapering":
-            phase = .tapering
+            phase = .taper
             confidence = 0.9
         case "detraining":
             phase = .detraining
@@ -138,7 +170,7 @@ class TrainingPhaseService {
                     // For now, assume tapering if activity count is high
                     if recentActivities.count >= 3 {
                         return createContext(
-                            phase: .tapering,
+                            phase: .taper,
                             confidence: 0.6,
                             activities: activities,
                             trainingLoad: nil
@@ -170,12 +202,14 @@ class TrainingPhaseService {
         phase: TrainingPhase,
         confidence: Double,
         activities: [Activity],
-        trainingLoad: TrainingLoadAnalysis?
+        trainingLoad: TrainingLoadAnalysis?,
+        daysUntilRace: Int? = nil
     ) -> TrainingPhaseContext {
 
         let weeklyVolumeKm = trainingLoad?.totalVolumeKm ?? calculateCurrentWeekVolume(from: activities)
         let volumeChange = calculateVolumeChange(from: activities)
         let streakDays = calculateStreakDays(from: activities)
+        let acwr = trainingLoad?.acwr ?? 1.0
 
         let recommendations = generateRecommendations(
             for: phase,
@@ -190,8 +224,9 @@ class TrainingPhaseService {
             weeklyVolumeKm: weeklyVolumeKm,
             volumeChange: volumeChange,
             streakDays: streakDays,
-            daysUntilRace: nil, // Would need goal data
+            daysUntilRace: daysUntilRace,
             recoveryStatus: trainingLoad?.recoveryStatus,
+            acwr: acwr,
             recommendations: recommendations
         )
     }
@@ -224,7 +259,7 @@ class TrainingPhaseService {
         }
 
         // Get race prediction if available
-        let predictedTime = racePredictions?.first { $0.distance.lowercased().contains(raceGoal?.lowercased() ?? "") }?.predictedTime
+        let predictedTime = racePredictions?.first { /bin/bash.distance.lowercased().contains(raceGoal?.lowercased() ?? "") }?.predictedTime
 
         return TaperMetrics(
             daysUntilRace: daysUntilRace,
@@ -277,8 +312,8 @@ class TrainingPhaseService {
             return date >= Calendar.current.safeDate(byAdding: .day, value: -7, to: Date())
         }
 
-        let restDays = 7 - Set(last7Days.compactMap { $0.date?.phaseStartOfDay }).count
-        let qualityRuns = last7Days.filter { ($0.distance ?? 0) > 5000 }.count
+        let restDays = 7 - Set(last7Days.compactMap { /bin/bash.date?.phaseStartOfDay }).count
+        let qualityRuns = last7Days.filter { (/bin/bash.distance ?? 0) > 5000 }.count
 
         let recoveryScore: Double
         let status = trainingLoad?.recoveryStatus ?? "adequate"
@@ -319,13 +354,13 @@ class TrainingPhaseService {
 
     /// Generate progression metrics for new users
     static func generateProgressionMetrics(activities: [Activity]) -> ProgressionMetrics {
-        let sortedActivities = activities.sorted { ($0.date ?? Date.distantPast) < ($1.date ?? Date.distantPast) }
+        let sortedActivities = activities.sorted { (/bin/bash.date ?? Date.distantPast) < (.date ?? Date.distantPast) }
 
-        let totalDistanceKm = activities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
-        let longestRunKm = activities.map { ($0.distance ?? 0) / 1000 }.max() ?? 0
+        let totalDistanceKm = activities.reduce(0) { /bin/bash + ((.distance ?? 0) / 1000) }
+        let longestRunKm = activities.map { (/bin/bash.distance ?? 0) / 1000 }.max() ?? 0
 
         let avgPace: Double
-        let totalTime = activities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
+        let totalTime = activities.reduce(0) { /bin/bash + (.elapsed_time ?? 0) }
         if totalDistanceKm > 0 {
             avgPace = (totalTime / 60) / totalDistanceKm // min per km
         } else {
@@ -363,7 +398,7 @@ class TrainingPhaseService {
                 return date >= weekStart && date < weekEnd
             }
 
-            let volumeKm = weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
+            let volumeKm = weekActivities.reduce(0) { /bin/bash + ((.distance ?? 0) / 1000) }
             weeklyVolumes.append(volumeKm)
         }
 
@@ -376,7 +411,7 @@ class TrainingPhaseService {
             guard let date = activity.date else { return false }
             return date >= weekStart
         }
-        return weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
+        return weekActivities.reduce(0) { /bin/bash + ((.distance ?? 0) / 1000) }
     }
 
     private static func calculatePeakWeeklyVolume(from activities: [Activity]) -> Double {
@@ -395,7 +430,7 @@ class TrainingPhaseService {
         var streakDays = 0
         var currentDate = Date().phaseStartOfDay
 
-        let activityDates = Set(activities.compactMap { $0.date?.phaseStartOfDay })
+        let activityDates = Set(activities.compactMap { /bin/bash.date?.phaseStartOfDay })
 
         // Count backwards from today
         while activityDates.contains(currentDate) {
@@ -407,7 +442,7 @@ class TrainingPhaseService {
     }
 
     private static func daysSinceLastActivity(_ activities: [Activity]) -> Int {
-        guard let lastDate = activities.compactMap({ $0.date }).max() else {
+        guard let lastDate = activities.compactMap({ /bin/bash.date }).max() else {
             return Int.max
         }
         return Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
@@ -417,12 +452,12 @@ class TrainingPhaseService {
         guard weeklyVolumes.count >= 4 else { return 50 }
 
         let recentVolumes = Array(weeklyVolumes.prefix(4))
-        let nonZeroWeeks = recentVolumes.filter { $0 > 0 }.count
+        let nonZeroWeeks = recentVolumes.filter { /bin/bash > 0 }.count
         let average = recentVolumes.reduce(0, +) / Double(recentVolumes.count)
 
         // Calculate coefficient of variation (lower = more consistent)
         if average > 0 {
-            let variance = recentVolumes.reduce(0) { $0 + pow($1 - average, 2) } / Double(recentVolumes.count)
+            let variance = recentVolumes.reduce(0) { /bin/bash + pow( - average, 2) } / Double(recentVolumes.count)
             let stdDev = sqrt(variance)
             let cv = stdDev / average
 
@@ -461,17 +496,26 @@ class TrainingPhaseService {
             recommendations.append("Keep runs conversational pace")
             recommendations.append("Increase weekly distance by no more than 10%")
 
-        case .rampingUp:
+        case .rampingUp, .base:
             recommendations.append("Continue gradual progression")
             if streakDays > 5 {
                 recommendations.append("Consider a rest day soon")
             }
             recommendations.append("Focus on easy runs (80% of training)")
 
-        case .tapering:
+        case .build, .peak:
+            recommendations.append("Volume is high - prioritize recovery")
+            recommendations.append("Focus on quality over quantity")
+            recommendations.append("Listen to your body for warning signs")
+
+        case .taper, .raceWeek:
             recommendations.append("Reduce volume but maintain intensity")
             recommendations.append("Trust your training")
             recommendations.append("Focus on sleep and nutrition")
+
+        case .raceDay:
+            recommendations.append("Trust the process. Run a way.")
+            recommendations.append("Stay hydrated and maintain your pace")
 
         case .detraining:
             recommendations.append("Start with easy, short runs")

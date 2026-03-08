@@ -105,10 +105,17 @@ class TrainingViewModel: ObservableObject {
 
     /// Detect current training phase for adaptive dashboard
     private func detectTrainingPhase(activities: [Activity]) {
-        trainingPhaseContext = TrainingPhaseService.detectPhase(
+        let goal = DataManager.shared.currentGoal
+        let context = TrainingPhaseService.detectPhase(
             activities: activities,
-            trainingLoad: quickWinsData?.analyses.trainingLoad
+            trainingLoad: quickWinsData?.analyses.trainingLoad,
+            goal: goal
         )
+        
+        trainingPhaseContext = context
+        
+        // Sync to widgets
+        WidgetSyncService.shared.updateTrainingPhaseData(context: context, goal: goal)
 
         #if DEBUG
         if let context = trainingPhaseContext {

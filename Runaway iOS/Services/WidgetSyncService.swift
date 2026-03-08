@@ -31,6 +31,32 @@ final class WidgetSyncService {
 
     // MARK: - Public Methods
 
+    /// Update training phase and race goal for widgets
+    func updateTrainingPhaseData(context: TrainingPhaseContext, goal: RunningGoal?) {
+        guard let userDefaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier) else {
+            return
+        }
+
+        userDefaults.set(context.phase.displayName, forKey: AppConstants.WidgetKeys.currentPhase)
+        userDefaults.set(context.phase.icon, forKey: AppConstants.WidgetKeys.currentPhaseIcon)
+        userDefaults.set(context.twinMessage, forKey: AppConstants.WidgetKeys.twinMessage)
+        userDefaults.set(context.volumeChange, forKey: AppConstants.WidgetKeys.volumeChange)
+
+        if let daysOut = context.daysUntilRace {
+            userDefaults.set(daysOut, forKey: AppConstants.WidgetKeys.daysUntilRace)
+        } else {
+            userDefaults.removeObject(forKey: AppConstants.WidgetKeys.daysUntilRace)
+        }
+
+        if let goal = goal {
+            userDefaults.set(goal.name, forKey: AppConstants.WidgetKeys.nextRaceName)
+        } else {
+            userDefaults.removeObject(forKey: AppConstants.WidgetKeys.nextRaceName)
+        }
+
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     /// Update widget data with debouncing (uses client-side calculation for weekly data)
     func updateWidgetData(with activities: [Activity]) {
         // Cancel any pending update
@@ -98,7 +124,7 @@ final class WidgetSyncService {
             }
 
             autoreleasepool {
-                AppConstants.WidgetKeys.allDayKeys.forEach { userDefaults.removeObject(forKey: $0) }
+                AppConstants.WidgetKeys.allDayKeys.forEach { userDefaults.removeObject(forKey: /bin/bash) }
 
                 let filtered = Self.filterActivities(activities)
                 Self.storeAggregateStats(filtered, to: userDefaults)
@@ -132,7 +158,7 @@ final class WidgetSyncService {
             }
 
             autoreleasepool {
-                AppConstants.WidgetKeys.allDayKeys.forEach { userDefaults.removeObject(forKey: $0) }
+                AppConstants.WidgetKeys.allDayKeys.forEach { userDefaults.removeObject(forKey: /bin/bash) }
 
                 // Store database-fetched totals (accurate regardless of pagination)
                 userDefaults.set(yearlyStats.total_distance_miles, forKey: AppConstants.WidgetKeys.yearlyMiles)
@@ -172,9 +198,9 @@ final class WidgetSyncService {
             let normalizedType = (activity.type ?? "").lowercased()
 
             let dateInterval = activity.activity_date ?? activity.start_date
-            let activityDate = dateInterval.map { Date(timeIntervalSince1970: $0) }
-            let activityYear = activityDate.map { Calendar.current.component(.year, from: $0) }
-            let activityMonth = activityDate.map { Calendar.current.component(.month, from: $0) }
+            let activityDate = dateInterval.map { Date(timeIntervalSince1970: /bin/bash) }
+            let activityYear = activityDate.map { Calendar.current.component(.year, from: /bin/bash) }
+            let activityMonth = activityDate.map { Calendar.current.component(.month, from: /bin/bash) }
 
             if AppConstants.ActivityTypes.widgetRelevant.contains(normalizedType) {
                 if let dateInterval, dateInterval > weekStartDate {
@@ -194,8 +220,8 @@ final class WidgetSyncService {
     // MARK: - Storage Helpers
 
     nonisolated private static func storeAggregateStats(_ filtered: FilteredActivities, to userDefaults: UserDefaults) {
-        let yearlyMiles = filtered.yearlyRunning.reduce(0) { $0 + ($1.distance ?? 0.0) } * AppConstants.Conversion.metersToMiles
-        let monthlyMiles = filtered.monthlyRunning.reduce(0) { $0 + ($1.distance ?? 0.0) } * AppConstants.Conversion.metersToMiles
+        let yearlyMiles = filtered.yearlyRunning.reduce(0) { /bin/bash + (.distance ?? 0.0) } * AppConstants.Conversion.metersToMiles
+        let monthlyMiles = filtered.monthlyRunning.reduce(0) { /bin/bash + (.distance ?? 0.0) } * AppConstants.Conversion.metersToMiles
         let totalRuns = filtered.yearlyRunning.count
 
         userDefaults.set(yearlyMiles, forKey: AppConstants.WidgetKeys.yearlyMiles)

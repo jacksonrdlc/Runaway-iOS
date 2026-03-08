@@ -13,6 +13,7 @@ struct RunawayWidgetBundle: WidgetBundle {
     var body: some Widget {
         RunawayWidget()
         CommitmentWidget()
+        RaceCountdownWidget()
         RunawayWidgetControl()
         RunawayWidgetLiveActivity()
     }

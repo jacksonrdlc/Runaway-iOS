@@ -19,7 +19,7 @@ struct AdaptivePrimaryInsightCard: View {
     var body: some View {
         VStack(spacing: 0) {
             // Phase indicator header
-            PhaseIndicatorHeader(phase: phaseContext.phase)
+            PhaseIndicatorHeader(phaseContext: phaseContext)
 
             // Phase-specific content
             switch phaseContext.phase {
@@ -28,7 +28,7 @@ struct AdaptivePrimaryInsightCard: View {
                     metrics: TrainingPhaseService.generateProgressionMetrics(activities: activities)
                 )
 
-            case .rampingUp, .steady:
+            case .steady, .base, .build, .peak, .rampingUp:
                 VolumeConsistencyCard(
                     metrics: TrainingPhaseService.generateVolumeMetrics(
                         activities: activities,
@@ -37,7 +37,7 @@ struct AdaptivePrimaryInsightCard: View {
                     streakDays: phaseContext.streakDays
                 )
 
-            case .tapering:
+            case .taper, .raceWeek, .raceDay:
                 TaperMetricsCard(
                     metrics: TrainingPhaseService.generateTaperMetrics(
                         activities: activities,
@@ -76,30 +76,32 @@ struct AdaptivePrimaryInsightCard: View {
 // MARK: - Phase Indicator Header
 
 struct PhaseIndicatorHeader: View {
-    let phase: TrainingPhase
+    let phaseContext: TrainingPhaseContext
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.sm) {
-            Image(systemName: phase.icon)
+            Image(systemName: phaseContext.phase.icon)
                 .font(.title3)
-                .foregroundColor(phase.color)
+                .foregroundColor(phaseContext.phase.color)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(phase.displayName)
+                Text(phaseContext.twinMessage)
                     .font(AppTheme.Typography.headline)
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
                     .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
 
-                Text(phase.description)
-                    .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                    .lineLimit(2)
+                if let submessage = phaseContext.twinSubmessage {
+                    Text(submessage)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .lineLimit(2)
+                }
             }
 
             Spacer()
         }
         .padding()
-        .background(phase.color.opacity(0.1))
+        .background(phaseContext.phase.color.opacity(0.1))
     }
 }
 
@@ -326,7 +328,7 @@ struct TaperMetricsCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text("\(metrics.daysUntilRace)")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.purple)
+                            .foregroundColor(metrics.taperStatusColor)
 
                         Text("days")
                             .font(AppTheme.Typography.subheadline)
@@ -374,7 +376,7 @@ struct TaperMetricsCard: View {
 
                         // Target marker
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.purple.opacity(0.3))
+                            .fill(metrics.taperStatusColor.opacity(0.3))
                             .frame(width: geometry.size.width * (metrics.targetVolumePercent / 100), height: 24)
 
                         // Current volume
@@ -386,7 +388,7 @@ struct TaperMetricsCard: View {
                         HStack {
                             Text(String(format: "%.0f%%", metrics.currentVolumePercent))
                                 .font(.caption)
-                                .fontWeight(.medium)
+                                .fontWeight(.bold)
                                 .foregroundColor(.white)
                                 .padding(.leading, 8)
 
@@ -607,32 +609,5 @@ struct AdaptiveStatPill: View {
         .padding(.vertical, 8)
         .background(color.opacity(0.1))
         .cornerRadius(AppTheme.CornerRadius.small)
-    }
-}
-
-// MARK: - Preview
-
-#Preview {
-    ScrollView {
-        VStack(spacing: 20) {
-            // Test with mock context
-            AdaptivePrimaryInsightCard(
-                phaseContext: TrainingPhaseContext(
-                    phase: .rampingUp,
-                    confidence: 0.85,
-                    activityCount: 25,
-                    weeklyVolumeKm: 40,
-                    volumeChange: 12,
-                    streakDays: 4,
-                    daysUntilRace: nil,
-                    recoveryStatus: "adequate",
-                    recommendations: ["Keep up the good work!", "Consider a rest day"]
-                ),
-                activities: [],
-                trainingLoad: nil,
-                racePredictions: nil
-            )
-        }
-        .padding()
     }
 }
