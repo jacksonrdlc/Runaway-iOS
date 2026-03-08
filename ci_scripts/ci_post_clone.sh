@@ -9,10 +9,25 @@ echo "=== Creating config files for Xcode Cloud build ==="
 
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
+# -------------------------------------------------------
+# Mapbox SPM Binary Authentication
+# Requires MAPBOX_SECRET_TOKEN env var set in Xcode Cloud
+# -------------------------------------------------------
+if [ -n "$MAPBOX_SECRET_TOKEN" ]; then
+  echo "machine api.mapbox.com
+  login mapbox
+  password ${MAPBOX_SECRET_TOKEN}" >> ~/.netrc
+  chmod 0600 ~/.netrc
+  echo "✓ Mapbox ~/.netrc configured"
+else
+  echo "⚠️  MAPBOX_SECRET_TOKEN not set — Mapbox binary downloads may fail"
+fi
+
+# -------------------------------------------------------
 # Create Info.plist from template
+# -------------------------------------------------------
 cp Runaway-iOS-Info.plist.template Runaway-iOS-Info.plist
 
-# Use environment variables if set, otherwise use placeholders
 MAPBOX_TOKEN="${MAPBOX_PUBLIC_TOKEN:-pk.placeholder}"
 SUPABASE_URL="${SUPABASE_URL:-https://placeholder.supabase.co}"
 SUPABASE_KEY="${SUPABASE_KEY:-placeholder_key}"
@@ -25,7 +40,9 @@ sed -i '' "s|YOUR_RUNAWAY_API_KEY_HERE|${RUNAWAY_API_KEY}|g" Runaway-iOS-Info.pl
 
 echo "✓ Runaway-iOS-Info.plist created"
 
-# Create GoogleService-Info.plist if it doesn't exist
+# -------------------------------------------------------
+# Create GoogleService-Info.plist if missing
+# -------------------------------------------------------
 if [ ! -f "Runaway iOS/GoogleService-Info.plist" ]; then
   cat > "Runaway iOS/GoogleService-Info.plist" << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
