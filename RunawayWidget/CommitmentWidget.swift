@@ -47,7 +47,7 @@ struct CommitmentProvider: TimelineProvider {
 private extension CommitmentActivityAppEnum {
     var color: Color {
         switch self {
-        case .run:     return Color(red: 0.2, green: 0.6, blue: 1.0)
+        case .run:     return Color(red: 0.961, green: 0.620, blue: 0.043)
         case .walk:    return Color(red: 0.35, green: 0.8, blue: 0.45)
         case .workout: return Color(red: 1.0, green: 0.6, blue: 0.2)
         case .yoga:    return Color(red: 0.75, green: 0.5, blue: 1.0)
@@ -81,7 +81,7 @@ struct CommitmentWidgetEntryView: View {
                 Text("Runaway")
                     .font(.system(size: 16, weight: .heavy))
                     .italic()
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(red: 0.961, green: 0.620, blue: 0.043))
             }
             .padding(.bottom, 10)
 
@@ -200,8 +200,8 @@ struct CommitmentWidget: Widget {
                     .containerBackground(for: .widget) {
                         LinearGradient(
                             colors: [
-                                Color(red: 0.02, green: 0.02, blue: 0.08),
-                                Color(red: 0.06, green: 0.06, blue: 0.14)
+                                Color(red: 0.031, green: 0.039, blue: 0.055),
+                                Color(red: 0.047, green: 0.059, blue: 0.078)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -210,7 +210,7 @@ struct CommitmentWidget: Widget {
             } else {
                 CommitmentWidgetEntryView(entry: entry)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(red: 0.02, green: 0.02, blue: 0.08))
+                    .background(Color(red: 0.031, green: 0.039, blue: 0.055))
             }
         }
         .configurationDisplayName("Daily Commitment")

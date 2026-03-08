@@ -139,7 +139,7 @@ struct BarChart: View {
                     
                     Text(randomEmptyMessage)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.green.opacity(0.9))
+                        .foregroundColor(Color(red: 0.961, green: 0.620, blue: 0.043).opacity(0.9))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .padding(.horizontal, 8)
@@ -148,7 +148,7 @@ struct BarChart: View {
                 .padding(.horizontal, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 0.02, green: 0.02, blue: 0.08))
+                        .fill(Color(red: 0.031, green: 0.039, blue: 0.055))
 //                        .overlay(
 //                            RoundedRectangle(cornerRadius: 12)
 //                                .stroke(.white.opacity(0.2), lineWidth: 1)
@@ -205,7 +205,7 @@ struct Provider: AppIntentTimelineProvider {
     // Default activities if none selected
     private var defaultActivities: [ActivityTypeEntity] {
         [
-            ActivityTypeEntity(id: "run", name: "Run", color: "#3399FF"),
+            ActivityTypeEntity(id: "run", name: "Run", color: "#F59E0B"),
             ActivityTypeEntity(id: "walk", name: "Walk", color: "#66CC66"),
             ActivityTypeEntity(id: "weight_training", name: "Weight Training", color: "#FFB300"),
             ActivityTypeEntity(id: "yoga", name: "Yoga", color: "#CC66CC")
@@ -458,7 +458,7 @@ struct RunawayWidgetEntryView : View {
             HStack(alignment: .bottom){
                 Label(locationName, systemImage: "location.fill").font(.system(size: 13)).foregroundColor(.white)
                 Spacer()
-                Text("Runaway").font(.system(size: 16, weight: .heavy)).italic().foregroundColor(.white)
+                Text("Runaway").font(.system(size: 16, weight: .heavy)).italic().foregroundColor(Color(red: 0.961, green: 0.620, blue: 0.043))
             }.padding(.bottom, 8)
             HStack(alignment: .top){
                 BarChart(days: entry.days, selectedActivities: entry.selectedActivities)
@@ -466,11 +466,11 @@ struct RunawayWidgetEntryView : View {
             HStack(alignment: .bottom){
                 VStack(alignment: .leading){
                     Text("\(String(Calendar.current.component(.year, from: Date()))) \(WidgetUnitHelper.unitName):").font(.system(size: 14, weight: .semibold)).foregroundColor(.white).padding(.bottom,1)
-                    Text(yearTotalDisplay.thousandsOfMiles).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).foregroundColor(.white).tracking(-1)
+                    Text(yearTotalDisplay.thousandsOfMiles).font(.custom("Futura-CondensedExtraBold", fixedSize: 40)).foregroundColor(Color(red: 0.961, green: 0.620, blue: 0.043)).tracking(-1)
                 }.frame(minWidth: 140).padding(.bottom,8)
                 Spacer()
                 VStack{
-                    PieChartView(current: weeklyMileage, goalRemaining: max(0, entry.weeklyGoal - weeklyMileage), color: Color(red: 0.2, green: 0.6, blue: 1.0)).padding(.bottom,2)
+                    PieChartView(current: weeklyMileage, goalRemaining: max(0, entry.weeklyGoal - weeklyMileage), color: Color(red: 0.961, green: 0.620, blue: 0.043)).padding(.bottom,2)
                     Text("Weekly \(WidgetUnitHelper.unitAbbreviation)").font(.system(size: 10, weight: .heavy)).foregroundColor(.white)
                 }.padding(.bottom,8)
                 VStack{
@@ -500,9 +500,8 @@ struct RunawayWidget: Widget {
                     .containerBackground(for: .widget) {
                         LinearGradient(
                             colors: [
-                                Color(red: 0.02, green: 0.02, blue: 0.08),
-                                Color(red: 0.05, green: 0.05, blue: 0.12),
-                                Color(red: 0.08, green: 0.08, blue: 0.15)
+                                Color(red: 0.031, green: 0.039, blue: 0.055),
+                                Color(red: 0.047, green: 0.059, blue: 0.078)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -514,9 +513,8 @@ struct RunawayWidget: Widget {
                     .background(
                         LinearGradient(
                             colors: [
-                                Color(red: 0.02, green: 0.02, blue: 0.08),
-                                Color(red: 0.05, green: 0.05, blue: 0.12),
-                                Color(red: 0.08, green: 0.08, blue: 0.15)
+                                Color(red: 0.031, green: 0.039, blue: 0.055),
+                                Color(red: 0.047, green: 0.059, blue: 0.078)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -543,7 +541,7 @@ extension Double {
     RunawayWidget()
 } timeline: {
     let defaultActivities = [
-        ActivityTypeEntity(id: "run", name: "Run", color: "#3399FF"),
+        ActivityTypeEntity(id: "run", name: "Run", color: "#F59E0B"),
         ActivityTypeEntity(id: "walk", name: "Walk", color: "#66CC66"),
         ActivityTypeEntity(id: "weight_training", name: "Weight Training", color: "#FFB300"),
         ActivityTypeEntity(id: "yoga", name: "Yoga", color: "#CC66CC")

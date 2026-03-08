@@ -203,7 +203,7 @@ struct SmallCountdownView: View {
         }
         .padding()
         .containerBackground(for: .widget) {
-            Color(red: 0.02, green: 0.02, blue: 0.08)
+            Color(red: 0.031, green: 0.039, blue: 0.055)
         }
     }
 }
