@@ -280,7 +280,7 @@ struct VolumeConsistencyMetrics {
     }
 
     var targetWeeklyMiles: Double? {
-        targetWeeklyKm.map { /bin/bash * 0.621371 }
+        targetWeeklyKm.map { $0 * 0.621371 }
     }
 
     var consistencyLevel: String {

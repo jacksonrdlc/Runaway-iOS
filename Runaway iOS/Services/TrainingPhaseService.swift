@@ -259,7 +259,7 @@ class TrainingPhaseService {
         }
 
         // Get race prediction if available
-        let predictedTime = racePredictions?.first { /bin/bash.distance.lowercased().contains(raceGoal?.lowercased() ?? "") }?.predictedTime
+        let predictedTime = racePredictions?.first { $0.distance.lowercased().contains(raceGoal?.lowercased() ?? "") }?.predictedTime
 
         return TaperMetrics(
             daysUntilRace: daysUntilRace,
@@ -312,8 +312,8 @@ class TrainingPhaseService {
             return date >= Calendar.current.safeDate(byAdding: .day, value: -7, to: Date())
         }
 
-        let restDays = 7 - Set(last7Days.compactMap { /bin/bash.date?.phaseStartOfDay }).count
-        let qualityRuns = last7Days.filter { (/bin/bash.distance ?? 0) > 5000 }.count
+        let restDays = 7 - Set(last7Days.compactMap { $0.date?.phaseStartOfDay }).count
+        let qualityRuns = last7Days.filter { ($0.distance ?? 0) > 5000 }.count
 
         let recoveryScore: Double
         let status = trainingLoad?.recoveryStatus ?? "adequate"
@@ -354,13 +354,13 @@ class TrainingPhaseService {
 
     /// Generate progression metrics for new users
     static func generateProgressionMetrics(activities: [Activity]) -> ProgressionMetrics {
-        let sortedActivities = activities.sorted { (/bin/bash.date ?? Date.distantPast) < (.date ?? Date.distantPast) }
+        let sortedActivities = activities.sorted { ($0.date ?? Date.distantPast) < ($1.date ?? Date.distantPast) }
 
-        let totalDistanceKm = activities.reduce(0) { /bin/bash + ((.distance ?? 0) / 1000) }
-        let longestRunKm = activities.map { (/bin/bash.distance ?? 0) / 1000 }.max() ?? 0
+        let totalDistanceKm = activities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
+        let longestRunKm = activities.map { ($0.distance ?? 0) / 1000 }.max() ?? 0
 
         let avgPace: Double
-        let totalTime = activities.reduce(0) { /bin/bash + (.elapsed_time ?? 0) }
+        let totalTime = activities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
         if totalDistanceKm > 0 {
             avgPace = (totalTime / 60) / totalDistanceKm // min per km
         } else {
@@ -398,7 +398,7 @@ class TrainingPhaseService {
                 return date >= weekStart && date < weekEnd
             }
 
-            let volumeKm = weekActivities.reduce(0) { /bin/bash + ((.distance ?? 0) / 1000) }
+            let volumeKm = weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
             weeklyVolumes.append(volumeKm)
         }
 
@@ -411,7 +411,7 @@ class TrainingPhaseService {
             guard let date = activity.date else { return false }
             return date >= weekStart
         }
-        return weekActivities.reduce(0) { /bin/bash + ((.distance ?? 0) / 1000) }
+        return weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
     }
 
     private static func calculatePeakWeeklyVolume(from activities: [Activity]) -> Double {
@@ -430,7 +430,7 @@ class TrainingPhaseService {
         var streakDays = 0
         var currentDate = Date().phaseStartOfDay
 
-        let activityDates = Set(activities.compactMap { /bin/bash.date?.phaseStartOfDay })
+        let activityDates = Set(activities.compactMap { $0.date?.phaseStartOfDay })
 
         // Count backwards from today
         while activityDates.contains(currentDate) {
@@ -442,7 +442,7 @@ class TrainingPhaseService {
     }
 
     private static func daysSinceLastActivity(_ activities: [Activity]) -> Int {
-        guard let lastDate = activities.compactMap({ /bin/bash.date }).max() else {
+        guard let lastDate = activities.compactMap({ $0.date }).max() else {
             return Int.max
         }
         return Calendar.current.dateComponents([.day], from: lastDate, to: Date()).day ?? 0
@@ -452,12 +452,12 @@ class TrainingPhaseService {
         guard weeklyVolumes.count >= 4 else { return 50 }
 
         let recentVolumes = Array(weeklyVolumes.prefix(4))
-        let nonZeroWeeks = recentVolumes.filter { /bin/bash > 0 }.count
+        let nonZeroWeeks = recentVolumes.filter { $0 > 0 }.count
         let average = recentVolumes.reduce(0, +) / Double(recentVolumes.count)
 
         // Calculate coefficient of variation (lower = more consistent)
         if average > 0 {
-            let variance = recentVolumes.reduce(0) { /bin/bash + pow( - average, 2) } / Double(recentVolumes.count)
+            let variance = recentVolumes.reduce(0) { $0 + pow($1 - average, 2) } / Double(recentVolumes.count)
             let stdDev = sqrt(variance)
             let cv = stdDev / average
 
