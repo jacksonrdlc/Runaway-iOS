@@ -360,3 +360,41 @@ extension MetricCard {
     .padding()
     .background(Color.gray.opacity(0.1))
 }
+
+// MARK: - Compact Metric Card (used in ActivityDetailView grid)
+
+struct CompactMetricCard: View {
+    let icon: String
+    let value: String
+    let label: String
+    let color: Color
+
+    @ObservedObject private var themeManager = ThemeManager.shared
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 8)
+        .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .cornerRadius(AppTheme.CornerRadius.medium)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                .stroke(color.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
