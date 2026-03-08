@@ -29,15 +29,10 @@ struct Runaway_iOSApp: App {
         let navAppearance = UINavigationBarAppearance()
         navAppearance.configureWithOpaqueBackground()
 
-        if isDark {
-            navAppearance.backgroundColor = UIColor(AppTheme.Colors.DarkMode.background)
-            navAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
-            navAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
-        } else {
-            navAppearance.backgroundColor = UIColor(AppTheme.Colors.LightMode.background)
-            navAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.black]
-            navAppearance.titleTextAttributes = [.foregroundColor: UIColor.black]
-        }
+        // Always use dark nav bar (Copilot-style: dark regardless of system mode)
+        navAppearance.backgroundColor = UIColor(AppTheme.Colors.DarkMode.background)
+        navAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
+        navAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
 
         navAppearance.buttonAppearance.normal.titleTextAttributes = [
             .foregroundColor: UIColor(AppTheme.Colors.accent)
@@ -51,16 +46,10 @@ struct Runaway_iOSApp: App {
         let tabBarAppearance = UITabBarAppearance()
         tabBarAppearance.configureWithOpaqueBackground()
 
-        let selectedColor = UIColor(AppTheme.Colors.accent)
-        let normalColor: UIColor
-
-        if isDark {
-            tabBarAppearance.backgroundColor = UIColor(AppTheme.Colors.DarkMode.background)
-            normalColor = UIColor(AppTheme.Colors.DarkMode.textTertiary)
-        } else {
-            tabBarAppearance.backgroundColor = UIColor(AppTheme.Colors.LightMode.cardBackground)
-            normalColor = UIColor(AppTheme.Colors.LightMode.textTertiary)
-        }
+        let selectedColor = UIColor(AppTheme.Colors.warmAmber)
+        // Always dark tab bar (Copilot-style)
+        tabBarAppearance.backgroundColor = UIColor(AppTheme.Colors.DarkMode.background)
+        let normalColor = UIColor(AppTheme.Colors.DarkMode.textTertiary)
 
         tabBarAppearance.stackedLayoutAppearance.normal.iconColor = normalColor
         tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: normalColor]

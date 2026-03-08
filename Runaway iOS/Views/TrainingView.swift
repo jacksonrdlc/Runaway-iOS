@@ -132,7 +132,7 @@ struct TrainingView: View {
                 }
             }
         }
-        .navigationTitle("Progress")
+        .navigationTitle("Dashboard")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             #if DEBUG

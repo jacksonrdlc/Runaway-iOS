@@ -13,7 +13,6 @@ import SwiftUI
 
 enum PlanSection: String, CaseIterable {
     case training = "Training"
-    case research = "Research"
 }
 
 struct PlanView: View {
@@ -62,9 +61,7 @@ struct PlanView: View {
             switch selectedSection {
             case .training:
                 trainingContent
-            case .research:
-                ResearchContentView()
-                    .environmentObject(themeManager)
+
             }
         }
         .background(colors.background)
