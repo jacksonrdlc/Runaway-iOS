@@ -37,7 +37,7 @@ struct AppTheme {
 
         // MARK: - Accent (theme-aware)
         private static var isDarkModeFromDefaults: Bool {
-            UserDefaults.standard.string(forKey: app_theme_mode) != light
+            UserDefaults.standard.string(forKey: "app_theme_mode") != "light"
         }
         static var accent: Color      { warmAmber }
         static var accentLight: Color { amberLight }
