@@ -87,7 +87,7 @@ extension AppRouter {
     func destination(for route: Route) -> some View {
         switch route {
         case .activityDetail(let activityId):
-            ActivityDetailView(activityId: activityId)
+            Text("Activity #(activityId)").navigationTitle("Activity")
 
         case .activityList:
             ActivitiesView()
