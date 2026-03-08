@@ -135,12 +135,12 @@ struct AppTheme {
         // MARK: - Activity type colors
         static func activityColor(for type: String) -> Color {
             switch type.lowercased() {
-            case run, trail run, trailrun, virtual run, virtualrun: return warmAmber
-            case walk, hike: return forestGreenLight
-            case weight training, weighttraining, workout: return deepPurpleLight
-            case bike, ride, cycling: return tealLight
-            case swim, swimming: return Color(red: 0.25, green: 0.65, blue: 0.90)
-            case yoga: return deepPurpleLight
+            case "run", "trail run", "trailrun", "virtual run", "virtualrun": return warmAmber
+            case "walk", "hike": return forestGreenLight
+            case "weight training", "weighttraining", "workout": return deepPurpleLight
+            case "bike", "ride", "cycling": return tealLight
+            case "swim", "swimming": return Color(red: 0.25, green: 0.65, blue: 0.90)
+            case "yoga": return deepPurpleLight
             default: return amberLight
             }
         }
