@@ -2,111 +2,82 @@
 //  GoalService.swift
 //  Runaway iOS
 //
-//  Reads goals from the shared `goals` table (web source of truth).
-//  The old `running_goals` table was iOS-only and out of sync with the web platform.
+//  The "current goal" is the next upcoming registered race from athlete_races.
+//  Race data is synced from RunSignUp by the user-races edge function.
+//  The old `running_goals` / `goals` tables are no longer the primary source.
 //
 
 import Foundation
 import Supabase
 import WidgetKit
 
-// MARK: - GoalRecord  (matches the `goals` table schema)
+// MARK: - AthleteRace  (matches athlete_races table)
 
-struct GoalRecord: Codable {
-    let id: Int?
-    let athleteId: Int?
-    let goalType: String           // "distance", "race_time", "pace", "weekly_mileage"
-    let activityType: String?      // "run", "walk", etc.
-    let targetValue: Double?
-    let currentValue: Double?
-    let startDate: String?         // ISO date string
-    let endDate: String?           // ISO date string — this is the race/deadline date
-    let timePeriod: String?
-    let completed: Bool?
+struct AthleteRace: Codable, Identifiable, Sendable {
+    let id: Int
+    let athleteId: Int
+    let runsignupRaceId: Int
+    let eventId: Int?
+    let raceName: String
+    let raceDate: String?     // "YYYY-MM-DD"
+    let city: String?
+    let state: String?
+    let countryCode: String?
+    let logoUrl: String?
+    let externalUrl: String?
+    let syncedAt: String?
     let createdAt: String?
 
     enum CodingKeys: String, CodingKey {
         case id
-        case athleteId     = "athlete_id"
-        case goalType      = "goal_type"
-        case activityType  = "activity_type"
-        case targetValue   = "target_value"
-        case currentValue  = "current_value"
-        case startDate     = "start_date"
-        case endDate       = "end_date"
-        case timePeriod    = "time_period"
-        case completed
-        case createdAt     = "created_at"
+        case athleteId       = "athlete_id"
+        case runsignupRaceId = "runsignup_race_id"
+        case eventId         = "event_id"
+        case raceName        = "race_name"
+        case raceDate        = "race_date"
+        case city, state
+        case countryCode     = "country_code"
+        case logoUrl         = "logo_url"
+        case externalUrl     = "external_url"
+        case syncedAt        = "synced_at"
+        case createdAt       = "created_at"
     }
 
-    // MARK: - Derived properties
+    // MARK: - Derived
 
-    /// Human-readable title generated from goal_type + target_value
-    var derivedTitle: String {
-        switch goalType {
-        case "distance":
-            guard let val = targetValue else { return "Distance Goal" }
-            let activity = activityType?.capitalized ?? "Run"
-            // Recognise common race distances
-            if abs(val - 26.2) < 0.2 { return "\(activity) a Marathon" }
-            if abs(val - 13.1) < 0.2 { return "\(activity) a Half Marathon" }
-            if abs(val - 6.2)  < 0.2 { return "\(activity) a 10K" }
-            if abs(val - 3.1)  < 0.2 { return "\(activity) a 5K" }
-            if abs(val - 50)   < 1   { return "\(activity) a 50K" }
-            if abs(val - 31)   < 1   { return "\(activity) a 50K" }
-            if abs(val - 62)   < 1   { return "\(activity) a 100K" }
-            if abs(val - 100)  < 2   { return "\(activity) a 100-Miler" }
-            return String(format: "\(activity) %.0f miles", val)
-        case "race_time":
-            return "Race Time Goal"
-        case "pace":
-            return "Pace Goal"
-        case "weekly_mileage":
-            return "Weekly Mileage Goal"
-        default:
-            return goalType.replacingOccurrences(of: "_", with: " ").capitalized
-        }
+    var parsedDate: Date? {
+        guard let s = raceDate else { return nil }
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withFullDate]
+        return f.date(from: s)
     }
 
-    /// Convert to RunningGoal for use throughout the app
-    func toRunningGoal() -> RunningGoal? {
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withFullDate]
+    var isUpcoming: Bool {
+        guard let d = parsedDate else { return false }
+        return d >= Calendar.current.startOfDay(for: Date())
+    }
 
-        let fullIso = ISO8601DateFormatter()
+    var locationString: String? {
+        [city, state].compactMap { $0 }.joined(separator: ", ").isEmpty ? nil :
+        [city, state].compactMap { $0 }.joined(separator: ", ")
+    }
 
-        func parseDate(_ s: String?) -> Date? {
-            guard let s = s else { return nil }
-            return iso.date(from: s) ?? fullIso.date(from: s)
-        }
-
-        let deadline = parseDate(endDate) ?? Date().addingTimeInterval(365 * 24 * 3600)
-        let created  = parseDate(startDate) ?? parseDate(createdAt) ?? Date()
-
-        let goalType: GoalType
-        switch self.goalType {
-        case "distance", "weekly_mileage": goalType = .distance
-        case "race_time":                  goalType = .time
-        case "pace":                       goalType = .pace
-        default:                           goalType = .distance
-        }
-
+    /// Convert to RunningGoal so the rest of the app needs no changes
+    func toRunningGoal() -> RunningGoal {
+        let deadline = parsedDate ?? Date().addingTimeInterval(365 * 24 * 3600)
         return RunningGoal(
             id: id,
             athleteId: athleteId,
-            type: goalType,
-            targetValue: targetValue ?? 0,
+            type: .distance,
+            targetValue: 26.2,        // placeholder; race distance not stored yet
             deadline: deadline,
-            createdDate: created,
+            createdDate: Date(),
             updatedDate: nil,
-            title: derivedTitle,
-            isActive: !(completed ?? false),
-            isCompleted: completed ?? false,
-            currentProgress: {
-                guard let cur = currentValue, let tgt = targetValue, tgt > 0 else { return 0 }
-                return min(1.0, cur / tgt)
-            }(),
-            completedDate: nil
+            title: raceName,
+            isActive: isUpcoming,
+            isCompleted: !isUpcoming,
+            currentProgress: 0,
+            completedDate: isUpcoming ? nil : deadline
         )
     }
 }
@@ -121,146 +92,90 @@ class GoalService {
         return userId
     }
 
-    // MARK: - Read
+    // MARK: - Primary: athlete_races
 
-    static func getActiveGoals() async throws -> [RunningGoal] {
+    /// All races, sorted soonest first for upcoming, most recent first for past
+    static func getAllRaces() async throws -> [AthleteRace] {
         let userId = try await getCurrentUserId()
-        let records: [GoalRecord] = try await supabase
-            .from("goals")
+        let races: [AthleteRace] = try await supabase
+            .from("athlete_races")
             .select("*")
             .eq("athlete_id", value: userId)
-            .eq("completed", value: false)
-            .order("end_date", ascending: true)
+            .order("race_date", ascending: true)
             .execute()
             .value
-        let goals = records.compactMap { $0.toRunningGoal() }
-        print("📊 Retrieved \(goals.count) active goals from `goals` table")
+        return races
+    }
+
+    static func getUpcomingRaces() async throws -> [AthleteRace] {
+        let all = try await getAllRaces()
+        return all.filter { $0.isUpcoming }
+    }
+
+    static func getPastRaces() async throws -> [AthleteRace] {
+        let all = try await getAllRaces()
+        return all.filter { !$0.isUpcoming }.reversed()
+    }
+
+    static func getNextRace() async throws -> AthleteRace? {
+        return try await getUpcomingRaces().first
+    }
+
+    // MARK: - RunningGoal adapters (used by GoalManager + widgets)
+
+    static func getActiveGoals() async throws -> [RunningGoal] {
+        let races = try await getUpcomingRaces()
+        let goals = races.map { $0.toRunningGoal() }
+        print("📊 \(goals.count) upcoming races → active goals")
         return goals
     }
 
     static func getAllGoals() async throws -> [RunningGoal] {
-        let userId = try await getCurrentUserId()
-        let records: [GoalRecord] = try await supabase
-            .from("goals")
-            .select("*")
-            .eq("athlete_id", value: userId)
-            .order("end_date", ascending: false)
-            .execute()
-            .value
-        let goals = records.compactMap { $0.toRunningGoal() }
-        print("📊 Retrieved \(goals.count) total goals from `goals` table")
-        return goals
+        let races = try await getAllRaces()
+        return races.map { $0.toRunningGoal() }
     }
 
     static func getGoalById(_ goalId: Int) async throws -> RunningGoal? {
         let userId = try await getCurrentUserId()
-        let records: [GoalRecord] = try await supabase
-            .from("goals")
+        let races: [AthleteRace] = try await supabase
+            .from("athlete_races")
             .select("*")
             .eq("id", value: goalId)
             .eq("athlete_id", value: userId)
             .limit(1)
             .execute()
             .value
-        return records.first?.toRunningGoal()
+        return races.first?.toRunningGoal()
     }
 
-    // MARK: - Create (writes to `goals` table)
+    // MARK: - Fallback stubs (kept for call-site compatibility)
 
-    static func createGoal(_ goal: RunningGoal) async throws -> RunningGoal {
-        let userId = try await getCurrentUserId()
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withFullDate]
-
-        struct GoalInsert: Encodable {
-            let athlete_id: Int
-            let goal_type: String
-            let activity_type: String
-            let target_value: Double
-            let end_date: String
-            let start_date: String
-            let completed: Bool
-        }
-
-        let insert = GoalInsert(
-            athlete_id: userId,
-            goal_type: goal.type == .time ? "race_time" : goal.type.rawValue,
-            activity_type: "run",
-            target_value: goal.targetValue,
-            end_date: iso.string(from: goal.deadline),
-            start_date: iso.string(from: goal.createdDate),
-            completed: false
-        )
-
-        let record: GoalRecord = try await supabase
-            .from("goals")
-            .insert(insert)
-            .select()
-            .single()
-            .execute()
-            .value
-
-        guard let created = record.toRunningGoal() else {
-            throw GoalServiceError.goalNotFound
-        }
-
-        print("✅ Goal created: \(created.title)")
-        WidgetRefreshService.refreshForGoalUpdate()
-        return created
-    }
-
-    // MARK: - Update
-
-    static func completeGoal(goalId: Int) async throws {
-        let userId = try await getCurrentUserId()
-        try await supabase
-            .from("goals")
-            .update(["completed": true])
-            .eq("id", value: goalId)
-            .eq("athlete_id", value: userId)
-            .execute()
-        WidgetRefreshService.refreshForGoalUpdate()
-        print("✅ Goal \(goalId) marked complete")
-    }
-
-    static func deleteGoal(goalId: Int) async throws {
-        let userId = try await getCurrentUserId()
-        try await supabase
-            .from("goals")
-            .delete()
-            .eq("id", value: goalId)
-            .eq("athlete_id", value: userId)
-            .execute()
-        WidgetRefreshService.refreshForGoalUpdate()
-        print("🗑️ Goal \(goalId) deleted")
-    }
-
-    // MARK: - Stats
-
-    static func getGoalStats() async throws -> GoalStats {
-        let all = try await getAllGoals()
-        return GoalStats(
-            totalGoals: all.count,
-            completedGoals: all.filter { $0.isCompleted }.count,
-            activeGoals: all.filter { $0.isActive && !$0.isCompleted }.count,
-            averageProgress: all.isEmpty ? 0 : all.reduce(0) { $0 + $1.currentProgress } / Double(all.count)
-        )
-    }
-
-    // MARK: - Legacy stubs (kept for call-site compatibility)
-
+    static func createGoal(_ goal: RunningGoal) async throws -> RunningGoal { return goal }
     static func updateGoal(_ goal: RunningGoal) async throws -> RunningGoal { return goal }
     static func updateGoalProgress(goalId: Int, progress: Double) async throws -> RunningGoal {
         guard let g = try await getGoalById(goalId) else { throw GoalServiceError.goalNotFound }
         return g
     }
+    static func completeGoal(goalId: Int) async throws {}
     static func deactivateGoal(goalId: Int) async throws -> RunningGoal {
         guard let g = try await getGoalById(goalId) else { throw GoalServiceError.goalNotFound }
         return g
     }
     static func deactivateGoalsOfType(_ type: GoalType) async throws {}
     static func getCurrentGoal(ofType type: GoalType) async throws -> RunningGoal? {
-        return try await getActiveGoals().first { $0.type == type }
+        return try await getActiveGoals().first
+    }
+    static func deleteGoal(goalId: Int) async throws {
+        WidgetRefreshService.refreshForGoalUpdate()
+    }
+    static func getGoalStats() async throws -> GoalStats {
+        let all = try await getAllGoals()
+        return GoalStats(
+            totalGoals: all.count,
+            completedGoals: all.filter { $0.isCompleted }.count,
+            activeGoals: all.filter { $0.isActive }.count,
+            averageProgress: 0
+        )
     }
 }
 
@@ -283,8 +198,6 @@ enum GoalServiceError: LocalizedError {
         }
     }
 }
-
-// MARK: - Stats
 
 struct GoalStats {
     let totalGoals: Int

@@ -23,7 +23,7 @@ struct PlanView: View {
     @State private var selectedSection: RaceSection = .upcoming
     @State private var showingWorkoutDetail: DailyWorkout?
     @State private var showingTrainingGuidelines = false
-    @State private var allGoals: [RunningGoal] = []
+    @State private var allGoals: [AthleteRace] = []
     @State private var isLoadingGoals = false
 
     private var bg:   Color { AppTheme.Colors.DarkMode.background }
@@ -31,20 +31,16 @@ struct PlanView: View {
     private var pri:  Color { AppTheme.Colors.DarkMode.textPrimary }
     private var sec:  Color { AppTheme.Colors.DarkMode.textSecondary }
 
-    private var upcomingRaces: [RunningGoal] {
-        allGoals
-            .filter { !$0.isCompleted && $0.deadline >= Date() }
-            .sorted { $0.deadline < $1.deadline }
+    private var upcomingRaces: [AthleteRace] {
+        allGoals.filter { $0.isUpcoming }
     }
 
-    private var pastRaces: [RunningGoal] {
-        allGoals
-            .filter { $0.isCompleted || $0.deadline < Date() }
-            .sorted { $0.deadline > $1.deadline }
+    private var pastRaces: [AthleteRace] {
+        allGoals.filter { !$0.isUpcoming }.reversed()
     }
 
-    private var nextRace: RunningGoal? {
-        upcomingRaces.first ?? dataManager.currentGoal
+    private var nextRace: AthleteRace? {
+        upcomingRaces.first
     }
 
     var body: some View {
@@ -87,9 +83,9 @@ struct PlanView: View {
         await viewModel.loadPlan()
         isLoadingGoals = true
         do {
-            allGoals = try await GoalService.getAllGoals()
+            allGoals = try await GoalService.getAllRaces()
         } catch {
-            allGoals = [dataManager.currentGoal].compactMap { $0 }
+            allGoals = []
         }
         isLoadingGoals = false
     }
@@ -102,7 +98,7 @@ struct PlanView: View {
             VStack(spacing: AppTheme.Spacing.lg) {
                 // ── Next Race ──────────────────────────────
                 if let race = nextRace {
-                    NextRaceCard(goal: race)
+                    NextRaceCard(race: race)
                 } else {
                     NoRaceCard()
                 }
@@ -180,7 +176,7 @@ struct PlanView: View {
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.md) {
                     ForEach(pastRaces) { race in
-                        PastRaceRow(goal: race)
+                        PastRaceRow(race: race)
                     }
                 }
                 .padding()
@@ -203,28 +199,28 @@ struct PlanView: View {
 // MARK: - Next Race Card
 
 struct NextRaceCard: View {
-    let goal: RunningGoal
+    let race: AthleteRace
 
     private var daysUntil: Int {
-        max(0, Calendar.current.dateComponents([.day], from: Date(), to: goal.deadline).day ?? 0)
+        guard let d = race.parsedDate else { return 0 }
+        return max(0, Calendar.current.dateComponents([.day], from: Date(), to: d).day ?? 0)
     }
 
     private var raceDate: String {
+        guard let d = race.parsedDate else { return "" }
         let f = DateFormatter()
         f.dateFormat = "MMMM d, yyyy"
-        return f.string(from: goal.deadline)
+        return f.string(from: d)
     }
 
     private var urgencyColor: Color {
-        if daysUntil == 0 { return .red }
-        if daysUntil <= 7 { return .orange }
-        if daysUntil <= 21 { return AppTheme.Colors.accent }
+        if daysUntil == 0  { return .red }
+        if daysUntil <= 7  { return .orange }
         return AppTheme.Colors.accent
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Top accent bar
             Rectangle()
                 .fill(AppTheme.Colors.accent)
                 .frame(height: 3)
@@ -238,10 +234,16 @@ struct NextRaceCard: View {
                         .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                         .tracking(1.2)
 
-                    Text(goal.title)
+                    Text(race.raceName)
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
                         .lineLimit(2)
+
+                    if let loc = race.locationString {
+                        Label(loc, systemImage: "mappin")
+                            .font(.system(size: 13))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                    }
 
                     Text(raceDate)
                         .font(.system(size: 14, weight: .medium))
@@ -263,8 +265,7 @@ struct NextRaceCard: View {
 
             if daysUntil <= 14 && daysUntil > 0 {
                 HStack(spacing: 6) {
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 11))
+                    Image(systemName: "flame.fill").font(.system(size: 11))
                     Text(daysUntil <= 7 ? "Race week — final prep" : "Two weeks out — taper time")
                         .font(.system(size: 12, weight: .medium))
                 }
@@ -306,37 +307,41 @@ struct NoRaceCard: View {
 // MARK: - Past Race Row
 
 struct PastRaceRow: View {
-    let goal: RunningGoal
+    let race: AthleteRace
 
     private var raceDate: String {
+        guard let d = race.parsedDate else { return race.raceDate ?? "" }
         let f = DateFormatter()
         f.dateFormat = "MMM d, yyyy"
-        return f.string(from: goal.deadline)
+        return f.string(from: d)
     }
 
     var body: some View {
         HStack(spacing: 14) {
-            // Status dot
-            Circle()
-                .fill(goal.isCompleted ? Color.green : AppTheme.Colors.DarkMode.textSecondary.opacity(0.3))
-                .frame(width: 10, height: 10)
+            Image(systemName: "flag.checkered")
+                .font(.system(size: 16))
+                .foregroundColor(AppTheme.Colors.DarkMode.textSecondary.opacity(0.5))
+                .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(goal.title)
+                Text(race.raceName)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
-                Text(raceDate)
-                    .font(.system(size: 13))
-                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                HStack(spacing: 6) {
+                    Text(raceDate)
+                        .font(.system(size: 13))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                    if let loc = race.locationString {
+                        Text("·")
+                            .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                        Text(loc)
+                            .font(.system(size: 13))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                    }
+                }
             }
 
             Spacer()
-
-            if goal.isCompleted {
-                Label("Done", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.green)
-            }
         }
         .padding(14)
         .background(AppTheme.Colors.DarkMode.cardBackground)
