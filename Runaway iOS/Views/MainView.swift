@@ -43,7 +43,7 @@ struct MainView: View {
                     }
                 }
 
-                Tab("Plan", systemImage: "calendar", value: 2) {
+                Tab("Plan", systemImage: "flag.checkered", value: 2) {
                     NavigationStack(path: Bindable(router).path) {
                         PlanView()
                             .navigationDestination(for: AppRouter.Route.self) { route in
