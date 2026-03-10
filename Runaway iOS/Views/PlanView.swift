@@ -119,7 +119,7 @@ struct PlanView: View {
                 // ── Training Plan ──────────────────────────
                 sectionHeader("TRAINING PLAN")
 
-                if viewModel.isLoading {
+                if viewModel.isLoading && viewModel.displayedPlan == nil {
                     LoadingPlanView()
                 } else if let plan = viewModel.displayedPlan {
                     PlanHeaderCard(
