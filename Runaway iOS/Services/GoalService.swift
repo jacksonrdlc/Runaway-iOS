@@ -96,6 +96,8 @@ class GoalService {
 
     static func getAllRaces() async throws -> [AthleteRace] {
         let userId = try await getCurrentUserId()
+        print("🔍 GoalService: Fetching races for athlete: \(userId)")
+        
         let races: [AthleteRace] = try await supabase
             .from("athlete_races")
             .select("*")
@@ -103,6 +105,8 @@ class GoalService {
             .order("race_date", ascending: true)
             .execute()
             .value
+            
+        print("📊 GoalService: Found \(races.count) races in DB for athlete \(userId)")
         return races
     }
 

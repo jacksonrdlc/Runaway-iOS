@@ -25,6 +25,7 @@ struct PlanView: View {
     @State private var showingTrainingGuidelines = false
     @State private var allGoals: [AthleteRace] = []
     @State private var isLoadingGoals = false
+    @State private var lastRefreshError: String? = nil
 
     private var bg:   Color { AppTheme.Colors.DarkMode.background }
     private var card: Color { AppTheme.Colors.DarkMode.cardBackground }
@@ -82,10 +83,18 @@ struct PlanView: View {
     private func loadAll() async {
         await viewModel.loadPlan()
         isLoadingGoals = true
+        lastRefreshError = nil
         do {
-            allGoals = try await GoalService.getAllRaces()
+            let races = try await GoalService.getAllRaces()
+            if !races.isEmpty {
+                allGoals = races
+            } else {
+                print("⚠️ PlanView: getAllRaces returned 0 rows")
+            }
         } catch {
-            allGoals = []
+            print("❌ PlanView: Refresh failed: \(error)")
+            lastRefreshError = error.localizedDescription
+            // Keep old data if fetch fails
         }
         isLoadingGoals = false
     }
