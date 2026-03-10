@@ -2,31 +2,24 @@
 //  GoalService.swift
 //  Runaway iOS
 //
-//  The "current goal" is the next upcoming registered race from athlete_races.
-//  Race data is synced from RunSignUp by the user-races edge function.
-//  The old `running_goals` / `goals` tables are no longer the primary source.
-//
 
 import Foundation
 import Supabase
 import WidgetKit
 
-// MARK: - AthleteRace  (matches athlete_races table)
-
 struct AthleteRace: Codable, Identifiable, Sendable {
-    let id: Int
+    let id: Int?
     let athleteId: Int
     let runsignupRaceId: Int
     let eventId: Int?
     let raceName: String
-    let raceDate: String?     // "YYYY-MM-DD"
+    let raceDate: String?
     let city: String?
     let state: String?
     let countryCode: String?
     let logoUrl: String?
     let externalUrl: String?
     let syncedAt: String?
-    let createdAt: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -40,10 +33,7 @@ struct AthleteRace: Codable, Identifiable, Sendable {
         case logoUrl         = "logo_url"
         case externalUrl     = "external_url"
         case syncedAt        = "synced_at"
-        case createdAt       = "created_at"
     }
-
-    // MARK: - Derived
 
     var parsedDate: Date? {
         guard let s = raceDate else { return nil }
@@ -58,18 +48,33 @@ struct AthleteRace: Codable, Identifiable, Sendable {
     }
 
     var locationString: String? {
-        [city, state].compactMap { $0 }.joined(separator: ", ").isEmpty ? nil :
-        [city, state].compactMap { $0 }.joined(separator: ", ")
+        let cityPart = city ?? ""
+        let statePart = state ?? ""
+        if cityPart.isEmpty && statePart.isEmpty { return nil }
+        if cityPart.isEmpty { return statePart }
+        if statePart.isEmpty { return cityPart }
+        return "\(cityPart), \(statePart)"
     }
 
-    /// Convert to RunningGoal so the rest of the app needs no changes
+    var detectedDistance: Double {
+        let lower = raceName.lowercased()
+        if lower.contains("marathon") && !lower.contains("half") { return 26.219 }
+        if lower.contains("half") { return 13.11 }
+        if lower.contains("10k") { return 6.21 }
+        if lower.contains("5k") { return 3.11 }
+        if lower.contains("50k") { return 31.07 }
+        if lower.contains("100k") { return 62.14 }
+        if lower.contains("100 miler") { return 100.0 }
+        return 26.2 
+    }
+
     func toRunningGoal() -> RunningGoal {
         let deadline = parsedDate ?? Date().addingTimeInterval(365 * 24 * 3600)
         return RunningGoal(
             id: id,
             athleteId: athleteId,
             type: .distance,
-            targetValue: 26.2,        // placeholder; race distance not stored yet
+            targetValue: detectedDistance,
             deadline: deadline,
             createdDate: Date(),
             updatedDate: nil,
@@ -82,19 +87,13 @@ struct AthleteRace: Codable, Identifiable, Sendable {
     }
 }
 
-// MARK: - GoalService
-
 class GoalService {
-
     private static func getCurrentUserId() async throws -> Int {
         let userId = await MainActor.run { UserSession.shared.userId }
-        guard let userId else { throw GoalServiceError.userNotAuthenticated }
-        return userId
+        guard let u = userId else { throw GoalServiceError.userNotAuthenticated }
+        return u
     }
 
-    // MARK: - Primary: athlete_races
-
-    /// All races, sorted soonest first for upcoming, most recent first for past
     static func getAllRaces() async throws -> [AthleteRace] {
         let userId = try await getCurrentUserId()
         let races: [AthleteRace] = try await supabase
@@ -118,16 +117,13 @@ class GoalService {
     }
 
     static func getNextRace() async throws -> AthleteRace? {
-        return try await getUpcomingRaces().first
+        let upcoming = try await getUpcomingRaces()
+        return upcoming.first
     }
-
-    // MARK: - RunningGoal adapters (used by GoalManager + widgets)
 
     static func getActiveGoals() async throws -> [RunningGoal] {
         let races = try await getUpcomingRaces()
-        let goals = races.map { $0.toRunningGoal() }
-        print("📊 \(goals.count) upcoming races → active goals")
-        return goals
+        return races.map { $0.toRunningGoal() }
     }
 
     static func getAllGoals() async throws -> [RunningGoal] {
@@ -147,8 +143,6 @@ class GoalService {
             .value
         return races.first?.toRunningGoal()
     }
-
-    // MARK: - Fallback stubs (kept for call-site compatibility)
 
     static func createGoal(_ goal: RunningGoal) async throws -> RunningGoal { return goal }
     static func updateGoal(_ goal: RunningGoal) async throws -> RunningGoal { return goal }
@@ -179,22 +173,19 @@ class GoalService {
     }
 }
 
-// MARK: - Errors
-
 enum GoalServiceError: LocalizedError {
     case userNotAuthenticated
     case invalidGoalId
     case goalNotFound
     case duplicateActiveGoal
     case networkError(String)
-
     var errorDescription: String? {
         switch self {
-        case .userNotAuthenticated:   return "User is not authenticated"
-        case .invalidGoalId:          return "Invalid goal ID"
-        case .goalNotFound:           return "Goal not found"
-        case .duplicateActiveGoal:    return "An active goal of this type already exists"
-        case .networkError(let m):    return "Network error: \(m)"
+        case .userNotAuthenticated: return "User not authenticated"
+        case .invalidGoalId: return "Invalid goal ID"
+        case .goalNotFound: return "Goal not found"
+        case .duplicateActiveGoal: return "Goal type duplicate"
+        case .networkError(let m): return "Network error: \(m)"
         }
     }
 }
