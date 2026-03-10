@@ -97,7 +97,6 @@ class GoalService {
     static func getAllRaces() async throws -> [AthleteRace] {
         let userId = try await getCurrentUserId()
         print("🔍 GoalService: Fetching races for athlete: \(userId)")
-        
         let races: [AthleteRace] = try await supabase
             .from("athlete_races")
             .select("*")
@@ -105,8 +104,7 @@ class GoalService {
             .order("race_date", ascending: true)
             .execute()
             .value
-            
-        print("📊 GoalService: Found \(races.count) races in DB for athlete \(userId)")
+        print("📊 GoalService: Found \(races.count) races in DB")
         return races
     }
 
@@ -161,7 +159,8 @@ class GoalService {
     }
     static func deactivateGoalsOfType(_ type: GoalType) async throws {}
     static func getCurrentGoal(ofType type: GoalType) async throws -> RunningGoal? {
-        return try await getActiveGoals().first
+        let active = try await getActiveGoals()
+        return active.first { $0.type == type }
     }
     static func deleteGoal(goalId: Int) async throws {
         WidgetRefreshService.refreshForGoalUpdate()
