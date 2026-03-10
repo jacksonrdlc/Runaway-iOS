@@ -43,7 +43,7 @@ struct MainView: View {
                     }
                 }
 
-                Tab("Plan", systemImage: "flag.checkered", value: 2) {
+                Tab("Races", systemImage: "flag.checkered", value: 2) {
                     NavigationStack(path: Bindable(router).path) {
                         PlanView()
                             .navigationDestination(for: AppRouter.Route.self) { route in
@@ -63,7 +63,7 @@ struct MainView: View {
             }
             .ignoresSafeArea(.keyboard)
             .onChange(of: selectedTab) { oldTab, newTab in
-                let tabNames = ["Dashboard", "Activities", "Plan", "Profile"]
+                let tabNames = ["Dashboard", "Activities", "Races", "Profile"]
                 let tabName = newTab < tabNames.count ? tabNames[newTab] : "Unknown"
                 AnalyticsService.shared.track(.tabSelected, category: .navigation, properties: [
                     "tab_name": tabName,
