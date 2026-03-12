@@ -4,10 +4,9 @@
 //
 
 import SwiftUI
-import MapboxMaps
+import MapKit
 import CoreLocation
 import UIKit
-import Combine
 
 struct CardView: View {
     let activity: LocalActivity
@@ -253,44 +252,45 @@ struct AIInsightsBanner: View {
 struct ActivityMapView: UIViewRepresentable {
     let summaryPolyline: String?
 
-    func makeUIView(context: Context) -> MapView {
-        let mv = MapView(frame: .zero, mapInitOptions: MapInitOptions(styleURI: .dark))
-        mv.gestures.options.panEnabled = false
-        mv.gestures.options.pinchEnabled = false
-        mv.gestures.options.rotateEnabled = false
-        mv.gestures.options.pitchEnabled = false
-        mv.mapboxMap.setCamera(to: CameraOptions(zoom: 14))
-        mv.mapboxMap.onStyleLoaded.observe { _ in self.addRouteToMap(mv) }.store(in: &context.coordinator.cancellables)
+    func makeUIView(context: Context) -> MKMapView {
+        let mv = MKMapView(frame: .zero)
+        mv.overrideUserInterfaceStyle = .dark
+        mv.isUserInteractionEnabled = false
+        mv.isZoomEnabled = false
+        mv.isScrollEnabled = false
+        mv.isRotateEnabled = false
+        mv.isPitchEnabled = false
+        mv.delegate = context.coordinator
         return mv
     }
 
-    func updateUIView(_ mv: MapView, context: Context) { addRouteToMap(mv) }
+    func updateUIView(_ mv: MKMapView, context: Context) { addRouteToMap(mv) }
     func makeCoordinator() -> Coordinator { Coordinator() }
-    class Coordinator { var cancellables = Set<AnyCancelable>() }
 
-    private func addRouteToMap(_ mv: MapView) {
+    class Coordinator: NSObject, MKMapViewDelegate {
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            let renderer = MKPolylineRenderer(overlay: overlay)
+            renderer.strokeColor = UIColor(AppTheme.Colors.warmAmber)
+            renderer.lineWidth = 3.5
+            renderer.lineCap = .round
+            renderer.lineJoin = .round
+            return renderer
+        }
+    }
+
+    private func addRouteToMap(_ mv: MKMapView) {
         guard let poly = summaryPolyline else { return }
         let coords = decodePolyline(poly)
         guard !coords.isEmpty else { return }
-        try? mv.mapboxMap.removeLayer(withId: "route-layer")
-        try? mv.mapboxMap.removeSource(withId: "route-source")
-        let ls = LineString(coords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) })
-        var src = GeoJSONSource(id: "route-source"); src.data = .geometry(.lineString(ls))
-        try? mv.mapboxMap.addSource(src)
-        var l = LineLayer(id: "route-layer", source: "route-source")
-        l.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.warmAmber)))
-        l.lineWidth = .constant(3.5)
-        l.lineCap = .constant(.round); l.lineJoin = .constant(.round)
-        try? mv.mapboxMap.addLayer(l)
-        if let first = coords.first {
-            let minLat = coords.map(\.latitude).min() ?? first.latitude
-            let maxLat = coords.map(\.latitude).max() ?? first.latitude
-            let minLon = coords.map(\.longitude).min() ?? first.longitude
-            let maxLon = coords.map(\.longitude).max() ?? first.longitude
-            let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
-            let zoom = log2(360 / max((maxLat - minLat) * 1.5, (maxLon - minLon) * 1.5)) - 1
-            mv.mapboxMap.setCamera(to: CameraOptions(center: center, zoom: zoom))
-        }
+        mv.removeOverlays(mv.overlays)
+        var mutableCoords = coords
+        mv.addOverlay(MKPolyline(coordinates: &mutableCoords, count: mutableCoords.count), level: .aboveRoads)
+        let lats = coords.map(\.latitude), lons = coords.map(\.longitude)
+        guard let minLat = lats.min(), let maxLat = lats.max(),
+              let minLon = lons.min(), let maxLon = lons.max() else { return }
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
+        let span = MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.5, longitudeDelta: (maxLon - minLon) * 1.5)
+        mv.setRegion(MKCoordinateRegion(center: center, span: span), animated: false)
     }
 
     private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
@@ -302,11 +302,11 @@ struct ActivityMapView: UIViewRepresentable {
         var result: [CLLocationCoordinate2D] = []; let chars = Array(s); var idx = 0, lat = 0, lng = 0
         while idx < chars.count {
             var shift = 0, res = 0, byte: Int
-            repeat { if idx >= chars.count { break }; byte = Int(chars[idx].asciiValue!) - 63; res |= (byte & 0x1F) << shift; shift += 5; idx += 1 } while byte >= 0x20
+            repeat { if idx >= chars.count { break }; byte = Int(chars[idx].asciiValue ?? 0) - 63; res |= (byte & 0x1F) << shift; shift += 5; idx += 1 } while byte >= 0x20
             lat += (res & 1) != 0 ? ~(res >> 1) : (res >> 1); shift = 0; res = 0
-            repeat { if idx >= chars.count { break }; byte = Int(chars[idx].asciiValue!) - 63; res |= (byte & 0x1F) << shift; shift += 5; idx += 1 } while byte >= 0x20
+            repeat { if idx >= chars.count { break }; byte = Int(chars[idx].asciiValue ?? 0) - 63; res |= (byte & 0x1F) << shift; shift += 5; idx += 1 } while byte >= 0x20
             lng += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
-            result.append(CLLocationCoordinate2D(latitude: Double(lat)/1e5, longitude: Double(lng)/1e5))
+            result.append(CLLocationCoordinate2D(latitude: Double(lat) / 1e5, longitude: Double(lng) / 1e5))
         }
         return result
     }

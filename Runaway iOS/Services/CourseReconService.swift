@@ -13,7 +13,7 @@ struct RaceCourse: Codable, Identifiable {
     let polyline: String?
     let elevationData: [CourseElevationPoint]?
     let tacticalInsights: [TacticalInsight]?
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case runsignupRaceId = "runsignup_race_id"
@@ -41,23 +41,40 @@ class CourseReconService {
     static let shared = CourseReconService()
     
     func fetchCourse(raceId: Int, eventId: Int) async throws -> RaceCourse? {
-        let queryItems = [
-            URLQueryItem(name: "race_id", value: "\(raceId)"),
-            URLQueryItem(name: "event_id", value: "\(eventId)")
-        ]
-        
         let response: [String: RaceCourse?] = try await supabase.functions
-            .invoke("get-race-course", 
-                    options: .init(query: queryItems))
-        
+            .invoke("get-race-course",
+                    options: .init(query: [
+                        URLQueryItem(name: "race_id", value: "\(raceId)"),
+                        URLQueryItem(name: "event_id", value: "\(eventId)")
+                    ]))
+
         return response["course"] ?? nil
     }
-    
-    /// Placeholder for AI analysis of course crux
-    func generateTacticalInsights(course: RaceCourse) async throws -> [TacticalInsight] {
-        return [
-            TacticalInsight(mile: 21.2, type: "climb", description: "Final steep grade (4%) - preserve glycogen in the miles leading up to this."),
-            TacticalInsight(mile: 13.5, type: "fuel", description: "Halfway point. High probability of mental fatigue—hit your caffeine gel here.")
-        ]
+
+    func uploadCourse(raceId: Int, eventId: Int, polyline: String, elevationData: [CourseElevationPoint]) async throws -> RaceCourse {
+        struct UploadBody: Encodable {
+            let runsignup_race_id: Int
+            let event_id: Int
+            let polyline: String
+            let elevation_data: [CourseElevationPoint]
+        }
+
+        let response: [String: RaceCourse] = try await supabase.functions
+            .invoke("upload-race-course",
+                    options: .init(
+                        method: .post,
+                        body: UploadBody(
+                            runsignup_race_id: raceId,
+                            event_id: eventId,
+                            polyline: polyline,
+                            elevation_data: elevationData
+                        )
+                    ))
+
+        guard let course = response["course"] else {
+            throw NSError(domain: "CourseRecon", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse response"])
+        }
+
+        return course
     }
 }

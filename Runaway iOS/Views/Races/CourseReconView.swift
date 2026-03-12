@@ -4,7 +4,7 @@
 //
 
 import SwiftUI
-import MapboxMaps
+import MapKit
 
 struct CourseReconView: View {
     let race: AthleteRace
@@ -103,34 +103,75 @@ struct CourseReconView: View {
     }
 }
 
-// MARK: - Tactical Map View (3D)
+// MARK: - Tactical Map View (3D terrain)
 
 struct TacticalMapView: UIViewRepresentable {
     let course: RaceCourse
     @Binding var selectedMile: Double
 
-    func makeUIView(context: Context) -> MapView {
-        let options = MapInitOptions(
-            cameraOptions: CameraOptions(zoom: 12),
-            styleURI: .dark
-        )
-        let mapView = MapView(frame: .zero, mapInitOptions: options)
-        
-        // Enable Terrain
-        try? mapView.mapboxMap.setTerrain(Terrain(sourceId: "mapbox-dem"))
-        
-        // Add DEM source
-        var demSource = RasterDemSource(id: "mapbox-dem")
-        demSource.url = "mapbox://mapbox.mapbox-terrain-dem-v1"
-        demSource.tileSize = 512
-        demSource.maxzoom = 14
-        try? mapView.mapboxMap.addSource(demSource)
-        
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView(frame: .zero)
+        mapView.overrideUserInterfaceStyle = .dark
+        mapView.isPitchEnabled = true
+        mapView.delegate = context.coordinator
+
+        if #available(iOS 17.0, *) {
+            mapView.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .realistic)
+        }
+
+        if let polylineStr = course.polyline {
+            let coords = decodePolyline(polylineStr)
+            if !coords.isEmpty {
+                var mutableCoords = coords
+                mapView.addOverlay(MKPolyline(coordinates: &mutableCoords, count: mutableCoords.count), level: .aboveRoads)
+                let lats = coords.map(\.latitude), lons = coords.map(\.longitude)
+                if let minLat = lats.min(), let maxLat = lats.max(),
+                   let minLon = lons.min(), let maxLon = lons.max() {
+                    let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
+                    let span = MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.4, longitudeDelta: (maxLon - minLon) * 1.4)
+                    mapView.setRegion(MKCoordinateRegion(center: center, span: span), animated: false)
+                }
+            }
+        }
+
         return mapView
     }
 
-    func updateUIView(_ uiView: MapView, context: Context) {
-        // Here we would update the camera position based on selectedMile
+    func updateUIView(_ mapView: MKMapView, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    class Coordinator: NSObject, MKMapViewDelegate {
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            let renderer = MKPolylineRenderer(overlay: overlay)
+            renderer.strokeColor = UIColor(AppTheme.Colors.accent)
+            renderer.lineWidth = 4
+            renderer.lineCap = .round
+            return renderer
+        }
+    }
+
+    private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
+        var result: [CLLocationCoordinate2D] = []
+        let chars = Array(encoded); var idx = 0, lat = 0, lng = 0
+        while idx < chars.count {
+            var shift = 0, res = 0, byte: Int
+            repeat {
+                if idx >= chars.count { break }
+                byte = Int(chars[idx].asciiValue ?? 0) - 63
+                res |= (byte & 0x1F) << shift; shift += 5; idx += 1
+            } while byte >= 0x20
+            lat += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            shift = 0; res = 0
+            repeat {
+                if idx >= chars.count { break }
+                byte = Int(chars[idx].asciiValue ?? 0) - 63
+                res |= (byte & 0x1F) << shift; shift += 5; idx += 1
+            } while byte >= 0x20
+            lng += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            result.append(CLLocationCoordinate2D(latitude: Double(lat) / 1e5, longitude: Double(lng) / 1e5))
+        }
+        return result
     }
 }
 

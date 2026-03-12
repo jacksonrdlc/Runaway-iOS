@@ -26,8 +26,6 @@ struct PlanView: View {
     @State private var allGoals: [AthleteRace] = []
     @State private var isLoadingGoals = false
     @State private var lastRefreshError: String? = nil
-    @State private var showingCourseRecon = false
-
     private var bg:   Color { AppTheme.Colors.DarkMode.background }
     private var card: Color { AppTheme.Colors.DarkMode.cardBackground }
     private var pri:  Color { AppTheme.Colors.DarkMode.textPrimary }
@@ -77,7 +75,6 @@ struct PlanView: View {
         .sheet(item: $showingWorkoutDetail) { PlanWorkoutDetailSheet(workout: $0) }
         .sheet(isPresented: $showingTrainingGuidelines) { TrainingGuidelinesSheet() }
         .task { await loadAll() }
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowCourseRecon"))) { _ in showingCourseRecon = true }
     }
 
     // MARK: - Load
@@ -215,6 +212,7 @@ struct PlanView: View {
 
 struct NextRaceCard: View {
     let race: AthleteRace
+    @State private var showingCourseRecon = false
 
     private var daysUntil: Int {
         guard let d = race.parsedDate else { return 0 }
@@ -264,10 +262,7 @@ struct NextRaceCard: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                     
-                    Button {
-                        // This will be handled by a parent callback or environment
-                        NotificationCenter.default.post(name: NSNotification.Name("ShowCourseRecon"), object: nil)
-                    } label: {
+                    Button { showingCourseRecon = true } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "mountain.2.fill")
                             Text("Scout Course")
@@ -309,6 +304,9 @@ struct NextRaceCard: View {
         .background(AppTheme.Colors.DarkMode.cardBackground)
         .cornerRadius(16)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.07), lineWidth: 1))
+        .sheet(isPresented: $showingCourseRecon) {
+            CourseReconView(race: race)
+        }
     }
 }
 

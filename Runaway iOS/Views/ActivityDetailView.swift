@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import MapboxMaps
+import MapKit
 import CoreLocation
 import Combine
 
@@ -481,179 +481,80 @@ struct ActivityDetailView: View {
 struct ActivityDetailMapView: UIViewRepresentable {
     let summaryPolyline: String?
 
-    func makeUIView(context: Context) -> MapView {
-        let mapInitOptions = MapInitOptions(styleURI: .standard)
-        let mapView = MapView(frame: .zero, mapInitOptions: mapInitOptions)
-
-        // Enable interactions for detail view using gestures options
-        mapView.gestures.options.panEnabled = true
-        mapView.gestures.options.pinchEnabled = true
-        mapView.gestures.options.rotateEnabled = true
-        mapView.gestures.options.pitchEnabled = false
-
-        // Show ornaments (compass, scale)
-        mapView.ornaments.compassView.isHidden = false
-        mapView.ornaments.scaleBarView.isHidden = false
-
-        // Add route when style loads
-        mapView.mapboxMap.onStyleLoaded.observe { _ in
-            self.addRouteToMap(mapView)
-        }.store(in: &context.coordinator.cancellables)
-
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView(frame: .zero)
+        mapView.overrideUserInterfaceStyle = .dark
+        mapView.delegate = context.coordinator
+        mapView.isPitchEnabled = false
+        mapView.showsCompass = true
+        mapView.showsScale = true
         return mapView
     }
 
-    func updateUIView(_ mapView: MapView, context: Context) {
-        addRouteToMap(mapView)
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        addRouteToMap(mapView, coordinator: context.coordinator)
     }
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    class Coordinator: NSObject, MKMapViewDelegate {
+        var startCircle: MKCircle?
+        var endCircle: MKCircle?
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = UIColor(AppTheme.Colors.accent)
+                renderer.lineWidth = 5
+                renderer.lineCap = .round
+                renderer.lineJoin = .round
+                return renderer
+            }
+            if let circle = overlay as? MKCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                renderer.fillColor = (circle === startCircle) ? .systemGreen : .systemRed
+                renderer.strokeColor = .white
+                renderer.lineWidth = 2
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
+        }
     }
 
-    class Coordinator {
-        var cancellables = Set<AnyCancellable>()
-    }
-
-    private func addRouteToMap(_ mapView: MapView) {
-        guard let polyline = summaryPolyline else { return }
-
-        // Decode the polyline
-        let coordinates = decodePolyline(polyline)
-
+    private func addRouteToMap(_ mapView: MKMapView, coordinator: Coordinator) {
+        guard let polylineStr = summaryPolyline else { return }
+        let coordinates = decodePolyline(polylineStr)
         guard !coordinates.isEmpty else { return }
 
-        // Remove existing sources and layers if they exist
-        try? mapView.mapboxMap.removeLayer(withId: "route-layer")
-        try? mapView.mapboxMap.removeSource(withId: "route-source")
-        try? mapView.mapboxMap.removeLayer(withId: "markers-layer")
-        try? mapView.mapboxMap.removeSource(withId: "markers-source")
+        mapView.removeOverlays(mapView.overlays)
 
-        // Convert coordinates to LineString
-        let lineCoordinates = coordinates.map { coord in
-            CLLocationCoordinate2D(latitude: coord.latitude, longitude: coord.longitude)
-        }
+        var mutableCoords = coordinates
+        mapView.addOverlay(MKPolyline(coordinates: &mutableCoords, count: mutableCoords.count), level: .aboveRoads)
 
-        let lineString = LineString(lineCoordinates)
-
-        // Create GeoJSON source for route
-        var routeSource = GeoJSONSource(id: "route-source")
-        routeSource.data = .geometry(.lineString(lineString))
-
-        // Add route source to map
-        try? mapView.mapboxMap.addSource(routeSource)
-
-        // Create line layer for the route
-        var lineLayer = LineLayer(id: "route-layer", source: "route-source")
-        lineLayer.lineColor = .constant(StyleColor(UIColor(AppTheme.Colors.accent)))
-        lineLayer.lineWidth = .constant(5)
-        lineLayer.lineCap = .constant(.round)
-        lineLayer.lineJoin = .constant(.round)
-
-        // Add route layer to map
-        try? mapView.mapboxMap.addLayer(lineLayer)
-
-        // Add start and end markers
         if coordinates.count >= 2 {
-            let startPoint = Point(coordinates.first!)
-            let endPoint = Point(coordinates.last!)
-
-            var features: [Feature] = []
-
-            // Start marker feature
-            var startFeature = Feature(geometry: .point(startPoint))
-            startFeature.properties = [
-                "marker-type": .string("start"),
-                "marker-color": .string("#34C759") // Green
-            ]
-            features.append(startFeature)
-
-            // End marker feature
-            var endFeature = Feature(geometry: .point(endPoint))
-            endFeature.properties = [
-                "marker-type": .string("end"),
-                "marker-color": .string("#FF3B30") // Red
-            ]
-            features.append(endFeature)
-
-            // Create markers source
-            var markersSource = GeoJSONSource(id: "markers-source")
-            markersSource.data = .featureCollection(FeatureCollection(features: features))
-
-            // Add markers source
-            try? mapView.mapboxMap.addSource(markersSource)
-
-            // Create circle layer for markers
-            var markersLayer = CircleLayer(id: "markers-layer", source: "markers-source")
-            markersLayer.circleRadius = .constant(8)
-            markersLayer.circleColor = .expression(
-                Exp(.match) {
-                    Exp(.get) { "marker-type" }
-                    "start"
-                    UIColor.systemGreen
-                    "end"
-                    UIColor.systemRed
-                    UIColor.gray
-                }
-            )
-            markersLayer.circleStrokeColor = .constant(StyleColor(.white))
-            markersLayer.circleStrokeWidth = .constant(2)
-
-            // Add markers layer
-            try? mapView.mapboxMap.addLayer(markersLayer)
+            let start = MKCircle(center: coordinates.first!, radius: 12)
+            let end   = MKCircle(center: coordinates.last!,  radius: 12)
+            coordinator.startCircle = start
+            coordinator.endCircle   = end
+            mapView.addOverlay(start, level: .aboveRoads)
+            mapView.addOverlay(end,   level: .aboveRoads)
         }
 
-        // Calculate bounds and fit camera with padding
-        if let firstCoordinate = coordinates.first {
-            let minLat = coordinates.map { $0.latitude }.min() ?? firstCoordinate.latitude
-            let maxLat = coordinates.map { $0.latitude }.max() ?? firstCoordinate.latitude
-            let minLon = coordinates.map { $0.longitude }.min() ?? firstCoordinate.longitude
-            let maxLon = coordinates.map { $0.longitude }.max() ?? firstCoordinate.longitude
-
-            let center = CLLocationCoordinate2D(
-                latitude: (minLat + maxLat) / 2,
-                longitude: (minLon + maxLon) / 2
-            )
-
-            // Add padding to ensure the route is fully visible
-            let latDelta = (maxLat - minLat) * 1.3
-            let lonDelta = (maxLon - minLon) * 1.3
-
-            // Calculate zoom level from delta
-            let maxDelta = max(latDelta, lonDelta)
-            let zoom = log2(360 / maxDelta) - 1
-
-            let camera = CameraOptions(
-                center: center,
-                zoom: zoom
-            )
-            mapView.mapboxMap.setCamera(to: camera)
-        }
+        let lats = coordinates.map(\.latitude), lons = coordinates.map(\.longitude)
+        guard let minLat = lats.min(), let maxLat = lats.max(),
+              let minLon = lons.min(), let maxLon = lons.max() else { return }
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
+        let span = MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.4, longitudeDelta: (maxLon - minLon) * 1.4)
+        mapView.setRegion(MKCoordinateRegion(center: center, span: span), animated: false)
     }
 
     private func decodePolyline(_ encodedPolyline: String) -> [CLLocationCoordinate2D] {
-        // Enhanced unescape logic for polyline string
         var unescapedPolyline = encodedPolyline
-
-        // Handle multiple levels of escaping in order
-        // First pass: handle double backslashes
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\\\\\", with: "\\\\")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\\\", with: "\\")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\\", with: "\\")
-
-        // Second pass: handle escaped quotes and other characters
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\\"", with: "\"")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\'", with: "'")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\n", with: "\n")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\r", with: "\r")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\t", with: "\t")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\/", with: "/")
-
-        // Handle JSON-style escaping if present
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\u0022", with: "\"")
-        unescapedPolyline = unescapedPolyline.replacingOccurrences(of: "\\u0027", with: "'")
-
-        // Remove any remaining quote wrapping
+        for (a, b) in [("\\\\\\\\", "\\\\"), ("\\\\\\", "\\"), ("\\\\", "\\"),
+                       ("\\\"", "\""), ("\\'", "'"), ("\\n", "\n"), ("\\r", "\r"),
+                       ("\\t", "\t"), ("\\/", "/"), ("\\u0022", "\""), ("\\u0027", "'")] {
+            unescapedPolyline = unescapedPolyline.replacingOccurrences(of: a, with: b)
+        }
         if unescapedPolyline.hasPrefix("\"") && unescapedPolyline.hasSuffix("\"") {
             unescapedPolyline = String(unescapedPolyline.dropFirst().dropLast())
         }
