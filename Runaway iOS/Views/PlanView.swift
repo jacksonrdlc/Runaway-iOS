@@ -26,6 +26,7 @@ struct PlanView: View {
     @State private var allGoals: [AthleteRace] = []
     @State private var isLoadingGoals = false
     @State private var lastRefreshError: String? = nil
+    @State private var showingCourseRecon = false
 
     private var bg:   Color { AppTheme.Colors.DarkMode.background }
     private var card: Color { AppTheme.Colors.DarkMode.cardBackground }
@@ -76,6 +77,7 @@ struct PlanView: View {
         .sheet(item: $showingWorkoutDetail) { PlanWorkoutDetailSheet(workout: $0) }
         .sheet(isPresented: $showingTrainingGuidelines) { TrainingGuidelinesSheet() }
         .task { await loadAll() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShowCourseRecon"))) { _ in showingCourseRecon = true }
     }
 
     // MARK: - Load
@@ -261,6 +263,23 @@ struct NextRaceCard: View {
                     Text(raceDate)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                    
+                    Button {
+                        // This will be handled by a parent callback or environment
+                        NotificationCenter.default.post(name: NSNotification.Name("ShowCourseRecon"), object: nil)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "mountain.2.fill")
+                            Text("Scout Course")
+                        }
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(AppTheme.Colors.accent)
+                        .cornerRadius(20)
+                    }
+                    .padding(.top, 8)
                 }
 
                 Spacer()
