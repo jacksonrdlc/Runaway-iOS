@@ -1,17 +1,16 @@
-//
-//  CourseReconView.swift
-//  Runaway iOS
-//
-
 import SwiftUI
-import MapKit
+import MapboxMaps
+import Polyline
+import UniformTypeIdentifiers
 
 struct CourseReconView: View {
     let race: AthleteRace
     @State private var course: RaceCourse?
     @State private var isLoading = true
     @State private var selectedMile: Double = 0
-    @Environment(\.dismiss) var dismiss
+    @State private var showingFilePicker = false
+    @State private var isUploading = false
+    Environment(\.dismiss) var dismiss
 
     var body: some View {
         NavigationView {
@@ -19,61 +18,25 @@ struct CourseReconView: View {
                 AppTheme.Colors.DarkMode.background.ignoresSafeArea()
                 
                 if isLoading {
-                    ProgressView("Analyzing Course Terrain...")
-                        .tint(AppTheme.Colors.accent)
-                } else if let course = course {
-                    VStack(spacing: 0) {
-                        // 3D Map Flyover
-                        TacticalMapView(course: course, selectedMile: $selectedMile)
-                            .frame(height: 350)
-                            .overlay(alignment: .topTrailing) {
-                                Text("Mile \(String(format: "%.1f", selectedMile))")
-                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                    .padding(8)
-                                    .background(.black.opacity(0.6))
-                                    .cornerRadius(8)
-                                    .padding()
-                            }
-
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 20) {
-                                // Elevation Profile
-                                ElevationChart(course: course, selectedMile: $selectedMile)
-                                    .frame(height: 120)
-                                    .padding(.top)
-
-                                // Tactical Insights
-                                Text("TWIN STRATEGY")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
-                                    .tracking(1.5)
-                                    .padding(.horizontal)
-
-                                if let insights = course.tacticalInsights {
-                                    ForEach(insights) { insight in
-                                        TacticalInsightRow(insight: insight)
-                                    }
-                                } else {
-                                    Text("Analyzing elevation for tactical cruxes...")
-                                        .font(AppTheme.Typography.body)
-                                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
-                                        .padding(.horizontal)
-                                }
-                            }
-                            .padding(.bottom, 40)
-                        }
-                    }
-                } else {
                     VStack(spacing: 20) {
-                        Image(systemName: "map.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(AppTheme.Colors.accent.opacity(0.5))
-                        Text("No Course Data Available")
-                            .font(AppTheme.Typography.headline)
-                        Text("We couldn't find a spatial map for this race yet. You can upload a GPX file via the web platform to enable Course Recon.")
-                            .multilineTextAlignment(.center)
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .tint(AppTheme.Colors.accent)
+                        Text("Analyzing Course Terrain...")
+                            .font(AppTheme.Typography.body)
                             .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
-                            .padding(.horizontal, 40)
+                    }
+                } else if let course = course {
+                    reconDashboard(course)
+                } else {
+                    noCourseState
+                }
+                
+                if isUploading {
+                    Color.black.opacity(0.6).ignoresSafeArea()
+                    VStack(spacing: 20) {
+                        ProgressView().tint(.white)
+                        Text("Uploading Course Data...").foregroundColor(.white)
                     }
                 }
             }
@@ -84,134 +47,62 @@ struct CourseReconView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .fileImporter(
+                isPresented: $showingFilePicker,
+                allowedContentTypes: [UTType(filenameExtension: "gpx")!],
+                allowsMultipleSelection: false
+            ) { result in
+                handleFileImport(result)
+            }
         }
-        .task {
-            await loadCourse()
-        }
+        .task { await loadCourse() }
     }
 
-    private func loadCourse() async {
-        do {
-            course = try await CourseReconService.shared.fetchCourse(
-                raceId: race.runsignupRaceId, 
-                eventId: race.eventId ?? 0
-            )
-        } catch {
-            print("âŒ CourseRecon: Failed to load: \(error)")
-        }
-        isLoading = false
-    }
-}
-
-// MARK: - Tactical Map View (3D terrain)
-
-struct TacticalMapView: UIViewRepresentable {
-    let course: RaceCourse
-    @Binding var selectedMile: Double
-
-    func makeUIView(context: Context) -> MKMapView {
-        let mapView = MKMapView(frame: .zero)
-        mapView.overrideUserInterfaceStyle = .dark
-        mapView.isPitchEnabled = true
-        mapView.delegate = context.coordinator
-
-        if #available(iOS 17.0, *) {
-            mapView.preferredConfiguration = MKStandardMapConfiguration(elevationStyle: .realistic)
-        }
-
-        if let polylineStr = course.polyline {
-            let coords = decodePolyline(polylineStr)
-            if !coords.isEmpty {
-                var mutableCoords = coords
-                mapView.addOverlay(MKPolyline(coordinates: &mutableCoords, count: mutableCoords.count), level: .aboveRoads)
-                let lats = coords.map(\.latitude), lons = coords.map(\.longitude)
-                if let minLat = lats.min(), let maxLat = lats.max(),
-                   let minLon = lons.min(), let maxLon = lons.max() {
-                    let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
-                    let span = MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.4, longitudeDelta: (maxLon - minLon) * 1.4)
-                    mapView.setRegion(MKCoordinateRegion(center: center, span: span), animated: false)
+    private func reconDashboard(_ course: RaceCourse) -> some View {
+        VStack(spacing: 0) {
+            TacticalMapView(course: course, selectedMile: $selectedMile)
+                .frame(height: 350)
+                .overlay(alignment: .topTrailing) {
+                    mileBadge
                 }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ElevationChart(course: course, selectedMile: $selectedMile)
+                        .frame(height: 120)
+                        .padding(.top)
+
+                    sectionHeader("TWIN STRATEGY")
+
+                    if let insights = course.tacticalInsights, !insights.isEmpty {
+                        ForEach(insights) { insight in
+                            TacticalInsightRow(insight: insight)
+                        }
+                    } else {
+                        emptyInsightsCard
+                    }
+                }
+                .padding(.bottom, 40)
             }
         }
-
-        return mapView
     }
 
-    func updateUIView(_ mapView: MKMapView, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    class Coordinator: NSObject, MKMapViewDelegate {
-        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
-            let renderer = MKPolylineRenderer(overlay: overlay)
-            renderer.strokeColor = UIColor(AppTheme.Colors.accent)
-            renderer.lineWidth = 4
-            renderer.lineCap = .round
-            return renderer
-        }
-    }
-
-    private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
-        var result: [CLLocationCoordinate2D] = []
-        let chars = Array(encoded); var idx = 0, lat = 0, lng = 0
-        while idx < chars.count {
-            var shift = 0, res = 0, byte: Int
-            repeat {
-                if idx >= chars.count { break }
-                byte = Int(chars[idx].asciiValue ?? 0) - 63
-                res |= (byte & 0x1F) << shift; shift += 5; idx += 1
-            } while byte >= 0x20
-            lat += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
-            shift = 0; res = 0
-            repeat {
-                if idx >= chars.count { break }
-                byte = Int(chars[idx].asciiValue ?? 0) - 63
-                res |= (byte & 0x1F) << shift; shift += 5; idx += 1
-            } while byte >= 0x20
-            lng += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
-            result.append(CLLocationCoordinate2D(latitude: Double(lat) / 1e5, longitude: Double(lng) / 1e5))
-        }
-        return result
-    }
-}
-
-// MARK: - Components
-
-struct ElevationChart: View {
-    let course: RaceCourse
-    @Binding var selectedMile: Double
-
-    var body: some View {
-        Rectangle()
-            .fill(AppTheme.Colors.DarkMode.cardBackground)
-            .overlay(Text("Elevation Chart Placeholder").font(.caption))
-            .cornerRadius(12)
-            .padding(.horizontal)
-    }
-}
-
-struct TacticalInsightRow: View {
-    let insight: TacticalInsight
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack {
-                Text("Mile")
-                    .font(.system(size: 10, weight: .bold))
-                Text("\(String(format: "%.1f", insight.mile))")
-                    .font(.system(size: 16, weight: .heavy, design: .monospaced))
-            }
-            .foregroundColor(AppTheme.Colors.accent)
-            .frame(width: 50)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(insight.description)
-                    .font(AppTheme.Typography.body)
-                    .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
-            }
-        }
-        .padding()
-        .background(AppTheme.Colors.DarkMode.cardBackground)
+    private var noCourseState: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "map.fill")
+                .font(.system(size: 60))
+                .foregroundColor(AÁÁQ¡•µ”¹½±½ÉÌ¹…•¹Ð¹½Á…¥Ñä À¸Ô¤¤(€€€€€€€€€€€€(€€€€€€€€€€€YMÑ…¬¡ÍÁ…¥¹œè€à¤ì(€€€€€€€€€€€€€€€Q•áÐ ‰9¼½ÕÉÍ”…Ñ„Ù…¥±…‰±”ˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½ùÐ¡ÁÁQ¡•µ”¹QåÁ½É…Á¡ä¹¡•…‘±¥¹”¤(€€€€€€€€€€€€€€€Q•áÐ ‰UÁ±½…„A`™¥±”Ñ¼•¹…‰±”½ÕÉÍ”I•½¸™½ÈÑ¡¥ÌÉ…”¸ˆ¤(€€€€€€€€€€€€€€€€€€€€¹µÕ±Ñ¥±¥¹•Q•áÑ±¥¹µ•¹Ð ¹•¹Ñ•È¤(€€€€€€€€€€€€€€€€€€€€¹™½ùÐ¡ÁÁQ¡•µ”¹QåÁ½É…Á¡ä¹‰½‘ä¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘½±½È¡ÁÁQ¡•µ”¹½±½ÉÌ¹…É­5½‘”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÐÀ¤(€€€€€€€€€€€ô((€€€€€€€€€€€	ÕÑÑ½¸ìÍ¡½Ý¥¹¥±•A¥­•È€ôÑÉÕ”ô±…‰•°èì(€€€€€€€€€€€€€€€!MÑ…¬ì(€€€€€€€€€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰…ÉÉ½Ü¹ÕÀ¹‘½Œ¹™¥±°ˆ¤(€€€€€€€€€€€€€€€€€€€Q•áÐ ‰UÁ±½…A`¥±”ˆ¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€¹™½¹Ð ¹ÍåÍÑ•´¡Í¥é”è€ÄØ°Ý•¥¡Ðè€¹‰½±¤¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘½±½È ¹‰±…¬¤(€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÈÐ¤(€€€€€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ù•ÉÑ¥…°°€ÄÈ¤(€€€€€€€€€€€€€€€€¹‰…­É½Õ¹¡ÁÁQ¡•µ”¹½±½ÉÌ¹…•¹Ð¤(€€€€€€€€€€€€€€€€¹½É¹•ÉI…‘¥ÕÌ ÈÐ¤(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô((€€€ÁÉ¥Ù…Ñ”Ù…Èµ¥±•	…‘”èÍ½µ”Y¥•Üì(€€€€€€€Q•áÐ ‰5¥±”p¡MÑÉ¥¹œ¡™½Éµ…Ðè€ˆ”¸Å˜ˆ°Í•±•Ñ•‘5¥±”¤¤ˆ¤(€€€€€€€€€€€€¹™½¹Ð ¹ÍåÍÑ•´¡Í¥é”è€ÄÐ°Ý•¥¡Ðè€¹‰½±°‘•Í¥¸è€¹µ½¹½ÍÁ…•¤¤(€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°°€ÄÀ¤(€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹Ù•ÉÑ¥…°°€Ø¤(€€€€€€€€€€€€¹‰…­É½Õ¹ ¹‰±…¬¹½Á…¥Ñä À¸ÜÔ¤¤(€€€€€€€€€€€€¹™½É•É½Õ¹‘½±½È ¹Ý¡¥Ñ”¤(€€€€€€€€€€€€¹½É¹•ÉI…‘¥ÕÌ à¤(€€€€€€€€€€€€¹Á…‘‘¥¹œ ¤(€€€ô((€€€ÁÉ¥Ù…Ñ”Ù…È•µÁÑå%¹Í¥¡ÑÍ…ÉèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€ÄÈ¤ì(€€€€€€€€€€€!MÑ…¬¡ÍÁ…¥¹œè€ÄÈ¤ì(€€€€€€€€€€€€€€€%µ…”¡ÍåÍÑ•µ9…µ”è€‰‰É…¥¸¹¡•…¹ÁÉ½™¥±”ˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘½±½È¡ÁÁQ¡•µ”¹½±½ÉÌ¹…•¹Ð¤(€€€€€€€€€€€€€€€Q•áÐ ‰¹…±åé¥¹œÑ•ÉÉ…¥¸¸¸¸ˆ¤(€€€€€€€€€€€€€€€€€€€€¹™½ùÐ¡ÁÁQ¡•µ”¹QåÁ½É…Á¡ä¹‰½‘ä¤(€€€€€€€€€€€ô(€€€€€€€€€€€Q•áÐ ‰$´¥‘•¹Ñ¥™å¥¹œÑ•¡¹¥…°ÉÕá•Ì‰…Í•½¸Ñ¡”•±•Ù…Ñ¥½¸ÁÉ½™¥±”¸ˆ¤(€€€€€€€€€€€€€€€€¹™½ùÐ ¹ÍåÍÑ•´¡Í¥é”è€ÄÌ¤¤(€€€€€€€€€€€€€€€€¹™½É•É½Õ¹‘½±½È¡ÁÁQ¡•µ”¹½±½ÉÌ¹…É­5½‘”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€ô(€€€€€€€€¹Á…‘‘¥¹œ ¤(€€€€€€€€¹‰…­É½Õ¹¡ÁÁQ¡•µ”¹½±½ÉÌ¹…É­5½‘”¹…É‘	…­É½Õ¹¤(€€€€€€€€¹½É¹•ÉI…‘¥ÕÌ ÄÈ¤(€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°¤(€€€ô((€€€ÁÉ¥Ù…Ñ”™Õ¹ŒÍ•Ñ¥½¹!•…‘•È¡}Ñ¥Ñ±”èMÑÉ¥¹œ¤€´øÍ½µ”Y¥•Üì(€€€€€€€Q•áÐ¡Ñ¥Ñ±”¤(€€€€€€€€€€€€¹™½ùÐ ¹ÍåÍÑ•´¡Í¥é”è€ÄÄ°Ý•¥¡Ðè€¹‰½±¤¤(€€€€€€€€€€€€¹™½É•É½Õ¹‘½±½È¡ÁÁQ¡•µ”¹½±½ÉÌ¹…É­5½‘”¹Ñ•áÑM•½¹‘…Éä¤(€€€€€€€€€€€€¹ÑÉ…­¥¹œ Ä¸Ô¤(€€€€€€€€€€€€¹Á…‘‘¥¹œ ¹¡½É¥é½¹Ñ…°¤(€€€ô((€€€ÁÉ…Ù…Ñ”™Õ¹Œ±½…‘½ÕÉÍ” ¤…Íå¹Œì(€€€€€€€‘¼ì(€€€€€€€€€€€½ÕÉÍ”€ôÑÉä…Ý…¥Ð½ÕÉÍ•I•½¹M•ÉÙ¥”¹Í¡…É•¹™•Ñ¡½ÕÉÍ” (€€€€€€€€€€€€€€€É…•%èÉ…”¹ÉÕ¹Í¥¹ÕÁI…•%°€(€€€€€€€€€€€€€€€•Ù•¹Ñ%èÉ…”¹•Ù•¹Ñ%€üü€À(€€€€€€€€€€€€¤(€€€€€€€ô…Ñ ì(€€€€€€€€€€€ÁÉ¥¹Ð ‹Š.¸½ÕÉÍ•I•½¸è…¥±•Ñ¼±½…èp¡•ÉÉ½È¤ˆ¤(€€€€€€€ô(€€€€€€€¥Í1½…‘¥¹œ€ô™…±Í”(€€€ô((€€€ÁÉ¥Ù…Ñ”™Õ¹Œ¡…¹‘±•¥±•%µÁ½ÉÐ¡}É•ÍÕ±ÐèI•ÍÕ±ÐñmUI1t°ÉÉ½Èø¤ì(€€€€€€€ÍÝ¥Ñ É•ÍÕ±Ðì(€€€€€€€…Í”€¹ÍÕ•ÍÌ¡±•ÐÕÉ±Ì¤è(€€€€€€€€€€€Õ…É±•ÐÕÉ°€ôÕÉ±Ì¹™¥ÉÍÐ•±Í”ìÉ•ÑÕÉ¸ô(€€€€€€€€€€€¥˜ÕÉ°¹ÍÑ…ÉÑ•ÍÍ¥¹M•ÕÉ¥ÑåM½Á•‘I•Í½ÕÉ” ¤ì(€€€€€€€€€€€€€€€‘•™•ÈìÕÉ°¹ÍÑ½Á•ÍÍ¥¹M•ÕÉ¥ÑåM½Á•‘I•Í½ÕÉ” ¤ô(€€€€€€€€€€€€€€€¥˜±•Ð‘…Ñ„€ôÑÉäü…Ñ„¡½¹Ñ•¹ÑÍ=˜èÕÉ°¤ì(€€€€€€€€€€€€€€€€€€€ÁÉ½•ÍÍAa…Ñ„¡‘…Ñ„¤(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€…Í”€¹™…¥±ÕÉ”¡±•Ð•ÉÉ½È¤è(€€€€€€€€€€€ÁÉ¥¹Ð ‹Š.¸½ÕÉÍ•I•½¸è¥±”Á¥­•È™…¥±•èp¡•ÉÉ½È¤ˆ¤(€€€€€€€ô(€€€ô((€€€ÁÉ¥Ù…Ñ”™Õ¹ŒÁÉ½•ÍÍAa…Ñ„¡}‘…Ñ„è…Ñ„¤ì(€€€€€€€¥ÍUÁ±½…‘¥¹œ€ôÑÉÕ”(€€€€€€€Q…Í¬ì(€€€€€€€€€€€±•ÐÁ…ÉÍ•È€ôAaA…ÉÍ•È ¤(€€€€€€€€€€€±•ÐÁ½¥¹ÑÌ€ôÁ…ÉÍ•È¹Á…ÉÍ”¡‘…Ñ„è‘…Ñ„¤(€€€€€€€€€€€Õ…É€…Á½¥¹ÑÌ¹¥ÍµÁÑä•±Í”ì(€€€€€€€€€€€€€€€…Ý…¥Ð5…¥¹Ñ½È¹ÉÕ¸ì¥ÍUÁ±½…‘¥¹œ€ô™…±Í”ôìÉ•ÑÕÉ¸€(€€€€€€€€€€€ô(€€€€€€€€€€€±•Ð½½É‘Ì€ôÁ½¥¹ÑÌ¹µ…Àì€À¹½½É‘¥¹…Ñ”ô(€€€€€€€€€€€±•ÐÁ½±å±¥¹”€ôA½±å±¥¹”¡½½É‘¥¹…Ñ•Ìè½½É‘Ì¤¹•¹½‘•‘A½±å±¥¹”(€€€€€€€€€€€±•Ð•±•Ù…Ñ¥½¹…Ñ„€ôÁ½¥¹ÑÌ¹…±Õ±…Ñ•±•Ù…Ñ¥½¹…Ñ„ ¤(€€€€€€€€€€€‘¼ì(€€€€€€€€€€€€€€€±•Ð¹•Ý½ÕÉÍ”€ôÑÉä…Ý…¥Ð½ÕÉÍ•I•½¹M•ÉÙ¥”¹Í¡…É•¹ÕÁ±½…‘½ÕÉÍ” (€€€€€€€€€€€€€€€€€€€É…•%èÉ…”¹ÉÕ¹Í¥¹ÕÁI…•%°(€€€€€€€€€€€€€€€€€€€•Ù•¹Ñ%èÉ…”¹•Ù•¹Ñ%€üü€À°(€€€€€€€€€€€€€€€€€€€Á½±å±¥¹”èÁ½±å±¥¹”°(€€€€€€€€€€€€€€€€€€€•±•Ù…Ñ¥½¹…Ñ„è•±•Ù…Ñ¥½¹…Ñ„(€€€€€€€€€€€€€€€€¤(€€€€€€€€€€€€€€€…Ý…¥Ð5…¥¹Ñ½È¹ÉÕ¸ì(€€€€€€€€€€€€€€€€€€€Í•±˜¹½ÕÉÍ”€ô¹•Ý½ÕÉÍ”(€€€€€€€€€€€€€€€€€€€Í•±˜¹¥ÍUÁ±½…‘¥¹œ€ô™…±Í”(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô…Ñ ì(€€€€€€€€€€€€€€€ÁÉ¥¹Ð ‹Š.¸½ÕÉÍ•I•½¸èUÁ±½…™…¥±•èp¡•ÉÉ½È¤ˆ¤(€€€€€€€€€€€€€€€…Ý…¥Ð5…¥¹Ñ½È¹ÉÕ¸ìÍ•±˜¹¥ÍUÁ±½…‘¥¹œ€ô™…±Í”ô(€€€€€€€€€€€ô(€€€€€€€ô(€€€ô)ô()ÍÑÉÕÐQ…Ñ¥…±5…ÁY¥•ÜèU%Y¥•ÝI•ÁÉ•Í•¹Ñ…‰±”ì(€€€±•Ð½ÕÉÍ”èI…•½ÕÉÍ”(€€€	¥¹‘¥¹œÙ…ÈÍ•±•Ñ•‘5¥±”è½Õ‰°((€€€™Õ¹Œµ…­•U%Y¥•Ü¡½¹Ñ•áÐè½¹Ñ•áÐ¤€´ø5…ÁY¥•Üì(€€€€€€€±•Ð½ÁÑ¥½¹Ì€ô5…Á%¹¥Ñ=ÁÑ¥½¹Ì¡…µ•É…=ÁÑ¥½¹Ìè…µ•É…=ÁÑ¥½¹Ì¡é½½´è€ÄÈ¤°ÍÑå±•UI$è€¹‘…É¬¤(€€€€€€€±•Ðµ…ÁY¥•Ü€ô5…ÁY¥•Ü¡™É…µ”è€¹é•É¼°µ…Á%¹¥Ñ=ÁÑ¥½¹Ìè½ÁÑ¥½¹Ì¤(€€€€€€€ÑÉäüµ…ÁY¥•Ü¹µ…Á‰½á5…À¹Í•ÑQ•ÉÉ…¥¸¡Q•ÉÉ…¥¸¡Í½ÕÉ•%è€‰µ…Á‰½àµ‘•´ˆ¤¤(€€€€€€€Ù…È‘•µM½ÕÉ”€ôI…ÍÑ•É•µM½ÕÉ”¡¥è€‰µ…Á‰½àµ‘•´ˆ¤(€€€€€€€‘•µM½ÕÉ”¹ÕÉ°€ô€‰µ…Á‰½àè¼½µ…Á‰½à¹µ…Á‰½àµÑ•ÉÉ…¥¸µ‘•´µØÄˆ(€€€€€€€‘•µM½ÕÉ”¹Ñ¥±•M¥é”€ô€ÔÄÈ(€€€€€€€‘•µM½ÕÉ”¹µ…áé½½´€ô€ÄÐ(€€€€€€€ÑÉäüµ…ÁY¥•Ü¹µ…Á‰½á5…À¹…‘‘M½ÕÉ”¡‘•µM½ÕÉ”¤(€€€€€€€¥˜±•ÐÁ½±ä€ô½ÕÉÍ”¹Á½±å±¥¹”ì(€€€€€€€€€€€±•Ð½½É‘Ì€ô‘•½‘•A½±å±¥¹”¡Á½±ä¤(€€€€€€€€€€€¥˜€…½½É‘Ì¹¥ÍµÁÑäì(€€€€€€€€€€€€€€€…‘‘I½ÕÑ•1…å•È¡Ñ¼èµ…ÁY¥•Ü°½½É‘¥¹…Ñ•Ìè½½É‘Ì¤(€€€€€€€€€€€€€€€™¥Ñ…µ•É„¡µ…ÁY¥•Ü°½½É‘Ìè½½É‘Ì¤(€€€€€€€€€€€ô(€€€€€€€ô(€€€€€€€É•ÑÕÉ¸µ…ÁY¥•Ø(€€€ô((€€€™Õ¹ŒÕÁ‘…Ñ•U%Y¥•Ü¡|Õ¥Y¥•Üè5…ÁY¥•Ü°½¹Ñ•áÐè½¹Ñ•áÐ¤íô(€€€€(€€€ÁÉ¥Ù…Ñ”™Õ¹Œ‘•½‘•A½±å±¥¹”¡|•¹½‘•èMÑÉ¥¹œ¤€´øm11½…Ñ¥½¹½½É‘¥¹…Ñ”Étì(€€€€€€€±•ÐÁ½±å±¥¹”€ôA½±å±¥¹”¡•¹½‘•‘A½±å±¥¹”è•¹½‘•¤(€€€€€€€É•ÑÕÉ¸Á½±å±¥¹”¹½½É‘¥¹…Ñ•Ì€üümt(€€€ô(€€€€(€€€ÁÉ¥Ù…Ñ”™Õ¹Œ…‘‘I½ÕÑ•1…å•È¡Ñ¼µ…ÁY¥•Üè5…ÁY¥•Ü°½‘¥¹…Ñ•Ìèm11½…Ñ¥½¹½½É‘¥¹…Ñ”Ét¤ì(€€€€€€€Ù…ÈÍ½ÕÉ”€ô•½)M=9M½ÕÉ”¡¥è€‰É½ÕÑ”µÍ½ÕÉ”ˆ¤(€€€€€€€Í½ÕÉ”¹‘…Ñ„€ô€¹™•…ÑÕÉ”¡•…ÑÕÉ”¡•½µ•ÑÉäè€¹±¥¹•MÑÉ¥¹œ¡1¥¹•MÑÉ¥¹œ¡½½É‘¥¹…Ñ•Ì¤¤¤¤(€€€€€€€ÑÉäüµ…ÁY¥•Ü¹µ…Á‰½á5…À¹…‘‘M½ÕÉ”¡Í½ÕÉ”¤(€€€€€€€Ù…È±…å•È€ô1¥¹•1…å•È¡¥è€‰É½ÕÑ”µ±…å•Èˆ°Í½ÕÉ”è€‰É½ÕÑ”µÍ½ÕÉ”ˆ¤(€€€€€€€±…å•È¹±¥¹•½±½È€ô€¹½¹ÍÑ…¹Ð¡MÑå±•½±½È¡U%½±½È¡ÁÁQ¡•µ”¹½±½ÉÌ¹…•¹Ð¤¤¤(€€€€€€€±…å•È¹±¥¹•]¥‘Ñ €ô€¹½¹ÍÑ…¹Ð Ð¸À¤(€€€€€€€±…å•È¹±¥¹•…À€ô€¹½¹ÍÑ…¹Ð ¹É½Õ¹¤(€€€€€€€±…å•È¹±¥¹•)½¥¸€ô€¹½¹ÍÑ…¹Ð ¹É½Õ¹¤(€€€€€€€ÑÉäüµ…ÁYY¥•Ü¹µ…Á‰½á5…À¹…‘‘1…å•È¡±…å•È¤(€€€ô(€€€€(€€€ÁÉ¥Ù…Ñ”™Õ¹Œ™¥Ñ…µ•É„¡|µ…ÁY¥•Üè5…ÁY¥•Ü°½½É‘Ìèm11½…Ñ¥½¹½½É‘¥¹…Ñ”Ét¤ì(€€€€€€€¥˜±•Ð™¥ÉÍÐ€ô½½É‘Ì¹™¥ÉÍÐì(€€€€€€€€€€€±•Ð…µ•É…=ÁÑ¥½¹Ì€ô…µ•É…=ÁÑ¥½¹Ì¡•¹Ñ•Èè™¥ÉÍÐ°é½½´è€ÄÌ°Á¥Ñ è€ÐÔ¤(€€€€€€€€€€€µ…ÁYY¥•Ü¹µ…Á‰½á5…À¹Í•Ñ…µ•É„¡Ñ¼è…µ•É…=ÁÑ¥½¹Ì¤(€€€€€€€ô(€€€ô)ô()ÍÑÉÕÐ±•Ù…Ñ¥½¹¡…ÉÐèY¥•Üì(€€€±•Ð½ÕÉÍ”èI…•½ÕÉÍ”(€€€	¥¹‘¥¹œÙ…ÈÍ•±•Ñ•‘5¥±”è½Õ‰±”(€€€Ù…È‰½‘äèÍ½µ”Y¥•Üì(€€€€€€€YMÑ…¬¡…±¥¹µ•¹Ðè€¹±•…‘¥¹œ°ÍÁ…¥¹œè€à¤ì(€€€€€€€€€€Q•áÐ ‰1YQ%=8AI=%1ˆ¤(€€€€€€€€€€€€€€€€¹™½¹Ð ¹ÍåÍÑ•´¡Í¥é”è€ÄÀ°Ý•¥¡Ðè€¹‰½±¤¤(€€€€€€€€€€€€€€€€®foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                .padding(.leading)
+            ZStack(alignment: .bottomLeading) {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AÁÁQ¡•µ”¹½±½ÉÌ¹…É­5½‘”¹…É‘	…­É½Õ¹¤(€€€€€€€€€€€€€€€€€€€€¹½Ù•É±…ä (€€€€€€€€€€€€€€€€€€€€€€€!MÑ…¬¡…±¥¹µ•¹Ðè€¹‰½ÑÑ½´°ÍÁ…¥¹œè€È¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€¥˜±•Ð‘…Ñ„€ô½ÕÉÍ”¹•±•Ù…Ñ¥½¹…Ñ„ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€½É…  À¸¸ñµ¥¸¡‘…Ñ„¹½Õ¹Ð°€ÔÀ¤°¥èp¹Í•±˜¤ì¤¥¸(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€±•ÐÁ½¥¹Ð€ô‘…Ñ…m¤€¨€¡‘…Ñ„¹½Õ¹Ð€¼€ÔÀ¥t(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€I•Ñ…¹±” ¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€¹™¥±°¡ÁÁQ¡•µ”¹½±½ÉÌ¹…•¹Ð¹½Á…¥Ñä À¸Ð¤¤(€€€€€€€€€€€€€€€€€€€€¶Ó_|ÓÍüãŸ;ßÝ¦g&ÖR††V–v‡C¢Ö‚ƒÂ4tfÆöB‡ö–çBæVÆWfF–öâR’’¢Ð¢Ð¢Ð¢çFF–ær‚¢¢Ð¢æg&ÖR††V–v‡C¢¢çFF–ær‚æ†÷&—¦öçFÂ¢Ð¢Ð§Ð §7G'V7BF7F–6Ä–ç6–v‡E&÷s¢f–Wr°¢ÆWB–ç6–v‡C¢F7F–6Ä–ç6–v‡@¢f"&öG“¢6öÖRf–Wr°¢…7F6²†Æ–væÖVçC¢çF÷Â76–æs¢b’°¢e7F6²°¢FW‡B‚$Ö–ÆR"¢æföçB‚ç7—7FVÒ‡6—¦S¢ÂvV–v‡C¢æ&öÆB’¢FW‡B‚%Â…7G&–ær†f÷&ÖC¢"Rãb"Â–ç6–v‡BæÖ–ÆR’’"¢æföçB‚ç7—7FVÒ‡6—¦S¢bÂvV–v‡C¢æ†Vg’ÂFW6–vã¢æÖöæ÷76VB’¢Ð¢æf÷&Vw&÷VæD6öÆ÷"„[YKÛÛÜœË˜XØÙ[
+Bˆ™œ˜[YJÚYˆL
+Bˆ”ÝXÚÊ[YÛ›Y[ˆ›XY[™ËÜXÚ[™Îˆ
+HÂˆ^
+[œÚYÚ™\ØÜš\[ÛŠBˆ™›ß
+\[YK•\ÙÜ˜\K˜›ÙJBˆ™›Ü™YÜ›Ý[™ÛÛÜŠ\[YKÛÛÜœË‘\šÓ[ÙK^š[X\žJBˆBˆBˆœY[™Ê
+Bˆ˜˜XÚÙÜ›Ý[™
+ppTheme.Colors.DarkMode.cardBackground)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.07), lineWidth: 1))
         .padding(.horizontal)

@@ -1,13 +1,8 @@
-//
-//  CourseReconService.swift
-//  Runaway iOS
-//
-
 import Foundation
 import Supabase
 
 struct RaceCourse: Codable, Identifiable {
-    let id: UUID
+    let id: UUI
     let runsignupRaceId: Int
     let eventId: Int
     let polyline: String?
@@ -40,7 +35,7 @@ struct TacticalInsight: Codable, Identifiable {
 class CourseReconService {
     static let shared = CourseReconService()
     
-    func fetchCourse(raceId: Int, eventId: Int) async throws -> RaceCourse? {
+    func fetchCourse(raceId: Int, eventId: Int) async trys -> RaceCourse? {
         let response: [String: RaceCourse?] = try await supabase.functions
             .invoke("get-race-course",
                     options: .init(query: [
@@ -51,7 +46,7 @@ class CourseReconService {
         return response["course"] ?? nil
     }
 
-    func uploadCourse(raceId: Int, eventId: Int, polyline: String, elevationData: [CourseElevationPoint]) async throws -> RaceCourse {
+    func uploadCourse(raceId: Int, eventId: Int, polyline: String, elevationData: [CourseElevationPoint]) async trys -> RaceCourse {
         struct UploadBody: Encodable {
             let runsignup_race_id: Int
             let event_id: Int

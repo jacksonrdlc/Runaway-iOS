@@ -1,8 +1,3 @@
-//
-//  GPXParser.swift
-//  Runaway iOS
-//
-
 import Foundation
 import CoreLocation
 
@@ -58,7 +53,6 @@ extension Array where Element == CLLocation {
                 totalDistance += self[i].distance(from: self[i-1])
             }
             
-            // Calculate grade (rough)
             var grade: Double = 0
             if i > 0 {
                 let d = self[i].distance(from: self[i-1])
@@ -70,7 +64,7 @@ extension Array where Element == CLLocation {
             result.append(CourseElevationPoint(
                 distance: totalDistance,
                 elevation: self[i].altitude,
-                grade: grade * 100 // as percentage
+                grade: grade * 100
             ))
         }
         return result
