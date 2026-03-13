@@ -184,26 +184,29 @@ struct TacticalMapView: UIViewRepresentable {
     }
 
     private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
-        var result: [CLLocationCoordinate2D] = []
-        let chars = Array(encoded); var idx = 0, lat = 0, lng = 0
-        while idx < chars.count {
-            var shift = 0, res = 0, byte: Int
-            repeat {
-                if idx >= chars.count { break }
-                byte = Int(chars[idx].asciiValue ?? 0) - 63
-                res |= (byte & 0x1f) << shift; shift += 5; idx += 1
-            } while byte >= 0x20
-            lat += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
-            shift = 0; res = 0
-            repeat {
-                if idx >= chars.count { break }
-                byte = Int(chars[idx].asciiValue ?? 0) - 63
-                res |= (byte & 0x1f) << shift; shift += 5; idx += 1
-            } while byte >= 0x20
-            lng += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
-            result.append(CLLocationCoordinate2D(latitude: Double(lat) / 1e5, longitude: Double(lng) / 1e5))
+        var coords = [CLLocationCoordinate2D]()
+        var index = encoded.startIndex
+        var lat: Int32 = 0
+        var lng: Int32 = 0
+
+        while index < encoded.endIndex {
+            func decode() -> Int32 {
+                var res: Int32 = 0
+                var shift: Int32 = 0
+                var byte: Int32 = 0
+                repeat {
+                    byte = Int32(encoded[index].asciiValue! - 63)
+                    index = encoded.index(after: index)
+                    res |= (byte & 0x1F) << shift
+                    shift += 5
+                } while byte >= 0x20
+                return (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            }
+            lat += decode()
+            lng += decode()
+            coords.append(CLLocationCoordinate2D(latitude: Double(lat) * 1e-5, longitude: Double(lng) * 1e-5))
         }
-        return result
+        return coords
     }
 }
 
