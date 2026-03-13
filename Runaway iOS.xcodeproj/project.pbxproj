@@ -7,14 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8E6C2E702D943734002619A0 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8E6C2E6F2D943734002619A0 /* FirebaseAnalytics */; };
 		8E6C2E7E2D943734002619A0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8E6C2E7D2D943734002619A0 /* FirebaseCore */; };
 		8E6C2E942D943734002619A0 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 8E6C2E932D943734002619A0 /* FirebaseMessaging */; };
 		8EEECCCF2D64D02B0053014A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8EEECCCE2D64D02B0053014A /* WidgetKit.framework */; };
 		8EEECCD12D64D02B0053014A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8EEECCD02D64D02B0053014A /* SwiftUI.framework */; };
 		8EEECCE22D64D02D0053014A /* RunawayWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8EEECCCC2D64D02B0053014A /* RunawayWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		8EEECCEA2D64D10F0053014A /* SwiftyJSON in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECCE92D64D10F0053014A /* SwiftyJSON */; };
-		8EEECE2A2D64D8AC0053014A /* CoreGPX in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE292D64D8AC0053014A /* CoreGPX */; };
 		8EEECE332D68C4590053014A /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE322D68C4590053014A /* Auth */; };
 		8EEECE352D68C4590053014A /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE342D68C4590053014A /* Functions */; };
 		8EEECE372D68C4590053014A /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 8EEECE362D68C4590053014A /* PostgREST */; };
@@ -146,16 +143,13 @@
 			files = (
 				8EEECE532D68CD080053014A /* Supabase in Frameworks */,
 				8EEECE392D68C4590053014A /* Realtime in Frameworks */,
-				8E6C2E702D943734002619A0 /* FirebaseAnalytics in Frameworks */,
 				8E6C2E7E2D943734002619A0 /* FirebaseCore in Frameworks */,
 				8E6C2E942D943734002619A0 /* FirebaseMessaging in Frameworks */,
 				8EEECE332D68C4590053014A /* Auth in Frameworks */,
-				8EEECE2A2D64D8AC0053014A /* CoreGPX in Frameworks */,
 				8EEECE372D68C4590053014A /* PostgREST in Frameworks */,
 				8EEECE352D68C4590053014A /* Functions in Frameworks */,
 				8EEECE3B2D68C4590053014A /* Storage in Frameworks */,
-				8EEECCEA2D64D10F0053014A /* SwiftyJSON in Frameworks */,
-			);
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC4F2D64CF170053014A /* Frameworks */ = {
@@ -238,15 +232,12 @@
 			);
 			name = "Runaway iOS";
 			packageProductDependencies = (
-				8EEECCE92D64D10F0053014A /* SwiftyJSON */,
-				8EEECE292D64D8AC0053014A /* CoreGPX */,
 				8EEECE322D68C4590053014A /* Auth */,
 				8EEECE342D68C4590053014A /* Functions */,
 				8EEECE362D68C4590053014A /* PostgREST */,
 				8EEECE382D68C4590053014A /* Realtime */,
 				8EEECE3A2D68C4590053014A /* Storage */,
 				8EEECE522D68CD080053014A /* Supabase */,
-				8E6C2E6F2D943734002619A0 /* FirebaseAnalytics */,
 				8E6C2E7D2D943734002619A0 /* FirebaseCore */,
 				8E6C2E932D943734002619A0 /* FirebaseMessaging */,
 			);
@@ -355,8 +346,6 @@
 			mainGroup = 8EEECC392D64CF150053014A;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				8EEECCE82D64D10F0053014A /* XCRemoteSwiftPackageReference "SwiftyJSON" */,
-				8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */,
 				8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				8E6C2E6E2D943734002619A0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
@@ -846,22 +835,6 @@
 				minimumVersion = 11.10.0;
 			};
 		};
-		8EEECCE82D64D10F0053014A /* XCRemoteSwiftPackageReference "SwiftyJSON" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SwiftyJSON/SwiftyJSON.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.2;
-			};
-		};
-		8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/vincentneo/CoreGPX";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.9.3;
-			};
-		};
 		8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift.git";
@@ -873,11 +846,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		8E6C2E6F2D943734002619A0 /* FirebaseAnalytics */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8E6C2E6E2D943734002619A0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalytics;
-		};
 		8E6C2E7D2D943734002619A0 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8E6C2E6E2D943734002619A0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -887,16 +855,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8E6C2E6E2D943734002619A0 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
-		};
-		8EEECCE92D64D10F0053014A /* SwiftyJSON */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8EEECCE82D64D10F0053014A /* XCRemoteSwiftPackageReference "SwiftyJSON" */;
-			productName = SwiftyJSON;
-		};
-		8EEECE292D64D8AC0053014A /* CoreGPX */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 8EEECE282D64D8AC0053014A /* XCRemoteSwiftPackageReference "CoreGPX" */;
-			productName = CoreGPX;
 		};
 		8EEECE322D68C4590053014A /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
