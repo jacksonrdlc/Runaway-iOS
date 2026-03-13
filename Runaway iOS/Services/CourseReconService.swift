@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 struct RaceCourse: Codable, Identifiable {
-    let id: UUI
+    let id: UUID
     let runsignupRaceId: Int
     let eventId: Int
     let polyline: String?
@@ -35,7 +35,7 @@ struct TacticalInsight: Codable, Identifiable {
 class CourseReconService {
     static let shared = CourseReconService()
     
-    func fetchCourse(raceId: Int, eventId: Int) async trys -> RaceCourse? {
+    func fetchCourse(raceId: Int, eventId: Int) async throws -> RaceCourse? {
         let response: [String: RaceCourse?] = try await supabase.functions
             .invoke("get-race-course",
                     options: .init(query: [
@@ -46,7 +46,7 @@ class CourseReconService {
         return response["course"] ?? nil
     }
 
-    func uploadCourse(raceId: Int, eventId: Int, polyline: String, elevationData: [CourseElevationPoint]) async trys -> RaceCourse {
+    func uploadCourse(raceId: Int, eventId: Int, polyline: String, elevationData: [CourseElevationPoint]) async throws -> RaceCourse {
         struct UploadBody: Encodable {
             let runsignup_race_id: Int
             let event_id: Int

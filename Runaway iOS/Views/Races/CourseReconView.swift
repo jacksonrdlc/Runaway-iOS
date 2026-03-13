@@ -1,6 +1,5 @@
 import SwiftUI
 import MapKit
-import Polyline
 
 struct CourseReconView: View {
     let race: AthleteRace
@@ -25,7 +24,7 @@ struct CourseReconView: View {
                     }
                 } else if let course = course {
                     VStack(spacing: 0) {
-                        TacticalMapView(course: course, selectedMile: )
+                        TacticalMapView(course: course, selectedMile: $selectedMile)
                             .frame(height: 350)
                             .overlay(alignment: .topTrailing) {
                                 mileBadge
@@ -33,7 +32,7 @@ struct CourseReconView: View {
 
                         ScrollView {
                             VStack(alignment: .leading, spacing: 24) {
-                                ElevationChart(course: course, selectedMile: )
+                                ElevationChart(course: course, selectedMile: $selectedMile)
                                     .frame(height: 140)
                                     .padding(.top)
 
@@ -145,22 +144,24 @@ struct TacticalMapView: UIViewRepresentable {
         }
 
         if let poly = course.polyline {
-            let coords = Polyline(encodedPolyline: poly).coordinates ?? []
+            let coords = decodePolyline(poly)
             if !coords.isEmpty {
                 var mutableCoords = coords
                 let overlay = MKPolyline(coordinates: &mutableCoords, count: coords.count)
                 mapView.addOverlay(overlay)
                 
-                let lats = coords.map { /bin/bash.latitude }
-                let lons = coords.map { /bin/bash.longitude }
-                let region = MKCoordinateRegion(
-                    center: CLLocationCoordinate2D(latitude: (lats.min()! + lats.max()!) / 2, longitude: (lons.min()! + lons.max()!) / 2),
-                    span: MKCoordinateSpan(latitudeDelta: (lats.max()! - lats.min()!) * 1.2, longitudeDelta: (lons.max()! - lons.min()!) * 1.2)
-                )
-                mapView.setRegion(region, animated: false)
-                
-                let camera = MKMapCamera(lookingAtCenter: region.center, fromDistance: 5000, pitch: 60, heading: 0)
-                mapView.setCamera(camera, animated: true)
+                let lats = coords.map { $0.latitude }
+                let lons = coords.map { $0.longitude }
+                if let minLat = lats.min(), let maxLat = lats.max(), let minLon = lons.min(), let maxLon = lons.max() {
+                    let region = MKCoordinateRegion(
+                        center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
+                        span: MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.2, longitudeDelta: (maxLon - minLon) * 1.2)
+                    )
+                    mapView.setRegion(region, animated: false)
+                    
+                    let camera = MKMapCamera(lookingAtCenter: region.center, fromDistance: 5000, pitch: 60, heading: 0)
+                    mapView.setCamera(camera, animated: true)
+                }
             }
         }
         return mapView
@@ -181,6 +182,29 @@ struct TacticalMapView: UIViewRepresentable {
             return MKOverlayRenderer()
         }
     }
+
+    private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
+        var result: [CLLocationCoordinate2D] = []
+        let chars = Array(encoded); var idx = 0, lat = 0, lng = 0
+        while idx < chars.count {
+            var shift = 0, res = 0, byte: Int
+            repeat {
+                if idx >= chars.count { break }
+                byte = Int(chars[idx].asciiValue ?? 0) - 63
+                res |= (byte & 0x1f) << shift; shift += 5; idx += 1
+            } while byte >= 0x20
+            lat += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            shift = 0; res = 0
+            repeat {
+                if idx >= chars.count { break }
+                byte = Int(chars[idx].asciiValue ?? 0) - 63
+                res |= (byte & 0x1f) << shift; shift += 5; idx += 1
+            } while byte >= 0x20
+            lng += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            result.append(CLLocationCoordinate2D(latitude: Double(lat) / 1e5, longitude: Double(lng) / 1e5))
+        }
+        return result
+    }
 }
 
 struct ElevationChart: View {
@@ -195,7 +219,7 @@ struct ElevationChart: View {
                 .padding(.leading)
 
             if let data = course.elevationData, !data.isEmpty {
-                let elevations = data.map { /bin/bash.elevation }
+                let elevations = data.map { $0.elevation }
                 let minEle = elevations.min() ?? 0
                 let maxEle = elevations.max() ?? 100
                 let range = max(1, maxEle - minEle)
