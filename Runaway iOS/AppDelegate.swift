@@ -5,50 +5,30 @@
 //  Created by Jack Rudelic on 3/27/25.
 //
 import SwiftUI
-import FirebaseCore
-import FirebaseMessaging
 import UserNotifications
 import Supabase
 
-class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNotificationCenterDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
-    private var pendingFCMToken: String?
+    private var pendingAPNsToken: String?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
 
-        // Configure Firebase with reduced analytics tracking
-        FirebaseApp.configure()
-
-        // Disable automatic screen tracking to prevent XPC timeouts
-        // (Automatic tracking causes blocking operations on keyboard events)
-        #if DEBUG
-        print("🔥 Firebase configured with reduced analytics tracking")
-        #endif
-
-        Messaging.messaging().delegate = self
-
         UNUserNotificationCenter.current().delegate = self
 
-        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: authOptions,
-            completionHandler: { _, _ in }
-        )
-
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
         application.registerForRemoteNotifications()
 
-        // Listen for user login to save pending FCM token
+        // If the user logs in after the token was already received, save it then
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name("UserDidLogin"),
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            print("🔔 User logged in - checking for pending FCM token")
-            if let token = self?.pendingFCMToken {
-                print("   Found pending FCM token, saving now...")
+            if let token = self?.pendingAPNsToken {
                 Task {
-                    await self?.saveFCMTokenToSupabase(token)
-                    self?.pendingFCMToken = nil
+                    await self?.saveAPNsToken(token)
+                    self?.pendingAPNsToken = nil
                 }
             }
         }
@@ -56,119 +36,56 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
         return true
     }
 
+    // Called by iOS when APNs issues a device token (or rotates it)
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
+        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        print("📱 APNs device token: \(String(token.prefix(20)))...")
+        Task { await saveAPNsToken(token) }
     }
 
-    // Handle silent background notifications
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("❌ APNs registration failed: \(error)")
+    }
+
+    // Handle silent background notifications (e.g. new activity sync trigger)
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-
-        print("🔔 Push notification received")
-        print("   App state: \(application.applicationState.rawValue) (0=active, 1=inactive, 2=background)")
-        print("   User info: \(userInfo)")
-
-        // Check if this is a silent notification for activity sync
         if let syncType = userInfo["sync_type"] as? String, syncType == "new_activity" {
-            print("🔄 Activity sync notification detected - triggering background sync...")
-
             Task {
-                // Refresh activity data in background
                 await DataManager.shared.refreshActivities()
-
-                print("✅ Background activity sync completed successfully")
-
-                await MainActor.run {
-                    completionHandler(.newData)
-                }
+                await MainActor.run { completionHandler(.newData) }
             }
         } else {
-            print("⚠️ No sync_type found in notification - checking all keys...")
-            for (key, value) in userInfo {
-                print("   Key: \(key), Value: \(value)")
-            }
             completionHandler(.noData)
         }
     }
 
-    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        print("📱 Firebase registration token received: \(String(describing: fcmToken))")
-
-        let dataDict:[String: String] = ["token": fcmToken ?? ""]
-        NotificationCenter.default.post(name: Notification.Name("FCMToken"), object: nil, userInfo: dataDict)
-
-        // Save FCM token to Supabase for push notifications
-        if let token = fcmToken {
-            print("💾 Attempting to save FCM token to Supabase...")
-            Task {
-                await saveFCMTokenToSupabase(token)
-            }
-        } else {
-            print("⚠️ No FCM token available to save")
-        }
+    // Show notification banner even when app is foregrounded
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
     }
 
-    private func saveFCMTokenToSupabase(_ token: String) async {
-        print("🔍 saveFCMTokenToSupabase called")
-        print("   Token: \(String(token.prefix(20)))... (length: \(token.count))")
-        print("   UserSession.shared.userId: \(String(describing: UserSession.shared.userId))")
+    // Handle notification tap
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        print("🔔 Notification tapped: \(userInfo)")
+        completionHandler()
+    }
 
+    private func saveAPNsToken(_ token: String) async {
         guard let userId = UserSession.shared.userId else {
-            print("⚠️ Cannot save FCM token: No user logged in yet")
-            print("   📌 Saving token as pending - will save after login")
-            await MainActor.run {
-                self.pendingFCMToken = token
-            }
+            print("⚠️ APNs token received before login — will save after UserDidLogin")
+            await MainActor.run { pendingAPNsToken = token }
             return
         }
-
-        print("   Updating athletes table for user ID: \(userId)")
-
         do {
             try await supabase
                 .from("athletes")
-                .update(["fcm_token": token])
+                .update(["apns_token": token])
                 .eq("id", value: userId)
                 .execute()
-
-            print("✅ FCM token saved to Supabase successfully!")
-            print("   Updated athlete ID: \(userId)")
+            print("✅ APNs token saved")
         } catch {
-            print("❌ Failed to save FCM token to Supabase")
-            print("   Error: \(error)")
-            print("   Error type: \(type(of: error))")
+            print("❌ Failed to save APNs token: \(error)")
         }
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        let userInfo = notification.request.content.userInfo
-
-        // With swizzling disabled you must let Messaging know about the message, for Analytics
-        // Messaging.messaging().appDidReceiveMessage(userInfo)
-
-        // Print message ID.
-        if let messageID = userInfo["gcm.message_id"] {
-            print("Message ID: \(messageID)")
-        }
-
-        print(userInfo)
-
-        // Change this to your preferred presentation option
-        completionHandler([[.alert, .sound]])
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        let userInfo = response.notification.request.content.userInfo
-
-        // Print message ID.
-        if let messageID = userInfo["gcm.message_id"] {
-            print("Message ID: \(messageID)")
-        }
-
-        // With swizzling disabled you must let Messaging know about the message, for Analytics
-        // Messaging.messaging().appDidReceiveMessage(userInfo)
-
-        print(userInfo)
-
-        completionHandler()
     }
 }
