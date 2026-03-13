@@ -164,6 +164,16 @@ struct TacticalMapView: UIViewRepresentable {
                     var mutableCoords = filteredCoords
                     let overlay = MKPolyline(coordinates: &mutableCoords, count: filteredCoords.count)
                     mapView.addOverlay(overlay)
+
+                    let startPin = MKPointAnnotation()
+                    startPin.coordinate = filteredCoords.first!
+                    startPin.title = "Start"
+                    mapView.addAnnotation(startPin)
+
+                    let finishPin = MKPointAnnotation()
+                    finishPin.coordinate = filteredCoords.last!
+                    finishPin.title = "Finish"
+                    mapView.addAnnotation(finishPin)
                     
                     let fLats = filteredCoords.map { $0.latitude }
                     let fLons = filteredCoords.map { $0.longitude }
@@ -194,6 +204,23 @@ struct TacticalMapView: UIViewRepresentable {
                 return renderer
             }
             return MKOverlayRenderer()
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard let point = annotation as? MKPointAnnotation else { return nil }
+            let id = point.title == "Start" ? "StartPin" : "FinishPin"
+            let view = mapView.dequeueReusableAnnotationView(withIdentifier: id) as? MKMarkerAnnotationView
+                ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: id)
+            view.annotation = annotation
+            view.canShowCallout = true
+            if point.title == "Start" {
+                view.markerTintColor = UIColor.systemGreen
+                view.glyphImage = UIImage(systemName: "flag.fill")
+            } else {
+                view.markerTintColor = UIColor.systemRed
+                view.glyphImage = UIImage(systemName: "flag.checkered")
+            }
+            return view
         }
     }
 
