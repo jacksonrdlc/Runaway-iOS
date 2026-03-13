@@ -327,12 +327,12 @@ private struct MaxHeartRateSettingsView: View {
                 useEstimated = false
             }
         }
-        .onChange(of: age) { newAge in
+        .onChange(of: age) { _, newAge in
             if useEstimated {
                 store.settings.maxHeartRate = 220 - newAge
             }
         }
-        .onChange(of: useEstimated) { estimated in
+        .onChange(of: useEstimated) { _, estimated in
             if estimated {
                 store.settings.maxHeartRate = 220 - age
             }

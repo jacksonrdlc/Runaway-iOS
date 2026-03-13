@@ -121,7 +121,7 @@ struct SettingsView: View {
             .task {
                 await stravaService.checkConnectionStatus()
             }
-            .onChange(of: dataManager.athlete) { _ in
+            .onChange(of: dataManager.athlete) { _, _ in
                 Task {
                     await stravaService.checkConnectionStatus()
                 }

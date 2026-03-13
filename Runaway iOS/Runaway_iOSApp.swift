@@ -102,7 +102,7 @@ struct Runaway_iOSApp: App {
         if url.scheme == "runaway" && url.host == "auth" {
             Task {
                 do {
-                    let session = try await supabase.auth.session(from: url)
+                    _ = try await supabase.auth.session(from: url)
                     await MainActor.run {
                         NotificationCenter.default.post(name: NSNotification.Name("EmailVerificationCompleted"), object: nil)
                     }

@@ -86,8 +86,8 @@ extension AppRouter {
     @ViewBuilder
     func destination(for route: Route) -> some View {
         switch route {
-        case .activityDetail(let activityId):
-            Text("Activity #(activityId)").navigationTitle("Activity")
+        case .activityDetail(_):
+            Text("Activity Detail").navigationTitle("Activity")
 
         case .activityList:
             ActivitiesView()
@@ -113,7 +113,7 @@ extension AppRouter {
         case .goalDetail(let goalId):
             Text("Goal Detail #\(goalId)").navigationTitle("Goal")
 
-        case .journalEntry(let activityId):
+        case .journalEntry(_):
             Text("Journal Entry").navigationTitle("New Entry")
 
         case .journalList:

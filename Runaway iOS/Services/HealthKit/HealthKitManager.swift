@@ -69,9 +69,7 @@ class HealthKitManager: ObservableObject {
         types.insert(HKObjectType.workoutType())
 
         // Workout routes
-        if let routeType = HKSeriesType.workoutRoute() as? HKObjectType {
-            types.insert(routeType)
-        }
+        types.insert(HKSeriesType.workoutRoute())
 
         return types
     }
@@ -162,7 +160,7 @@ class HealthKitManager: ObservableObject {
     }
 
     func canReadHeartRate() -> Bool {
-        guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else {
+        guard HKObjectType.quantityType(forIdentifier: .heartRate) != nil else {
             return false
         }
         // Note: We can only check write authorization status, not read

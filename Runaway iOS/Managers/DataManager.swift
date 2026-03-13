@@ -208,10 +208,9 @@ class DataManager {
             return
         }
 
-        guard let userId = UserSession.shared.userId else { return }
+        guard UserSession.shared.userId != nil else { return }
 
         // Get activities from this week
-        let calendar = Calendar.current
         let weekActivities = activities.filter { activity in
             guard let ts = activity.activity_date ?? activity.start_date else { return false }
             let activityDate = Date(timeIntervalSince1970: ts)
@@ -266,7 +265,6 @@ class DataManager {
     func forceRegeneratePlan() async {
         guard let plan = currentWeeklyPlan ?? TrainingPlanService.getCachedPlan() else { return }
 
-        let calendar = Calendar.current
         let weekActivities = activities.filter { activity in
             guard let ts = activity.activity_date ?? activity.start_date else { return false }
             let activityDate = Date(timeIntervalSince1970: ts)

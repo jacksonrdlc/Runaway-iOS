@@ -362,7 +362,7 @@ struct WeekDayEntry: Identifiable {
 
     /// Icon for the day
     var icon: String {
-        if let activity = actualActivity {
+        if actualActivity != nil {
             return "checkmark.circle.fill"
         }
         if let workout = plannedWorkout {

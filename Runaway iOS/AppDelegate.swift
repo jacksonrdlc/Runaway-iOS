@@ -28,7 +28,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             if let token = self?.pendingAPNsToken {
                 Task {
                     await self?.saveAPNsToken(token)
-                    self?.pendingAPNsToken = nil
+                    await MainActor.run { self?.pendingAPNsToken = nil }
                 }
             }
         }

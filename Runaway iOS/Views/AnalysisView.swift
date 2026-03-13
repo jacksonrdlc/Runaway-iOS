@@ -903,7 +903,6 @@ struct ProgressOverviewCard: View {
         // Calculate expected progress based on days into the month
         let calendar = Calendar.current
         let now = Date()
-        let startOfMonth = calendar.dateInterval(of: .month, for: now)?.start ?? now
         let daysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
         let dayOfMonth = calendar.component(.day, from: now)
         
@@ -1020,7 +1019,7 @@ struct ProgressOverviewCard: View {
             // Calculate monthly miles when view appears
             cachedTotalMiles = calculateMonthlyMiles()
         }
-        .onChange(of: activities.count) { _ in
+        .onChange(of: activities.count) { _, _ in
             // Recalculate when activities change
             cachedTotalMiles = calculateMonthlyMiles()
         }

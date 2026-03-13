@@ -293,7 +293,7 @@ struct OnboardingGoalsSetupView: View {
                                 .padding(.vertical, 12)
                                 .background(Color(.secondarySystemBackground))
                                 .cornerRadius(8)
-                                .onChange(of: weeklyGoalText) { newValue in
+                                .onChange(of: weeklyGoalText) { _, newValue in
                                     if let value = Double(newValue), value > 0 {
                                         weeklyGoal = value
                                     }
@@ -317,7 +317,7 @@ struct OnboardingGoalsSetupView: View {
                                 .padding(.vertical, 12)
                                 .background(Color(.secondarySystemBackground))
                                 .cornerRadius(8)
-                                .onChange(of: monthlyGoalText) { newValue in
+                                .onChange(of: monthlyGoalText) { _, newValue in
                                     if let value = Double(newValue), value > 0 {
                                         monthlyGoal = value
                                     }

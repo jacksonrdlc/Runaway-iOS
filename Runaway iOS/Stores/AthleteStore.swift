@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Athlete Store Protocol
 
-protocol AthleteStoreProtocol: ObservableObject {
+@MainActor protocol AthleteStoreProtocol: ObservableObject {
     var athlete: Athlete? { get }
     var stats: AthleteStats? { get }
     var isLoading: Bool { get }

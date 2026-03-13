@@ -57,7 +57,7 @@ struct ChatView: View {
                     // Dismiss keyboard when tapping messages area
                     isMessageFieldFocused = false
                 }
-                .onChange(of: viewModel.messages.count) { _ in
+                .onChange(of: viewModel.messages.count) { _, _ in
                     // Scroll to bottom when new message arrives
                     if let lastMessage = viewModel.messages.last {
                         withAnimation {
@@ -462,9 +462,8 @@ struct FastTextInput: UIViewRepresentable {
         if let gestureRecognizers = textView.gestureRecognizers {
             for gesture in gestureRecognizers {
                 // Disable drag and drop gestures that cause timeouts
-                if gesture is UIDragInteraction ||
-                   gesture is UIDropInteraction ||
-                   String(describing: type(of: gesture)).contains("Drag") {
+                if String(describing: type(of: gesture)).contains("Drag") ||
+                   String(describing: type(of: gesture)).contains("Drop") {
                     gesture.isEnabled = false
                 }
             }

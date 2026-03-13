@@ -414,7 +414,7 @@ struct GoalInputSheet: View {
                             .pickerStyle(SegmentedPickerStyle())
                             .frame(width: 180)
                         }
-                        .onChange(of: isMetric) { newValue in
+                        .onChange(of: isMetric) { _, newValue in
                             convertTargetValue(toMetric: newValue)
                         }
                     }

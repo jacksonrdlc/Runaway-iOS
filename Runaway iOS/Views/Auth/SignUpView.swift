@@ -63,7 +63,7 @@ struct SignUpView: View {
                                 keyboardType: .emailAddress,
                                 textContentType: .emailAddress
                             )
-                            .onChange(of: viewModel.email) { _ in
+                            .onChange(of: viewModel.email) { _, _ in
                                 viewModel.validateEmail()
                             }
 
@@ -83,7 +83,7 @@ struct SignUpView: View {
                                 placeholder: "Create a password",
                                 textContentType: .newPassword
                             )
-                            .onChange(of: viewModel.password) { _ in
+                            .onChange(of: viewModel.password) { _, _ in
                                 viewModel.validatePassword()
                                 viewModel.validatePasswordMatch()
                             }
@@ -109,7 +109,7 @@ struct SignUpView: View {
                                 placeholder: "Confirm your password",
                                 textContentType: .newPassword
                             )
-                            .onChange(of: viewModel.confirmPassword) { _ in
+                            .onChange(of: viewModel.confirmPassword) { _, _ in
                                 viewModel.validatePasswordMatch()
                             }
 

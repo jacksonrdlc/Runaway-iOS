@@ -164,11 +164,6 @@ final class SyncEngine: ObservableObject {
             if FeatureFlags.debugSyncLogging {
                 print("[SyncEngine] Sync complete")
             }
-        } catch {
-            lastError = error
-            if FeatureFlags.debugSyncLogging {
-                print("[SyncEngine] Sync error: \(error)")
-            }
         }
 
         isSyncing = false

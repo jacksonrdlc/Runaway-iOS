@@ -251,7 +251,7 @@ struct AthleteWeeklyStatsCard: View {
         .onAppear {
             loadWeeklyStats()
         }
-        .onChange(of: dataManager.activities) { _ in
+        .onChange(of: dataManager.activities) { _, _ in
             loadWeeklyStats()
         }
     }
@@ -371,7 +371,7 @@ struct MonthlyStatsCard: View {
         .onAppear {
             loadMonthlyStats()
         }
-        .onChange(of: dataManager.activities) { _ in
+        .onChange(of: dataManager.activities) { _, _ in
             loadMonthlyStats()
         }
     }

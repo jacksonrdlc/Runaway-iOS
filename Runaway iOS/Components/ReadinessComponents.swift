@@ -260,7 +260,7 @@ struct ReadinessSection: View {
 
         do {
             // First ensure HealthKit is authorized
-            let isAuthorized = await HealthKitManager.shared.isAuthorized
+            let isAuthorized = HealthKitManager.shared.isAuthorized
             if !isAuthorized {
                 // Request authorization
                 let granted = await HealthKitManager.shared.requestAuthorization()

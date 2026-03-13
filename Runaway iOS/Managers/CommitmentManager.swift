@@ -11,7 +11,7 @@ import WidgetKit
 
 // MARK: - Commitment Manager Protocol
 
-protocol CommitmentManagerProtocol: AnyObject {
+@MainActor protocol CommitmentManagerProtocol: AnyObject {
     var todaysCommitment: DailyCommitment? { get }
     var isLoading: Bool { get }
     var suggestedMicroCommitment: MicroCommitmentType? { get }

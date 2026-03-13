@@ -314,7 +314,7 @@ class RunningAnalyzer: ObservableObject {
     }
     
     private func predictNextRunPerformance(activities: [ProcessedActivity]) -> PaceRange? {
-        guard let lastActivity = activities.last else { return nil }
+        guard !activities.isEmpty else { return nil }
         
         let recentPaces = Array(activities.suffix(5)).map { $0.pace }
         let avgRecentPace = recentPaces.reduce(0, +) / Double(recentPaces.count)
@@ -365,9 +365,6 @@ class RunningAnalyzer: ObservableObject {
         guard !activities.isEmpty else { return nil }
         
         // Calculate fitness level based on recent performance
-        let recentActivities = activities.suffix(10) // Last 10 runs
-        let avgDistance = recentActivities.reduce(0) { $0 + $1.distance } / Double(recentActivities.count)
-        let avgPace = recentActivities.reduce(0) { $0 + $1.pace } / Double(recentActivities.count)
         let longestRun = activities.map { $0.distance }.max() ?? 0
         
         // Fitness Level Assessment

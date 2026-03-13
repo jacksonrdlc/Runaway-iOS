@@ -81,7 +81,7 @@ struct ForgotPasswordView: View {
                             keyboardType: .emailAddress,
                             textContentType: .emailAddress
                         )
-                        .onChange(of: viewModel.email) { _ in
+                        .onChange(of: viewModel.email) { _, _ in
                             viewModel.validateEmail()
                         }
 

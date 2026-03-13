@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - API Request Manager
 
-class APIRequestManager {
+class APIRequestManager: @unchecked Sendable {
     static let shared = APIRequestManager()
 
     private var pendingRequests: [String: Task<Any, Error>] = [:]

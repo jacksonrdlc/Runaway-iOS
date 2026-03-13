@@ -69,7 +69,7 @@ struct AccountInformationView: View {
             .onAppear {
                 loadCurrentData()
             }
-            .onChange(of: selectedPhoto) { newPhoto in
+            .onChange(of: selectedPhoto) { _, newPhoto in
                 Task {
                     await loadSelectedPhoto(newPhoto)
                 }

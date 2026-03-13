@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Activity Store Protocol
 
-protocol ActivityStoreProtocol: ObservableObject {
+@MainActor protocol ActivityStoreProtocol: ObservableObject {
     var activities: [Activity] { get }
     var isLoading: Bool { get }
 

@@ -58,7 +58,7 @@ class TrainingPlanService {
         if let plan = currentPlan {
             let today = DayOfWeek.from(date: Date())
             if let workout = plan.workout(for: today) {
-                return "Today's planned workout: \(workout.title). \(workout.description ?? "")"
+                return "Today's planned workout: \(workout.title). \(workout.description)"
             }
         }
 
@@ -431,7 +431,6 @@ class TrainingPlanService {
         }
 
         let activityDate = Date(timeIntervalSince1970: activityTimestamp)
-        let calendar = Calendar.current
 
         // Only consider activities from the current week
         guard activityDate >= currentPlan.weekStartDate && activityDate <= currentPlan.weekEndDate else {

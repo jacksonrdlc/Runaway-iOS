@@ -116,7 +116,7 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
         let allLocations = pendingLocations + routeLocations
         pendingLocations = []
 
-        if !allLocations.isEmpty, let routeBuilder = routeBuilder {
+        if !allLocations.isEmpty {
             await insertRouteDataAsync(allLocations)
         }
 

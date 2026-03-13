@@ -73,7 +73,7 @@ enum RepositoryFactory {
 // MARK: - Repository Provider Protocol
 
 /// Protocol for objects that can provide repositories
-protocol RepositoryProvider {
+@MainActor protocol RepositoryProvider {
     var activityRepository: any ActivityRepositoryProtocol { get }
 }
 

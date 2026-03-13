@@ -10,7 +10,7 @@ import Observation
 
 // MARK: - Goal Manager Protocol
 
-protocol GoalManagerProtocol: AnyObject {
+@MainActor protocol GoalManagerProtocol: AnyObject {
     var currentGoal: RunningGoal? { get }
     var isLoading: Bool { get }
 

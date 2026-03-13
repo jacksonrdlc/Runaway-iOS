@@ -83,10 +83,10 @@ class TrainingViewModel: ObservableObject {
         #endif
 
         // 2. Load API data in background (slower, but enhances local data)
-        async let quickWinsTask = loadQuickWins()
-        async let journalTask = loadCurrentJournal()
-
-        _ = await (quickWinsTask, journalTask)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.loadQuickWins() }
+            group.addTask { await self.loadCurrentJournal() }
+        }
 
         // Merge again with API data
         mergeRecommendations()
@@ -175,7 +175,7 @@ class TrainingViewModel: ObservableObject {
         isLoadingJournal = true
         journalError = nil
 
-        guard let athleteId = await DataManager.shared.athlete?.id else {
+        guard let athleteId = DataManager.shared.athlete?.id else {
             #if DEBUG
             print("⚠️ UnifiedInsights: No athlete ID available for journal")
             #endif

@@ -41,7 +41,7 @@ class ReadinessService: ObservableObject {
             throw ReadinessError.healthKitNotAvailable
         }
 
-        guard await HealthKitManager.shared.isAuthorized else {
+        guard HealthKitManager.shared.isAuthorized else {
             throw ReadinessError.notAuthorized
         }
 
@@ -241,7 +241,6 @@ class ReadinessService: ObservableObject {
                 limit: 60
             )
 
-            let calendar = Calendar.current
             let today = Date()
 
             // Calculate acute load (last 7 days)

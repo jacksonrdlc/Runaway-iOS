@@ -40,8 +40,8 @@ class StorageService {
         _ = try await supabase.storage
             .from(Bucket.activityMaps)
             .upload(
-                path: fileName,
-                file: imageData,
+                fileName,
+                data: imageData,
                 options: FileOptions(
                     cacheControl: "3600",
                     contentType: "image/png",
@@ -117,8 +117,8 @@ class StorageService {
         _ = try await supabase.storage
             .from(Bucket.activityExports)
             .upload(
-                path: fileName,
-                file: gpxData,
+                fileName,
+                data: gpxData,
                 options: FileOptions(
                     cacheControl: "3600",
                     contentType: "application/gpx+xml",

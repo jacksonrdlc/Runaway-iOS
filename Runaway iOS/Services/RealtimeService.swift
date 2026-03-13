@@ -58,28 +58,8 @@ public final class RealtimeService {
     // MARK: - Connection Resilience
     
     private func setupRealtimeSubscriptionWithRetry(userId: Int) async {
-        for attempt in 0...maxReconnectionAttempts {
-            do {
-                await setupRealtimeSubscription(userId: userId)
-                reconnectionAttempts = 0 // Reset on successful connection
-                return
-            } catch {
-                print("❌ Realtime connection attempt \(attempt + 1) failed: \(error)")
-                reconnectionAttempts = attempt + 1
-                
-                if attempt < maxReconnectionAttempts {
-                    // Exponential backoff: 2^attempt seconds
-                    let delay = pow(2.0, Double(attempt))
-                    print("⏳ Retrying in \(delay) seconds...")
-                    try? await Task.sleep(for: .seconds(Int(delay)))
-                } else {
-                    print("❌ Max reconnection attempts reached")
-                    await MainActor.run {
-                        self.isConnected = false
-                    }
-                }
-            }
-        }
+        await setupRealtimeSubscription(userId: userId)
+        reconnectionAttempts = 0
     }
     
     public func stopRealtimeSubscription() {
@@ -363,7 +343,7 @@ public final class RealtimeService {
     }
 
     private func checkConnectionHealth() async {
-        let (lastUpdate, needsReconnection, userId): (Date?, Bool, Int?) = await MainActor.run {
+        let (_, needsReconnection, userId): (Date?, Bool, Int?) = await MainActor.run {
             let lastUpdate = lastUpdateTime ?? lastHeartbeat
             guard let lastUpdate = lastUpdate else {
                 connectionHealth = .unknown

@@ -35,8 +35,8 @@ class SupabaseStorageService {
             _ = try await supabase.storage
                 .from(bucketName)
                 .upload(
-                    path: filePath,
-                    file: imageData,
+                    filePath,
+                    data: imageData,
                     options: FileOptions(contentType: "image/jpeg")
                 )
 
