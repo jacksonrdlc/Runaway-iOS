@@ -7,12 +7,11 @@
 
 import SwiftUI
 import UserNotifications
-import FirebaseMessaging
 
 struct DebugMenuView: View {
     @State private var realtimeService = RealtimeService.shared
     @State private var showingBackgroundMonitor = false
-    @State private var fcmToken: String = "Loading..."
+    @State private var apnsToken: String = "Not registered"
     @State private var notificationStatus: String = "Unknown"
     @State private var showingTokenCopied = false
 
@@ -20,17 +19,17 @@ struct DebugMenuView: View {
         List {
             // MARK: - Notification Testing Section
             Section("Push Notifications") {
-                // FCM Token display
+                // APNs Token display
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("FCM Token")
+                    Text("APNs Token")
                         .font(.headline)
-                    Text(fcmToken)
+                    Text(apnsToken)
                         .font(.caption)
                         .foregroundColor(AppTheme.Colors.textSecondary)
                         .lineLimit(3)
 
                     Button("Copy Token") {
-                        UIPasteboard.general.string = fcmToken
+                        UIPasteboard.general.string = apnsToken
                         showingTokenCopied = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                             showingTokenCopied = false
@@ -128,22 +127,19 @@ struct DebugMenuView: View {
             BackgroundTaskMonitorView()
         }
         .onAppear {
-            loadFCMToken()
+            loadAPNsToken()
             checkNotificationStatus()
         }
     }
 
     // MARK: - Notification Testing Functions
 
-    private func loadFCMToken() {
-        Messaging.messaging().token { token, error in
-            if let error = error {
-                fcmToken = "Error: \(error.localizedDescription)"
-            } else if let token = token {
-                fcmToken = token
-            } else {
-                fcmToken = "No token available"
-            }
+    private func loadAPNsToken() {
+        // Read the token we saved to the athletes table — stored in UserDefaults by AppDelegate
+        if let token = UserDefaults.standard.string(forKey: "apns_device_token") {
+            apnsToken = token
+        } else {
+            apnsToken = "Not yet registered (launch app on real device)"
         }
     }
 

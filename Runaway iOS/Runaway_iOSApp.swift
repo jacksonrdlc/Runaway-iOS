@@ -6,7 +6,6 @@
 import SwiftUI
 import SwiftData
 import Foundation
-import FirebaseCore
 import AppIntents
 import HealthKit
 
