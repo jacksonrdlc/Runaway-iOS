@@ -146,20 +146,34 @@ struct TacticalMapView: UIViewRepresentable {
         if let poly = course.polyline {
             let coords = decodePolyline(poly)
             if !coords.isEmpty {
-                var mutableCoords = coords
-                let overlay = MKPolyline(coordinates: &mutableCoords, count: coords.count)
-                mapView.addOverlay(overlay)
-                
+                // Filter out any points that are obviously out of bounds (sanity check for St. Louis area)
                 let lats = coords.map { $0.latitude }
                 let lons = coords.map { $0.longitude }
-                if let minLat = lats.min(), let maxLat = lats.max(), let minLon = lons.min(), let maxLon = lons.max() {
+                let minLat = lats.min()!, maxLat = lats.max()!
+                let minLon = lons.min()!, maxLon = lons.max()!
+                
+                let centerLat = (minLat + maxLat) / 2
+                let centerLon = (minLon + maxLon) / 2
+                
+                // If a point is more than 0.5 degrees (~35 miles) from center, it's likely a decoding artifact
+                let filteredCoords = coords.filter { 
+                    abs($0.latitude - centerLat) < 0.5 && abs($0.longitude - centerLon) < 0.5 
+                }
+                
+                if !filteredCoords.isEmpty {
+                    var mutableCoords = filteredCoords
+                    let overlay = MKPolyline(coordinates: &mutableCoords, count: filteredCoords.count)
+                    mapView.addOverlay(overlay)
+                    
+                    let fLats = filteredCoords.map { $0.latitude }
+                    let fLons = filteredCoords.map { $0.longitude }
                     let region = MKCoordinateRegion(
-                        center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
-                        span: MKCoordinateSpan(latitudeDelta: (maxLat - minLat) * 1.2, longitudeDelta: (maxLon - minLon) * 1.2)
+                        center: CLLocationCoordinate2D(latitude: (fLats.min()! + fLats.max()!) / 2, longitude: (fLons.min()! + fLons.max()!) / 2),
+                        span: MKCoordinateSpan(latitudeDelta: (fLats.max()! - fLats.min()!) * 1.4, longitudeDelta: (fLons.max()! - fLons.min()!) * 1.4)
                     )
                     mapView.setRegion(region, animated: false)
                     
-                    let camera = MKMapCamera(lookingAtCenter: region.center, fromDistance: 5000, pitch: 60, heading: 0)
+                    let camera = MKMapCamera(lookingAtCenter: region.center, fromDistance: 4500, pitch: 65, heading: 0)
                     mapView.setCamera(camera, animated: true)
                 }
             }
@@ -184,29 +198,32 @@ struct TacticalMapView: UIViewRepresentable {
     }
 
     private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
-        var coords = [CLLocationCoordinate2D]()
-        var index = encoded.startIndex
+        let bytes = encoded.utf8.map { Int8($0) - 63 }
+        var index = 0
         var lat: Int32 = 0
         var lng: Int32 = 0
+        var coordinates: [CLLocationCoordinate2D] = []
 
-        while index < encoded.endIndex {
-            func decode() -> Int32 {
-                var res: Int32 = 0
-                var shift: Int32 = 0
-                var byte: Int32 = 0
+        while index < bytes.count {
+            func decode() -> Int32? {
+                var res: UInt32 = 0
+                var shift: UInt32 = 0
+                var byte: Int8 = 0
                 repeat {
-                    byte = Int32(encoded[index].asciiValue! - 63)
-                    index = encoded.index(after: index)
-                    res |= (byte & 0x1F) << shift
+                    if index >= bytes.count { return nil }
+                    byte = bytes[index]
+                    index += 1
+                    res |= UInt32(byte & 0x1F) << shift
                     shift += 5
                 } while byte >= 0x20
-                return (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+                return (res & 1) != 0 ? ~Int32(res >> 1) : Int32(res >> 1)
             }
-            lat += decode()
-            lng += decode()
-            coords.append(CLLocationCoordinate2D(latitude: Double(lat) * 1e-5, longitude: Double(lng) * 1e-5))
+            guard let dLat = decode(), let dLng = decode() else { break }
+            lat += dLat
+            lng += dLng
+            coordinates.append(CLLocationCoordinate2D(latitude: Double(lat) * 1e-5, longitude: Double(lng) * 1e-5))
         }
-        return coords
+        return coordinates
     }
 }
 
@@ -228,14 +245,15 @@ struct ElevationChart: View {
                 let range = max(1, maxEle - minEle)
                 
                 GeometryReader { geo in
-                    HStack(alignment: .bottom, spacing: geo.size.width / CGFloat(data.count) * 0.2) {
+                    HStack(alignment: .bottom, spacing: geo.size.width / CGFloat(data.count) * 0.1) {
                         ForEach(0..<data.count, id: \.self) { i in
                             let point = data[i]
+                            // Convert meters to feet for display
                             let normalizedHeight = CGFloat((point.elevation - minEle) / range)
                             
                             Rectangle()
                                 .fill(AppTheme.Colors.accent.opacity(0.6))
-                                .frame(height: max(4, normalizedHeight * geo.size.height))
+                                .frame(height: max(2, normalizedHeight * geo.size.height))
                                 .onTapGesture {
                                     selectedMile = point.distance / 1609.34
                                 }
