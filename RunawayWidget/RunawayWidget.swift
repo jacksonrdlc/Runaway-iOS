@@ -524,6 +524,7 @@ struct RunawayWidget: Widget {
         }
         .configurationDisplayName("Runaway Widget")
         .description("Track your running progress with beautiful charts and stats.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
