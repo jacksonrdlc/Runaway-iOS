@@ -20,15 +20,15 @@ struct RaceCourse: Codable, Identifiable {
 }
 
 struct CourseElevationPoint: Codable {
-    let distance: Double // meters from start
+    let distance: Double // miles from start
     let elevation: Double // meters
     let grade: Double // percentage
 }
 
 struct TacticalInsight: Codable, Identifiable {
-    var id: String { "\(mile)-\(type)" }
+    var id: String { "\(mile)-\(description.prefix(8))" }
     let mile: Double
-    let type: String // "climb", "descent", "turn", "fuel"
+    let type: String?
     let description: String
 }
 

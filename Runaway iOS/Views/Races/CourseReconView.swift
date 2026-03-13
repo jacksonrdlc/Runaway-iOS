@@ -36,7 +36,7 @@ struct CourseReconView: View {
                                     .frame(height: 140)
                                     .padding(.top)
 
-                                sectionHeader("TWIN STRATEGY")
+                                sectionHeader("RACE STRATEGY")
 
                                 if let insights = course.tacticalInsights, !insights.isEmpty {
                                     ForEach(insights) { insight in
@@ -198,32 +198,27 @@ struct TacticalMapView: UIViewRepresentable {
     }
 
     private func decodePolyline(_ encoded: String) -> [CLLocationCoordinate2D] {
-        let bytes = encoded.utf8.map { Int8($0) - 63 }
-        var index = 0
-        var lat: Int32 = 0
-        var lng: Int32 = 0
-        var coordinates: [CLLocationCoordinate2D] = []
-
-        while index < bytes.count {
-            func decode() -> Int32? {
-                var res: UInt32 = 0
-                var shift: UInt32 = 0
-                var byte: Int8 = 0
-                repeat {
-                    if index >= bytes.count { return nil }
-                    byte = bytes[index]
-                    index += 1
-                    res |= UInt32(byte & 0x1F) << shift
-                    shift += 5
-                } while byte >= 0x20
-                return (res & 1) != 0 ? ~Int32(res >> 1) : Int32(res >> 1)
-            }
-            guard let dLat = decode(), let dLng = decode() else { break }
-            lat += dLat
-            lng += dLng
-            coordinates.append(CLLocationCoordinate2D(latitude: Double(lat) * 1e-5, longitude: Double(lng) * 1e-5))
+        var result: [CLLocationCoordinate2D] = []
+        let chars = Array(encoded.unicodeScalars)
+        var idx = 0, lat = 0, lng = 0
+        while idx < chars.count {
+            var shift = 0, res = 0, byte: Int
+            repeat {
+                guard idx < chars.count else { break }
+                byte = Int(chars[idx].value) - 63; idx += 1
+                res |= (byte & 0x1F) << shift; shift += 5
+            } while byte >= 0x20
+            lat += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            shift = 0; res = 0
+            repeat {
+                guard idx < chars.count else { break }
+                byte = Int(chars[idx].value) - 63; idx += 1
+                res |= (byte & 0x1F) << shift; shift += 5
+            } while byte >= 0x20
+            lng += (res & 1) != 0 ? ~(res >> 1) : (res >> 1)
+            result.append(CLLocationCoordinate2D(latitude: Double(lat) / 1e5, longitude: Double(lng) / 1e5))
         }
-        return coordinates
+        return result
     }
 }
 
@@ -231,40 +226,104 @@ struct ElevationChart: View {
     let course: RaceCourse
     @Binding var selectedMile: Double
 
+    private let metersToFeet = 3.28084
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("ELEVATION PROFILE (FT)")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
-                .padding(.leading)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("ELEVATION PROFILE")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                    .tracking(1.2)
+                Spacer()
+                if let data = course.elevationData, !data.isEmpty {
+                    let maxFt = Int((data.map { $0.elevation }.max() ?? 0) * metersToFeet)
+                    let minFt = Int((data.map { $0.elevation }.min() ?? 0) * metersToFeet)
+                    Text("\(minFt)–\(maxFt) ft")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                }
+            }
+            .padding(.horizontal)
 
             if let data = course.elevationData, !data.isEmpty {
-                let elevations = data.map { $0.elevation }
-                let minEle = elevations.min() ?? 0
-                let maxEle = elevations.max() ?? 100
-                let range = max(1, maxEle - minEle)
-                
                 GeometryReader { geo in
-                    HStack(alignment: .bottom, spacing: geo.size.width / CGFloat(data.count) * 0.1) {
-                        ForEach(0..<data.count, id: \.self) { i in
-                            let point = data[i]
-                            // Convert meters to feet for display
-                            let normalizedHeight = CGFloat((point.elevation - minEle) / range)
-                            
-                            Rectangle()
-                                .fill(AppTheme.Colors.accent.opacity(0.6))
-                                .frame(height: max(2, normalizedHeight * geo.size.height))
-                                .onTapGesture {
-                                    selectedMile = point.distance / 1609.34
-                                }
+                    let elevFt = data.map { $0.elevation * metersToFeet }
+                    let minE = elevFt.min() ?? 0
+                    let maxE = elevFt.max() ?? 1
+                    let range = max(1, maxE - minE)
+                    let w = geo.size.width
+                    let h = geo.size.height
+
+                    // Build smooth area path
+                    let path = Path { p in
+                        guard data.count > 1 else { return }
+                        let pts: [(CGFloat, CGFloat)] = data.indices.map { i in
+                            let x = CGFloat(i) / CGFloat(data.count - 1) * w
+                            let y = h - CGFloat((elevFt[i] - minE) / range) * (h - 8)
+                            return (x, y)
+                        }
+                        p.move(to: CGPoint(x: pts[0].0, y: h))
+                        p.addLine(to: CGPoint(x: pts[0].0, y: pts[0].1))
+                        for i in 1..<pts.count {
+                            let prev = pts[i - 1], curr = pts[i]
+                            let cx = (prev.0 + curr.0) / 2
+                            p.addCurve(to: CGPoint(x: curr.0, y: curr.1),
+                                       control1: CGPoint(x: cx, y: prev.1),
+                                       control2: CGPoint(x: cx, y: curr.1))
+                        }
+                        p.addLine(to: CGPoint(x: w, y: h))
+                        p.closeSubpath()
+                    }
+
+                    let strokePath = Path { p in
+                        guard data.count > 1 else { return }
+                        let pts: [(CGFloat, CGFloat)] = data.indices.map { i in
+                            let x = CGFloat(i) / CGFloat(data.count - 1) * w
+                            let y = h - CGFloat((elevFt[i] - minE) / range) * (h - 8)
+                            return (x, y)
+                        }
+                        p.move(to: CGPoint(x: pts[0].0, y: pts[0].1))
+                        for i in 1..<pts.count {
+                            let prev = pts[i - 1], curr = pts[i]
+                            let cx = (prev.0 + curr.0) / 2
+                            p.addCurve(to: CGPoint(x: curr.0, y: curr.1),
+                                       control1: CGPoint(x: cx, y: prev.1),
+                                       control2: CGPoint(x: cx, y: curr.1))
                         }
                     }
+
+                    // Selected mile indicator x position
+                    let totalMiles = data.last?.distance ?? 26.2
+                    let selX = CGFloat(selectedMile / totalMiles) * w
+
+                    ZStack(alignment: .leading) {
+                        path.fill(LinearGradient(
+                            colors: [AppTheme.Colors.accent.opacity(0.35), AppTheme.Colors.accent.opacity(0.05)],
+                            startPoint: .top, endPoint: .bottom
+                        ))
+                        strokePath.stroke(AppTheme.Colors.accent, lineWidth: 1.5)
+
+                        // Selected mile vertical line
+                        if selectedMile > 0 {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.5))
+                                .frame(width: 1)
+                                .offset(x: selX)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 0).onChanged { val in
+                        let pct = max(0, min(1, val.location.x / w))
+                        let totalMiles = data.last?.distance ?? 26.2
+                        selectedMile = pct * totalMiles
+                    })
                 }
                 .padding(.horizontal)
             } else {
                 Text("Elevation data unavailable")
                     .font(.caption)
-                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
