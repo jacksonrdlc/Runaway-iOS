@@ -33,6 +33,9 @@ struct AthleteView: View {
                     // Profile Header
                     ProfileHeader(athlete: athlete)
                     
+                    // Twin Identity Summary
+                    TwinIdentityBadge()
+                    
                     // Quick Stats Grid
                     QuickStatsGrid(
                         runs: (stats.count ?? 0).formatted(.number),
@@ -72,7 +75,7 @@ struct ProfileHeader: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.md) {
-            // Profile Image - Much Smaller
+            // Profile Image - Compact & Refined
             AsyncImage(url: athlete.profile) { image in
                 image
                     .resizable()
@@ -82,23 +85,31 @@ struct ProfileHeader: View {
                     .fill(AppTheme.Colors.primaryGradient)
                     .overlay(
                         Image(systemName: "person.fill")
-                            .font(.title)
+                            .font(.title2)
                             .foregroundColor(.white)
                     )
             }
-            .frame(width: 160, height: 160)
+            .frame(width: 100, height: 100)
             .clipShape(Circle())
-            .shadow(color: AppTheme.Colors.primary.opacity(0.3), radius: 8, x: 0, y: 4)
+            .overlay(Circle().stroke(AppTheme.Colors.accent.opacity(0.2), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
 
-            // Name and Info
+            // Name and Identity
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text("\(athlete.firstname ?? "Unknown") \(athlete.lastname ?? "Athlete")")
-                    .font(AppTheme.Typography.title)
+                    .font(.system(.title, design: .monospaced).weight(.bold))
                     .foregroundColor(textPrimary)
 
-                Text("Runner • Athlete")
-                    .font(AppTheme.Typography.caption)
-                    .foregroundColor(textSecondary)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                    
+                    Text("Digital Twin • Active Trajectory")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(textSecondary)
+                        .tracking(0.5)
+                }
             }
         }
     }
@@ -166,7 +177,7 @@ struct QuickStatItem: View {
             }
 
             Text(value)
-                .font(AppTheme.Typography.title.weight(.bold))
+                .font(.system(.title, design: .monospaced).weight(.bold))
                 .foregroundColor(textPrimary)
 
             Text(label)
@@ -486,7 +497,7 @@ struct StatPair: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
             Text(value)
-                .font(AppTheme.Typography.headline.weight(.bold))
+                .font(.system(.headline, design: .monospaced).weight(.bold))
                 .foregroundColor(color)
 
             Text(label)
@@ -505,5 +516,44 @@ private func formatTime(minutes: Double) -> String {
         return "\(hours)h \(mins)m"
     } else {
         return "\(mins)m"
+    }
+}
+
+// MARK: - Twin Identity
+struct TwinIdentityBadge: View {
+    @ObservedObject private var themeManager = ThemeManager.shared
+    
+    private var cardBg: Color {
+        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(AppTheme.Colors.accent.opacity(0.1))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "brain.head.profile")
+                    .foregroundColor(AppTheme.Colors.accent)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("TWIN IDENTITY")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(AppTheme.Colors.accent)
+                    .tracking(1.2)
+                Text("The Consistent Builder")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(themeManager.isDarkMode ? .white : .black)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+        }
+        .padding()
+        .background(cardBg)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.07), lineWidth: 1))
     }
 }
