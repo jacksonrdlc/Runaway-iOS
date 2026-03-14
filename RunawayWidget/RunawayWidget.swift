@@ -174,62 +174,58 @@ struct RunawayWidgetEntryView : View {
     }
 
     private var largeView: some View {
-        GeometryReader { geo in
-            VStack(alignment: .leading, spacing: 0) {
-                // Header
-                HStack(alignment: .firstTextBaseline) {
-                    Text("RUNAWAY")
-                        .font(.system(size: 13, weight: .black))
-                        .italic()
-                        .foregroundColor(WidgetTheme.accent)
-                        .tracking(1.5)
-                    Spacer()
-                    Text(String(Calendar.current.component(.year, from: Date())))
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(WidgetTheme.secondary)
-                }
-                .padding(.bottom, 10)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header row
+            HStack(alignment: .firstTextBaseline) {
+                Text("RUNAWAY")
+                    .font(.system(size: 13, weight: .black))
+                    .italic()
+                    .foregroundColor(WidgetTheme.accent)
+                    .tracking(1.5)
+                Spacer()
+                Text(String(Calendar.current.component(.year, from: Date())))
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(WidgetTheme.secondary)
+            }
+            .padding(.bottom, 10)
 
-                // Bar chart fills most of vertical space
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("WEEK INTENSITY")
+            // Chart label
+            Text("WEEK INTENSITY")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(WidgetTheme.secondary)
+                .tracking(1.4)
+                .padding(.bottom, 6)
+
+            // Chart expands to fill available space
+            BarChart(days: entry.days, selectedActivities: entry.selectedActivities)
+                .frame(maxHeight: .infinity)
+
+            // Divider + stats pinned to bottom
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 1)
+                .padding(.vertical, 12)
+
+            HStack(alignment: .center, spacing: 0) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(String(format: "%.0f", entry.miles))
+                        .font(.system(size: 44, weight: .black, design: .monospaced))
+                        .foregroundColor(WidgetTheme.accent)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                    Text("TOTAL MILES")
                         .font(.system(size: 8, weight: .bold))
                         .foregroundColor(WidgetTheme.secondary)
-                        .tracking(1.4)
-                    
-                    BarChart(days: entry.days, selectedActivities: entry.selectedActivities)
-                        .frame(height: geo.size.height * 0.38)
+                        .tracking(1.2)
                 }
-                .padding(.bottom, 12)
-
-                Divider()
-                    .background(Color.white.opacity(0.08))
-                    .padding(.bottom, 12)
-
-                // Stats row
-                HStack(alignment: .center, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(String(format: "%.0f", entry.miles))
-                            .font(.system(size: 44, weight: .black, design: .monospaced))
-                            .foregroundColor(WidgetTheme.accent)
-                            .minimumScaleFactor(0.6)
-                            .lineLimit(1)
-                        Text("TOTAL MILES")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(WidgetTheme.secondary)
-                            .tracking(1.2)
-                    }
-                    
-                    Spacer()
-                    
-                    HStack(spacing: 16) {
-                        MiniProgressView(current: weeklyMileage, goal: entry.weeklyGoal, label: "WEEKLY", color: WidgetTheme.accent)
-                        MiniProgressView(current: entry.monthlyMiles, goal: entry.monthlyGoal, label: "MONTHLY", color: Color(red: 0.2, green: 0.9, blue: 0.5))
-                    }
+                Spacer()
+                HStack(spacing: 16) {
+                    MiniProgressView(current: weeklyMileage, goal: entry.weeklyGoal, label: "WEEKLY", color: WidgetTheme.accent)
+                    MiniProgressView(current: entry.monthlyMiles, goal: entry.monthlyGoal, label: "MONTHLY", color: Color(red: 0.2, green: 0.9, blue: 0.5))
                 }
             }
-            .padding(16)
         }
+        .padding(16)
     }
 }
 

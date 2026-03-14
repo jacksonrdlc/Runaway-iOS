@@ -115,20 +115,49 @@ private struct CommitmentStatusView: View {
         matched?.iconName ?? "checkmark.circle"
     }
 
+    // Contextual rec line based on activity + fulfilled state
+    private var recLine: String {
+        if isFulfilled {
+            switch matched {
+            case .run:     return "Nice. Recovery run tomorrow."
+            case .walk:    return "Consistent. That's the game."
+            case .workout: return "Strength done. Respect."
+            case .yoga:    return "Mobile athlete. Keep it."
+            case .none:    return "Today's box is checked."
+            }
+        } else {
+            let hour = Calendar.current.component(.hour, from: Date())
+            switch matched {
+            case .run:
+                return hour < 10 ? "Morning miles hit different." : hour < 15 ? "Lunch run window is open." : "Evening run before dark."
+            case .walk:
+                return "Even 20 mins moves the needle."
+            case .workout:
+                return hour < 12 ? "Early session = early done." : "Get it in before dinner."
+            case .yoga:
+                return "10 minutes counts. Start there."
+            case .none:
+                return "Set your commitment for today."
+            }
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 Image(systemName: iconName)
-                    .font(.system(size: 34, weight: .semibold))
+                    .font(.system(size: 32, weight: .semibold))
                     .foregroundColor(isFulfilled ? .green : accentColor)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(type)
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                    Text(isFulfilled ? "Done for today" : "Not yet — go get it")
+                    Text(recLine)
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(isFulfilled ? .green : .white.opacity(0.45))
+                        .foregroundColor(isFulfilled ? .green.opacity(0.8) : .white.opacity(0.5))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
                 Spacer()
