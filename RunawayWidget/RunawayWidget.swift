@@ -238,19 +238,36 @@ struct Provider: AppIntentTimelineProvider {
     
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         let activities = configuration.selectedActivities ?? defaultActivities
-        let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios")
+        let ud = UserDefaults(suiteName: "group.com.jackrudelic.runawayios")
+        
+        // Rebuild the days array from per-day activity arrays stored in UserDefaults
+        struct RawActivity: Codable { var day: String; var type: String; var distance: Double; var time: Double }
+        
+        let dayKeys = [("Su", "sunArray"), ("Mo", "monArray"), ("Tu", "tueArray"),
+                       ("We", "wedArray"), ("Th", "thuArray"), ("Fr", "friArray"), ("Sa", "satArray")]
+        
+        var daysData: [Day] = dayKeys.map { Day(name: $0.0, type: "Run", minutes: 0, miles: 0) }
+        
+        for (index, (shortName, key)) in dayKeys.enumerated() {
+            guard let jsonStrings = ud?.stringArray(forKey: key) else { continue }
+            for jsonString in jsonStrings {
+                guard let data = jsonString.data(using: .utf8),
+                      let act = try? JSONDecoder().decode(RawActivity.self, from: data) else { continue }
+                daysData.append(Day(name: shortName, type: act.type, minutes: act.time, miles: act.distance))
+            }
+        }
         
         let entry = SimpleEntry(
             date: Date(),
-            miles: userDefaults?.double(forKey: "miles") ?? 0,
-            monthlyMiles: userDefaults?.double(forKey: "monthlyMiles") ?? 0,
-            runs: userDefaults?.integer(forKey: "runs") ?? 0,
-            days: [], 
+            miles: ud?.double(forKey: "miles") ?? 0,
+            monthlyMiles: ud?.double(forKey: "monthlyMiles") ?? 0,
+            runs: ud?.integer(forKey: "runs") ?? 0,
+            days: daysData,
             selectedActivities: activities,
-            weeklyGoal: userDefaults?.double(forKey: "weekly_goal_miles") ?? 20,
-            monthlyGoal: userDefaults?.double(forKey: "monthly_goal_miles") ?? 100,
-            todaysCommitmentType: userDefaults?.string(forKey: "todays_commitment_type"),
-            todaysCommitmentFulfilled: userDefaults?.bool(forKey: "todays_commitment_fulfilled") ?? false
+            weeklyGoal: max(1, ud?.double(forKey: "weekly_goal_miles") ?? 20),
+            monthlyGoal: max(1, ud?.double(forKey: "monthly_goal_miles") ?? 100),
+            todaysCommitmentType: ud?.string(forKey: "todays_commitment_type"),
+            todaysCommitmentFulfilled: ud?.bool(forKey: "todays_commitment_fulfilled") ?? false
         )
         
         return Timeline(entries: [entry], policy: .atEnd)
