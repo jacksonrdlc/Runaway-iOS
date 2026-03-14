@@ -138,36 +138,52 @@ struct RunawayWidgetEntryView : View {
     }
     
     private var smallView: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
+            // App name top
             HStack {
-                Image(systemName: "brain.head.profile")
+                Text("RUNAWAY")
+                    .font(.system(size: 10, weight: .black))
+                    .italic()
                     .foregroundColor(WidgetTheme.accent)
+                    .tracking(1.0)
                 Spacer()
-                Text("RUNAWAY").font(.system(size: 10, weight: .heavy)).italic().foregroundColor(WidgetTheme.accent)
+                Image(systemName: "figure.run")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(WidgetTheme.accent.opacity(0.6))
             }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(String(format: "%.1f", weeklyMileage))
-                    .font(.system(size: 32, weight: .heavy, design: .monospaced))
-                    .foregroundColor(.white)
-                Text("MILES THIS WEEK")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(WidgetTheme.secondary)
-            }
-            
+            .padding(.bottom, 10)
+
+            // Hero number fills space
             Spacer()
-            
-            HStack {
-                Capsule()
-                    .fill(WidgetTheme.accent.opacity(0.1))
-                    .frame(height: 4)
-                    .overlay(
-                        GeometryReader { geo in
-                            Capsule()
-                                .fill(WidgetTheme.accent)
-                                .frame(width: geo.size.width * min(weeklyMileage / max(1.0, entry.weeklyGoal), 1.0))
-                        }
-                    )
+            VStack(alignment: .leading, spacing: 3) {
+                Text(String(format: "%.1f", weeklyMileage))
+                    .font(.system(size: 46, weight: .black, design: .monospaced))
+                    .foregroundColor(.white)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Text("MILES THIS WEEK")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(WidgetTheme.secondary)
+                    .tracking(1.2)
+            }
+            Spacer()
+
+            // Progress bar at bottom with goal
+            VStack(alignment: .leading, spacing: 4) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.07))
+                            .frame(height: 5)
+                        Capsule()
+                            .fill(WidgetTheme.accent)
+                            .frame(width: geo.size.width * min(weeklyMileage / max(1.0, entry.weeklyGoal), 1.0), height: 5)
+                    }
+                }
+                .frame(height: 5)
+                Text(String(format: "%.0f / %.0f mi goal", weeklyMileage, entry.weeklyGoal))
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(WidgetTheme.secondary)
             }
         }
         .padding(16)
@@ -207,16 +223,17 @@ struct RunawayWidgetEntryView : View {
                 .padding(.vertical, 12)
 
             HStack(alignment: .center, spacing: 0) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text(String(format: "%.0f", entry.miles))
-                        .font(.system(size: 44, weight: .black, design: .monospaced))
+                        .font(.system(size: 56, weight: .black, design: .monospaced))
                         .foregroundColor(WidgetTheme.accent)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.5)
                         .lineLimit(1)
+                        .shadow(color: WidgetTheme.accent.opacity(0.35), radius: 8, x: 0, y: 0)
                     Text("TOTAL MILES")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 9, weight: .black))
                         .foregroundColor(WidgetTheme.secondary)
-                        .tracking(1.2)
+                        .tracking(1.5)
                 }
                 Spacer()
                 HStack(spacing: 16) {
