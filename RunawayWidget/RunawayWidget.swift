@@ -157,7 +157,7 @@ struct RunawayWidgetEntryView : View {
             Spacer()
             VStack(alignment: .leading, spacing: 3) {
                 Text(String(format: "%.1f", weeklyMileage))
-                    .font(.system(size: 46, weight: .black, design: .monospaced))
+                    .font(.system(size: 46, weight: .black))
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
@@ -225,7 +225,7 @@ struct RunawayWidgetEntryView : View {
             HStack(alignment: .center, spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(String(format: "%.0f", entry.miles))
-                        .font(.system(size: 56, weight: .black, design: .monospaced))
+                        .font(.system(size: 56, weight: .black))
                         .foregroundColor(WidgetTheme.accent)
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
