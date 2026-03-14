@@ -38,9 +38,9 @@ struct AthleteView: View {
                     
                     // Quick Stats Grid
                     QuickStatsGrid(
-                        runs: (stats.count ?? 0).formatted(.number),
-                        miles: (stats.distance! * 0.000621371).formatted(.number.precision(.fractionLength(1))),
-                        minutes: (stats.elapsedTime! / 60).formatted(.number.precision(.fractionLength(0)))
+                        runs: String(format: "%d", stats.count ?? 0),
+                        miles: String(format: "%.0f", (stats.distance ?? 0) * 0.000621371),
+                        hours: String(format: "%.0f", (stats.elapsedTime ?? 0) / 3600)
                     )
                     
                     // Detailed Stats Cards
@@ -119,73 +119,51 @@ struct ProfileHeader: View {
 struct QuickStatsGrid: View {
     let runs: String
     let miles: String
-    let minutes: String
+    let hours: String
     
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: AppTheme.Spacing.md) {
-            QuickStatItem(
-                icon: "figure.run",
-                value: runs,
-                label: "Total Runs",
-                color: AppTheme.Colors.accent
-            )
-
-            QuickStatItem(
-                icon: "road.lanes",
-                value: miles,
-                label: "Miles",
-                color: AppTheme.Colors.accent
-            )
+        HStack(spacing: 0) {
+            QuickStatItem(value: runs, label: "RUNS", color: AppTheme.Colors.accent)
             
-            QuickStatItem(
-                icon: "clock.fill",
-                value: minutes,
-                label: "Hours",
-                color: AppTheme.Colors.warning
-            )
+            Divider()
+                .frame(height: 40)
+                .background(Color.white.opacity(0.08))
+            
+            QuickStatItem(value: miles, label: "MILES", color: AppTheme.Colors.accent)
+            
+            Divider()
+                .frame(height: 40)
+                .background(Color.white.opacity(0.08))
+            
+            QuickStatItem(value: hours, label: "HOURS", color: AppTheme.Colors.accent)
         }
+        .padding(.vertical, 20)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.07), lineWidth: 1))
     }
 }
 
 // MARK: - Quick Stat Item
 struct QuickStatItem: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-
-    let icon: String
     let value: String
     let label: String
     let color: Color
 
-    private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
-    }
-
-    private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
-    }
-
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.2))
-                    .frame(width: 50, height: 50)
-
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundColor(color)
-            }
-
+        VStack(spacing: 6) {
             Text(value)
-                .font(.system(.title, design: .monospaced).weight(.bold))
-                .foregroundColor(textPrimary)
-
+                .font(.system(size: 24, weight: .heavy, design: .monospaced))
+                .foregroundColor(.white)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            
             Text(label)
-                .font(AppTheme.Typography.caption)
-                .foregroundColor(textSecondary)
-                .multilineTextAlignment(.center)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                .tracking(1.2)
         }
-        .surfaceCard()
+        .frame(maxWidth: .infinity)
     }
 }
 
