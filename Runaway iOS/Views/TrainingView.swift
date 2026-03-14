@@ -63,7 +63,10 @@ struct TrainingView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 16) {
-                        // 0. Weekly Stats Card (moved from Activities)
+                        // Digital Twin Mirror (Primary Identity Layer)
+                        DigitalTwinMirrorCard()
+
+                        // 0. Weekly Stats Card
                         WeeklyStatsCard()
 
                         // 1. Adaptive Primary Insight (phase-aware dashboard)

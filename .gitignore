@@ -43,3 +43,4 @@ GoogleService-Info.plist
 # Swift Package Manager
 .build/Runaway-iOS-Info.plist
 build/
+Runaway iOSUITests/AppStoreScreenshots.swift

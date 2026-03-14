@@ -145,6 +145,7 @@ struct Runaway_iOSApp: App {
 
         if HealthKitManager.shared.isHealthKitAvailable {
             Task { await HealthKitManager.shared.requestAuthorization() }
+            Task { await BiometricService.shared.syncHealthData() }
         }
 
         Task {
