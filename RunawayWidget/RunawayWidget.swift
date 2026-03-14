@@ -175,43 +175,57 @@ struct RunawayWidgetEntryView : View {
 
     private var largeView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("ACTIVITY INTENSITY")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(WidgetTheme.secondary)
-                        .tracking(1.0)
-                    
-                    BarChart(days: entry.days, selectedActivities: entry.selectedActivities)
-                        .frame(height: 80)
-                }
+            // Header row with app name
+            HStack {
+                Text("RUNAWAY")
+                    .font(.system(size: 11, weight: .black))
+                    .italic()
+                    .foregroundColor(WidgetTheme.accent)
+                    .tracking(1.0)
+                Spacer()
+            }
+            .padding(.bottom, 16)
+
+            // Bar chart section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ACTIVITY INTENSITY")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(WidgetTheme.secondary)
+                    .tracking(1.2)
+                
+                BarChart(days: entry.days, selectedActivities: entry.selectedActivities)
+                    .frame(height: 90)
             }
             .padding(.bottom, 20)
             
+            // Bottom stats row
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(String(Calendar.current.component(.year, from: Date())))
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(WidgetTheme.secondary)
                     
                     Text(String(format: "%.0f", entry.miles))
-                        .font(.system(size: 40, weight: .heavy, design: .monospaced))
+                        .font(.system(size: 48, weight: .black, design: .monospaced))
                         .foregroundColor(WidgetTheme.accent)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
                     
                     Text("TOTAL MILES")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundColor(WidgetTheme.secondary)
+                        .tracking(1.0)
                 }
                 
                 Spacer()
                 
-                HStack(spacing: 16) {
+                HStack(spacing: 20) {
                     MiniProgressView(current: weeklyMileage, goal: entry.weeklyGoal, label: "WEEKLY", color: WidgetTheme.accent)
-                    MiniProgressView(current: entry.monthlyMiles, goal: entry.monthlyGoal, label: "MONTHLY", color: .green)
+                    MiniProgressView(current: entry.monthlyMiles, goal: entry.monthlyGoal, label: "MONTHLY", color: Color(red: 0.2, green: 0.9, blue: 0.5))
                 }
             }
         }
-        .padding(16)
+        .padding(20)
     }
 }
 
