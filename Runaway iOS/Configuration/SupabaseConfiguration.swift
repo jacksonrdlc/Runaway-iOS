@@ -8,6 +8,86 @@
 import Foundation
 import Supabase
 
+// MARK: - Simulator-only networking + auth workarounds
+
+#if targetEnvironment(simulator)
+
+/// Forces HTTP/2 by routing all requests through a local TCP CONNECT proxy.
+/// QUIC (HTTP/3) fails in the iOS Simulator — iOS 18.4 ignores assumesHTTP3Capable=false
+/// when HTTPS DNS SVCB records advertise h3. A TCP-only proxy physically prevents UDP/QUIC.
+/// Registered only in Simulator builds; production uses the default URLSession stack.
+private final class HTTP2ForcedURLProtocol: URLProtocol {
+
+    private static let handledKey = "HTTP2ForcedURLProtocol.handled"
+
+    private static let innerSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.connectionProxyDictionary = [
+            "HTTPSEnable": true,
+            "HTTPSProxy": "127.0.0.1",
+            "HTTPSPort": 18888,
+        ]
+        return URLSession(configuration: config)
+    }()
+
+    private var activeTask: URLSessionDataTask?
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        URLProtocol.property(forKey: handledKey, in: request) == nil
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let mutable = (request as NSURLRequest).mutableCopy() as? NSMutableURLRequest else {
+            client?.urlProtocol(self, didFailWithError: URLError(.unknown))
+            return
+        }
+        URLProtocol.setProperty(true, forKey: Self.handledKey, in: mutable)
+        var forwarded = mutable as URLRequest
+        forwarded.assumesHTTP3Capable = false
+
+        activeTask = Self.innerSession.dataTask(with: forwarded) { [weak self] data, response, error in
+            guard let self else { return }
+            if let error {
+                self.client?.urlProtocol(self, didFailWithError: error)
+                return
+            }
+            if let response { self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed) }
+            if let data { self.client?.urlProtocol(self, didLoad: data) }
+            self.client?.urlProtocolDidFinishLoading(self)
+        }
+        activeTask?.resume()
+    }
+
+    override func stopLoading() {
+        activeTask?.cancel()
+        activeTask = nil
+    }
+}
+
+// MARK: - UserDefaultsAuthStorage
+
+/// AuthLocalStorage backed by UserDefaults.
+/// Keychain requires entitlements that standalone injection tools don't have in the Simulator.
+/// UserDefaults lets sessions be pre-seeded via `xcrun simctl spawn … defaults write`.
+struct UserDefaultsAuthStorage: AuthLocalStorage {
+    private let defaults = UserDefaults.standard
+    func store(key: String, value: Data) throws {
+        defaults.set(value, forKey: key)
+    }
+    func retrieve(key: String) throws -> Data? {
+        defaults.data(forKey: key)
+    }
+    func remove(key: String) throws {
+        defaults.removeObject(forKey: key)
+    }
+}
+
+#endif // targetEnvironment(simulator)
+
+// MARK: - SupabaseConfiguration
+
 struct SupabaseConfiguration {
 
     // MARK: - Supabase Credentials
@@ -75,13 +155,28 @@ struct SupabaseConfiguration {
             throw ConfigurationError.missingSupabaseKey
         }
 
-        // Create client with auth redirect URL for email verification deep links
+        #if targetEnvironment(simulator)
+        // QUIC (HTTP/3) fails in the Simulator — route all Supabase traffic through
+        // HTTP2ForcedURLProtocol, which tunnels over a local TCP CONNECT proxy.
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.protocolClasses = [HTTP2ForcedURLProtocol.self] + (URLSessionConfiguration.default.protocolClasses ?? [])
+        let session = URLSession(configuration: sessionConfig)
+        let authOptions = SupabaseClientOptions.AuthOptions(
+            storage: UserDefaultsAuthStorage(),
+            redirectToURL: authRedirectURL
+        )
+        #else
+        let session = URLSession.shared
+        let authOptions = SupabaseClientOptions.AuthOptions(redirectToURL: authRedirectURL)
+        #endif
+
         let client = SupabaseClient(
             supabaseURL: url,
             supabaseKey: key,
             options: SupabaseClientOptions(
-                auth: SupabaseClientOptions.AuthOptions(
-                    redirectToURL: authRedirectURL
+                auth: authOptions,
+                global: SupabaseClientOptions.GlobalOptions(
+                    session: session
                 )
             )
         )
