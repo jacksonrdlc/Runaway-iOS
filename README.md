@@ -1,95 +1,124 @@
 # Runaway iOS
 
-A modern fitness tracking application that helps users monitor and visualize their athletic activities. The app provides real-time activity tracking, detailed statistics, and a widget for quick access to your fitness data.
+Native iOS running coach app with AI-powered analysis, real-time Strava/Garmin sync, Digital Twin, race course reconnaissance, and a home screen widget.
 
 ## Features
 
-- Real-time activity tracking and synchronization
-- Athlete profile management
-- Weekly and monthly activity statistics
-- iOS Widget support for quick activity overview
-- Beautiful UI with activity cards and charts
-- Support for multiple activity types (Running, Walking, etc.)
+- **AI Coaching**: Chat with Claude for personalized coaching, weekly summaries, and goal assessment
+- **Activity Sync**: Real-time sync from Strava and Garmin via Supabase Edge Functions
+- **Digital Twin**: Biometric enrichment and observation tracking across activities
+- **Race Reconnaissance**: Course maps with elevation charts and tactical insights
+- **Training Plans**: AI-generated weekly training plans with taper awareness
+- **Daily Commitments**: Micro-commitment tracking with fulfillment detection
+- **Goal Tracking**: Running goal management with progress monitoring
+- **Training Zones**: Heart rate and power zone configuration
+- **Home Screen Widget**: Activity overview, weekly summary, monthly mileage
+- **Silent Push**: Background widget refresh via APNs on new activity sync
 
 ## Tech Stack
 
-### Languages
-- Swift 5
-- SwiftUI for UI components
+- **Language**: Swift 5 / SwiftUI
+- **Minimum iOS**: 16.0
+- **Backend**: Supabase (Auth, PostgreSQL, Realtime)
+- **AI**: Runaway Coach API (Claude-powered)
+- **Dependencies** (Swift Package Manager): Supabase SDK, Alamofire, Polyline, CoreGPX, SwiftyJSON
+- **Widget**: WidgetKit (home screen families only)
 
-### Frameworks & Libraries
-- SwiftUI - Modern declarative UI framework
-- WidgetKit - For iOS home screen widgets
-- Supabase - Backend as a Service for:
-  - Real-time data synchronization
-  - User authentication
-  - Database storage
-- Charts - For data visualization
-- Polyline - For map route encoding/decoding
+## Architecture
 
-## Prerequisites
+```
+Singleton managers are the single source of truth:
 
-- Xcode 15.0 or later
-- iOS 16.0 or later
-- CocoaPods (for dependency management)
-- Supabase account and project
+DataManager.shared          ← central data store, drives widget updates
+AuthManager.shared          ← session & auth
+UserManager.shared          ← profile & preferences
+RealtimeService.shared      ← Supabase real-time subscriptions
+LocationManager.shared      ← GPS & location
 
-## Setup & Installation
+Data flow:
+  Supabase → RealtimeService → DataManager → Views (@EnvironmentObject)
+  New activity → APNs silent push → DataManager.refreshActivities() → WidgetCenter.reloadAllTimelines()
+```
 
-1. Clone the repository:
+### Service Layer (`Services/`)
+
+| Service | Purpose |
+|---------|---------|
+| `ActivityService` | Activity CRUD with Supabase |
+| `AthleteService` | Athlete profile management |
+| `CommitmentService` | Daily commitment tracking |
+| `GoalService` | Running goals & progress |
+| `RealtimeService` | Live Supabase subscriptions |
+| `RunawayCoachAPIService` | AI coaching API |
+| `EnhancedAnalysisService` | API-first with local fallback |
+| `GPSTrackingService` | Live activity recording |
+| `ActivityRecordingService` | Activity capture & processing |
+| `WidgetRefreshService` | Widget data management |
+
+### Widget
+
+Shares data via App Group `group.com.jackrudelic.runawayios` (UserDefaults). Activities encoded as `RAActivity` JSON strings. Widget locks to home screen families only (no standby/lock screen).
+
+## Setup
+
+1. Open the workspace:
+   ```bash
+   open "Runaway iOS.xcworkspace"
+   ```
+
+2. Copy the plist template and add credentials:
+   ```bash
+   cp Runaway-iOS-Info.plist.template Runaway-iOS-Info.plist
+   ```
+   Fill in `SUPABASE_URL` and `SUPABASE_KEY` (anon key, not service role).
+
+3. Build and run in Xcode targeting an iPhone 15 simulator or device.
+
+**Credentials priority**: Environment variables → Info.plist → null (will crash on first Supabase call)
+
+## Build & Test
+
 ```bash
-git clone [your-repository-url]
-cd "Runaway iOS"
-```
+# Build
+xcodebuild -workspace "Runaway iOS.xcworkspace" \
+  -scheme "Runaway iOS" \
+  -destination "platform=iOS Simulator,name=iPhone 15" build
 
-2. Install dependencies using CocoaPods:
-```bash
-pod install
-```
+# Test
+xcodebuild -project "Runaway iOS.xcodeproj" \
+  -scheme "Runaway iOS" \
+  -destination "platform=iOS Simulator,name=iPhone 15" test
 
-3. Create a `Config.xcconfig` file in the project root and add your Supabase credentials:
+# Widget extension
+xcodebuild -project "Runaway iOS.xcodeproj" \
+  -scheme "RunawayWidgetExtension" \
+  -destination "platform=iOS Simulator,name=iPhone 15" build
 ```
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-4. Open the workspace in Xcode:
-```bash
-open "Runaway iOS.xcworkspace"
-```
-
-5. Build and run the project in Xcode
 
 ## Database Schema
 
-The app uses the following main tables in Supabase:
-- `athletes` - User profiles and athlete information
-- `activities` - Workout and activity records
-- `athlete_stats` - Aggregated statistics for athletes
+Always reference the ERD before any database operations:
 
-## Widget Setup
+`Runaway iOS/Documentation/strava_erd.md`
 
-The app includes a home screen widget that displays:
-- Weekly activity summary
-- Recent activities
-- Monthly mileage
+Key tables: `activities` (90+ fields), `athletes`, `daily_commitments`, `activity_types`, `running_goals`, `gear`, `training_zones`, `weekly_training_plans`, `athlete_onboarding`.
 
-To enable the widget, long press on your home screen and add the "Runaway" widget.
+**Never assume column names** — verify against the ERD. Always join `activity_types` when querying activities. Use `athlete_id`, not `auth_user_id`, for activity queries.
 
-## Contributing
+## Deployment
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Distributed via Xcode → App Store Connect. No CI pipeline; manual archive and upload.
+
+## Troubleshooting
+
+**Widget not updating**: Check app group config (`group.com.jackrudelic.runawayios`), verify `WidgetCenter.shared.reloadAllTimelines()` fires after data changes.
+
+**API issues**: Call `APIConfiguration.RunawayCoach.printCurrentConfiguration()` to debug endpoint/auth config.
+
+**Real-time sync**: Call `SupabaseConfiguration.printConfiguration()` to verify credentials are loading. Check RealtimeService subscription is active.
+
+**Simulator-only code**: `HTTP2ForcedURLProtocol` and `UserDefaultsAuthStorage` are scoped to `#if targetEnvironment(simulator)` only.
 
 ## License
 
-[Your chosen license]
-
-## Contact
-
-Your Name - [@jacksonrdlc](https://twitter.com/jacksonrdlc) - jack@runawayendurance.com
-
-Project Link: [https://github.com/runaway-labs/Runaway-iOS](https://github.com/runaway-labs/Runaway-iOS)
+Proprietary — Runaway App

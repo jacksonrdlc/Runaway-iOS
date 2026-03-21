@@ -128,6 +128,19 @@ struct SupabaseConfiguration {
         return hardcodedSupabaseKey
     }
 
+    /// Strava OAuth Client ID
+    /// Priority: Environment Variable > Info.plist > nil
+    static var stravaClientID: String? {
+        if let envID = ProcessInfo.processInfo.environment["STRAVA_CLIENT_ID"] {
+            return envID
+        }
+        if let plistID = Bundle.main.infoDictionary?["STRAVA_CLIENT_ID"] as? String,
+           !plistID.isEmpty {
+            return plistID
+        }
+        return nil
+    }
+
     // MARK: - Hardcoded Credentials (NOT RECOMMENDED)
     // SECURITY: Never commit credentials to source control!
     // Use environment variables or Info.plist instead

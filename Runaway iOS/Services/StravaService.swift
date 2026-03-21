@@ -10,12 +10,11 @@ import Foundation
 class StravaService: ObservableObject {
     private let session = URLSession.shared
 
-    // Strava OAuth configuration
-    private let clientID = "118220" // Must match STRAVA_CLIENT_ID in data sync service
+    // Strava OAuth configuration — read from STRAVA_CLIENT_ID env var or Info.plist
+    private var clientID: String { SupabaseConfiguration.stravaClientID ?? "" }
 
-    // Supabase Edge Functions - Always use production
-    // (localhost doesn't work on physical devices)
-    private let dataSyncServiceBaseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co"
+    // Supabase Edge Functions base URL — read from SupabaseConfiguration
+    private var dataSyncServiceBaseURL: String { SupabaseConfiguration.supabaseURL ?? "" }
 
     @Published var isConnected = false
     @Published var isLoading = false
