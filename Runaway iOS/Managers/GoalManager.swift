@@ -43,10 +43,26 @@ final class GoalManager: GoalManagerProtocol {
 
         do {
             let goals = try await GoalService.getActiveGoals()
-            self.currentGoal = goals.first { !$0.isCompleted }
+            self.currentGoal = Self.selectPriorityGoal(from: goals)
         } catch {
             print("❌ GoalManager: Failed to load goals: \(error)")
         }
+    }
+
+    /// Selects the A-race (highest-distance upcoming race within 90 days).
+    /// Falls back to the nearest upcoming race if no distance data is available.
+    private static func selectPriorityGoal(from goals: [RunningGoal]) -> RunningGoal? {
+        let now = Date()
+        let horizon = now.addingTimeInterval(90 * 24 * 3600)
+        let upcoming = goals.filter { !$0.isCompleted && $0.deadline > now }
+        let within90 = upcoming.filter { $0.deadline <= horizon }
+
+        // Among races within 90 days, prefer the longest (A-race)
+        if let aRace = within90.max(by: { $0.targetValue < $1.targetValue }) {
+            return aRace
+        }
+        // Fall back to the nearest upcoming race
+        return upcoming.first
     }
 
     // MARK: - Refresh

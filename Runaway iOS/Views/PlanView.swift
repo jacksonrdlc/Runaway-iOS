@@ -290,6 +290,16 @@ struct NextRaceCard: View {
                         .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
                         .lineLimit(2)
 
+                    if let distLabel = race.distanceLabel {
+                        Text(distLabel)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(urgencyColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(urgencyColor.opacity(0.15))
+                            .cornerRadius(6)
+                    }
+
                     if let loc = race.locationString {
                         Label(loc, systemImage: "mappin")
                             .font(.system(size: 13))

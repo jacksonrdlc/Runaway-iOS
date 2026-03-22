@@ -19,6 +19,7 @@ struct AthleteRace: Codable, Identifiable, Sendable {
     let countryCode: String?
     let logoUrl: String?
     let externalUrl: String?
+    let distanceMiles: Double?
     let syncedAt: String?
 
     enum CodingKeys: String, CodingKey {
@@ -32,6 +33,7 @@ struct AthleteRace: Codable, Identifiable, Sendable {
         case countryCode     = "country_code"
         case logoUrl         = "logo_url"
         case externalUrl     = "external_url"
+        case distanceMiles   = "distance_miles"
         case syncedAt        = "synced_at"
     }
 
@@ -56,16 +58,44 @@ struct AthleteRace: Codable, Identifiable, Sendable {
         return "\(cityPart), \(statePart)"
     }
 
+    /// Detected or stored distance in miles. Prefer stored API value; fall back to name parsing.
     var detectedDistance: Double {
+        if let stored = distanceMiles, stored > 0 { return stored }
+        return nameBasedDistance ?? 13.1
+    }
+
+    /// Returns distance only when confidently identified — used for display and A-race prioritization.
+    var knownDistance: Double? {
+        if let stored = distanceMiles, stored > 0 { return stored }
+        return nameBasedDistance
+    }
+
+    private var nameBasedDistance: Double? {
         let lower = raceName.lowercased()
-        if lower.contains("marathon") && !lower.contains("half") { return 26.219 }
-        if lower.contains("half") { return 13.11 }
-        if lower.contains("10k") { return 6.21 }
-        if lower.contains("5k") { return 3.11 }
-        if lower.contains("50k") { return 31.07 }
+        if lower.contains("100 miler") || lower.contains("100mi") { return 100.0 }
         if lower.contains("100k") { return 62.14 }
-        if lower.contains("100 miler") { return 100.0 }
-        return 26.2 
+        if lower.contains("50k") { return 31.07 }
+        if lower.contains("marathon") && !lower.contains("half") { return 26.219 }
+        if lower.contains("half marathon") || lower.contains("half-marathon") { return 13.11 }
+        if lower.contains("half") { return 13.11 }
+        if lower.contains("10k") || lower.contains("10 km") { return 6.21 }
+        if lower.contains("5k") || lower.contains("5 km") { return 3.11 }
+        return nil
+    }
+
+    /// Human-readable distance label for display.
+    var distanceLabel: String? {
+        guard let d = knownDistance else { return nil }
+        switch d {
+        case 3.0..<3.5:   return "5K"
+        case 6.0..<6.5:   return "10K"
+        case 13.0..<13.5: return "Half Marathon"
+        case 26.0..<27.0: return "Marathon"
+        case 31.0..<32.0: return "50K"
+        case 62.0..<63.0: return "100K"
+        case 99.0...101.0: return "100 Mi"
+        default:           return String(format: "%.1f mi", d)
+        }
     }
 
     func toRunningGoal() -> RunningGoal {
