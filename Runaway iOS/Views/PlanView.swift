@@ -108,11 +108,11 @@ struct PlanView: View {
     private var upcomingContent: some View {
         ScrollView {
             VStack(spacing: AppTheme.Spacing.lg) {
-                // ── Next Race ──────────────────────────────
-                if let race = nextRace {
-                    NextRaceCard(race: race)
-                } else {
+                // ── Upcoming Races Carousel ────────────────
+                if upcomingRaces.isEmpty {
                     NoRaceCard()
+                } else {
+                    RaceCarousel(races: upcomingRaces)
                 }
 
                 // ── Training Plan ──────────────────────────
@@ -208,10 +208,44 @@ struct PlanView: View {
     }
 }
 
+// MARK: - Race Carousel
+
+struct RaceCarousel: View {
+    let races: [AthleteRace]
+    @State private var currentIndex = 0
+
+    var body: some View {
+        VStack(spacing: 8) {
+            TabView(selection: $currentIndex) {
+                ForEach(Array(races.enumerated()), id: \.element.id) { index, race in
+                    NextRaceCard(race: race, index: index, total: races.count)
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: 200)
+
+            if races.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(0..<races.count, id: \.self) { i in
+                        Capsule()
+                            .fill(i == currentIndex ? AppTheme.Colors.accent : Color.white.opacity(0.2))
+                            .frame(width: i == currentIndex ? 18 : 6, height: 6)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentIndex)
+                            .onTapGesture { currentIndex = i }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Next Race Card
 
 struct NextRaceCard: View {
     let race: AthleteRace
+    let index: Int
+    let total: Int
     @State private var showingCourseRecon = false
 
     private var daysUntil: Int {
@@ -232,17 +266,21 @@ struct NextRaceCard: View {
         return AppTheme.Colors.accent
     }
 
+    private var cardLabel: String {
+        total > 1 ? "RACE \(index + 1) OF \(total)" : "NEXT RACE"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Rectangle()
-                .fill(AppTheme.Colors.accent)
+                .fill(urgencyColor)
                 .frame(height: 3)
                 .cornerRadius(2)
                 .padding(.bottom, 16)
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("NEXT RACE")
+                    Text(cardLabel)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                         .tracking(1.2)
@@ -261,7 +299,7 @@ struct NextRaceCard: View {
                     Text(raceDate)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
-                    
+
                     Button { showingCourseRecon = true } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "mountain.2.fill")
@@ -271,7 +309,7 @@ struct NextRaceCard: View {
                         .foregroundColor(.black)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(AppTheme.Colors.accent)
+                        .background(urgencyColor)
                         .cornerRadius(20)
                     }
                     .padding(.top, 8)
