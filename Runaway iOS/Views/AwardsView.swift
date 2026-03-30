@@ -12,6 +12,7 @@ import SwiftUI
 struct AwardsView: View {
     @Environment(DataManager.self) private var dataManager
     @ObservedObject private var awardsService = AwardsService.shared
+    @ObservedObject private var breakthroughService = BreakthroughService.shared
     @State private var awardsData: [(award: AwardDefinition, isEarned: Bool, progress: Double)] = []
     @State private var selectedCategory: AwardCategory? = nil
     @State private var selectedAward: AwardDefinition? = nil
@@ -23,6 +24,11 @@ struct AwardsView: View {
 
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
+                    // Breakthrough Milestones
+                    if !breakthroughService.milestones.isEmpty {
+                        BreakthroughsSection(milestones: breakthroughService.milestones)
+                    }
+
                     // Summary Header
                     AwardsSummaryHeader(
                         earnedCount: awardsData.filter { $0.isEarned }.count,
@@ -102,6 +108,8 @@ struct AwardsView: View {
     private func loadAwards() async {
         let athleteId = dataManager.athlete?.id ?? 0
 
+        await breakthroughService.fetchMilestones(for: athleteId)
+
         // Load lifetime stats with a single DB call (efficient!)
         await awardsService.loadLifetimeStats(for: athleteId)
 
@@ -124,6 +132,63 @@ struct AwardsView: View {
         case .silver: return 2
         case .bronze: return 1
         }
+    }
+}
+
+// MARK: - Breakthroughs Section
+
+struct BreakthroughsSection: View {
+    let milestones: [BreakthroughMilestone]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Text("Breakthroughs")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .padding(.horizontal, AppTheme.Spacing.md)
+
+            ForEach(milestones) { milestone in
+                BreakthroughCard(milestone: milestone)
+            }
+        }
+    }
+}
+
+struct BreakthroughCard: View {
+    let milestone: BreakthroughMilestone
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: milestone.detectedAt)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+            Text(milestone.title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+
+            Text(milestone.coachMessage)
+                .font(.system(size: 14))
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(formattedDate)
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .padding(.top, 2)
+        }
+        .padding(AppTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            ThemeManager.shared.isDarkMode
+                ? AppTheme.Colors.DarkMode.cardBackground
+                : AppTheme.Colors.LightMode.cardBackground
+        )
+        .cornerRadius(12)
+        .padding(.horizontal, AppTheme.Spacing.md)
     }
 }
 
