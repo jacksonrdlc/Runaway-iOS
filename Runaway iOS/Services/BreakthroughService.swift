@@ -42,7 +42,7 @@ class BreakthroughService: ObservableObject {
         let activityIdRows: [IdRow] = try await supabase
             .from("activities")
             .select("id")
-            .eq("athlete_id", athleteId)
+            .eq("athlete_id", value: athleteId)
             .order("activity_date", ascending: false)
             .limit(500)
             .execute()
@@ -53,8 +53,8 @@ class BreakthroughService: ObservableObject {
         return try await supabase
             .from("activity_insights")
             .select("activity_id, insight_data")
-            .eq("insight_type", "breakthrough_milestone")
-            .in("activity_id", activityIdRows.map { $0.id })
+            .eq("insight_type", value: "breakthrough_milestone")
+            .in("activity_id", values: activityIdRows.map { $0.id })
             .execute()
             .value
     }
