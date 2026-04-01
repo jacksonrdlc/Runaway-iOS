@@ -41,6 +41,7 @@ struct AthleteRace: Codable, Identifiable, Sendable {
         guard let s = raceDate else { return nil }
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withFullDate]
+        f.timeZone = TimeZone(identifier: "UTC")
         return f.date(from: s)
     }
 

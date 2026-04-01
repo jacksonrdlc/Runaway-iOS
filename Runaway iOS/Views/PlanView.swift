@@ -257,6 +257,7 @@ struct NextRaceCard: View {
         guard let d = race.parsedDate else { return "" }
         let f = DateFormatter()
         f.dateFormat = "MMMM d, yyyy"
+        f.timeZone = TimeZone(identifier: "UTC")
         return f.string(from: d)
     }
 
@@ -391,6 +392,7 @@ struct PastRaceRow: View {
         guard let d = race.parsedDate else { return race.raceDate ?? "" }
         let f = DateFormatter()
         f.dateFormat = "MMM d, yyyy"
+        f.timeZone = TimeZone(identifier: "UTC")
         return f.string(from: d)
     }
 
