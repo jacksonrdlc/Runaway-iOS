@@ -98,9 +98,8 @@ class PlanViewModel: ObservableObject {
             return
         }
 
-        // No plan exists - user will need to generate one
-        currentPlan = nil
-        displayedPlan = nil
+        // No plan exists - auto-generate for the current week
+        await generatePlan()
     }
 
     func generatePlan() async {
