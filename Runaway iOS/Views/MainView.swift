@@ -15,6 +15,7 @@ struct MainView: View {
     @Environment(AppRouter.self) private var router
     @State var selectedTab = 0
     @State var isDataReady: Bool = false
+    @State private var showingRunRecording = false
 
     private var backgroundColor: Color {
         themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
@@ -62,6 +63,15 @@ struct MainView: View {
                 }
             }
             .ignoresSafeArea(.keyboard)
+            .overlay(alignment: .bottomTrailing) {
+                if selectedTab == 0 {
+                    StartRunFAB { showingRunRecording = true }
+                        .padding(.trailing, AppTheme.Spacing.lg)
+                        .padding(.bottom, 90) // Clear the tab bar + home indicator
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: selectedTab)
             .onChange(of: selectedTab) { oldTab, newTab in
                 let tabNames = ["Dashboard", "Activities", "Races", "Profile"]
                 let tabName = newTab < tabNames.count ? tabNames[newTab] : "Unknown"
@@ -70,6 +80,19 @@ struct MainView: View {
                     "tab_index": newTab,
                     "previous_tab": oldTab
                 ])
+            }
+            .fullScreenCover(isPresented: $showingRunRecording) {
+                NavigationStack {
+                    RunRecordingView()
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("Close") {
+                                    showingRunRecording = false
+                                }
+                                .foregroundColor(AppTheme.Colors.accent)
+                            }
+                        }
+                }
             }
             .task {
                 await loadInitialData()
@@ -191,6 +214,32 @@ extension MainView {
         } catch {
             await MainActor.run { isDataReady = true }
         }
+    }
+}
+
+// MARK: - Start Run FAB
+
+/// Floating action button for starting a run, overlaid on the Dashboard tab.
+/// Tap opens `RunRecordingView` as a full-screen modal — full screen rather
+/// than a sheet so a swipe-down can't accidentally end a run mid-stride.
+private struct StartRunFAB: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: {
+            CelebrationService.shared.selectionChanged()
+            action()
+        }) {
+            Image(systemName: "figure.run")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 64, height: 64)
+                .background(AppTheme.Colors.accent)
+                .clipShape(Circle())
+                .shadow(color: Color.black.opacity(0.25), radius: 6, x: 0, y: 3)
+        }
+        .accessibilityLabel("Start a new run")
+        .accessibilityHint("Begins recording a run with GPS and audio coaching")
     }
 }
 

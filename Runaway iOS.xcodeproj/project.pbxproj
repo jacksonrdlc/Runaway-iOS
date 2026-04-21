@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 100;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -45,14 +45,12 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		8EEECCE72D64D02D0053014A /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
 			dstPath = "";
-			dstSubfolderSpec = 13;
+			dstSubfolder = PlugIns;
 			files = (
 				8EEECCE22D64D02D0053014A /* RunawayWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
@@ -71,6 +69,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"Runaway iOSTests/Runaway_iOSTests.swift",
+				"Runaway iOSTests/RunCoachSchedulerTests.swift",
 			);
 			target = 8EEECC412D64CF150053014A /* Runaway iOS */;
 		};
@@ -78,6 +77,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"Runaway iOSTests/Runaway_iOSTests.swift",
+				"Runaway iOSTests/RunCoachSchedulerTests.swift",
 			);
 			target = 8EEECC512D64CF170053014A /* Runaway iOSTests */;
 		};
@@ -127,7 +127,6 @@
 /* Begin PBXFrameworksBuildPhase section */
 		8EEECC3F2D64CF150053014A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				8EEECE532D68CD080053014A /* Supabase in Frameworks */,
 				8EEECE392D68C4590053014A /* Realtime in Frameworks */,
@@ -136,30 +135,23 @@
 				8EEECE352D68C4590053014A /* Functions in Frameworks */,
 				8EEECE3B2D68C4590053014A /* Storage in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC4F2D64CF170053014A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC592D64CF170053014A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECCC92D64D02B0053014A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				8EEECCD12D64D02B0053014A /* SwiftUI.framework in Frameworks */,
 				8EEECCCF2D64D02B0053014A /* WidgetKit.framework in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -243,8 +235,6 @@
 				8EEECC542D64CF170053014A /* PBXTargetDependency */,
 			);
 			name = "Runaway iOSTests";
-			packageProductDependencies = (
-			);
 			productName = "Runaway iOSTests";
 			productReference = 8EEECC522D64CF170053014A /* Runaway iOSTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -266,8 +256,6 @@
 				8EEECC5F2D64CF170053014A /* Runaway iOSUITests */,
 			);
 			name = "Runaway iOSUITests";
-			packageProductDependencies = (
-			);
 			productName = "Runaway iOSUITests";
 			productReference = 8EEECC5C2D64CF170053014A /* Runaway iOSUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -282,14 +270,10 @@
 			);
 			buildRules = (
 			);
-			dependencies = (
-			);
 			fileSystemSynchronizedGroups = (
 				8EEECCD22D64D02B0053014A /* RunawayWidget */,
 			);
 			name = RunawayWidgetExtension;
-			packageProductDependencies = (
-			);
 			productName = RunawayWidgetExtension;
 			productReference = 8EEECCCC2D64D02B0053014A /* RunawayWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -302,7 +286,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1620;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					8EEECC412D64CF150053014A = {
 						CreatedOnToolsVersion = 16.2;
@@ -332,7 +316,7 @@
 			packageReferences = (
 				8EEECE312D68C4590053014A /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
-			preferredProjectObjectVersion = 77;
+			preferredProjectObjectVersion = 100;
 			productRefGroup = 8EEECC432D64CF150053014A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -348,62 +332,46 @@
 /* Begin PBXResourcesBuildPhase section */
 		8EEECC402D64CF150053014A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC502D64CF170053014A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC5A2D64CF170053014A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECCCA2D64D02B0053014A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8EEECC3E2D64CF150053014A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC4E2D64CF170053014A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECC582D64CF170053014A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8EEECCC82D64D02B0053014A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -426,7 +394,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		8EEECC642D64CF170053014A /* Debug */ = {
+		8EEECC642D64CF170053014A /* Debug configuration for PBXProject "Runaway iOS" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -485,12 +453,13 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
 		};
-		8EEECC652D64CF170053014A /* Release */ = {
+		8EEECC652D64CF170053014A /* Release configuration for PBXProject "Runaway iOS" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -542,12 +511,13 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
-		8EEECC672D64CF170053014A /* Debug */ = {
+		8EEECC672D64CF170053014A /* Debug configuration for PBXNativeTarget "Runaway iOS" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -568,7 +538,9 @@
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Runaway needs background location access to continue tracking your run when your phone is locked or in your pocket.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Runaway needs your location to track your runs and display your route on the map.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Runaway uses speech recognition to enable hands-free voice commands during your runs, allowing you to interact with your audio coach without looking at your phone.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Runaway uses motion sensors to measure your running cadence during the onboarding assessment, helping personalize your training recommendations.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Runaway uses speech recognition to enable voice commands during your runs, allowing hands-free control of your workout.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -591,7 +563,7 @@
 			};
 			name = Debug;
 		};
-		8EEECC682D64CF170053014A /* Release */ = {
+		8EEECC682D64CF170053014A /* Release configuration for PBXNativeTarget "Runaway iOS" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -612,7 +584,9 @@
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Runaway needs background location access to continue tracking your run when your phone is locked or in your pocket.";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Runaway iOS needs Location access for \"some reason\"!";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Runaway needs your location to track your runs and display your route on the map.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Runaway uses speech recognition to enable hands-free voice commands during your runs, allowing you to interact with your audio coach without looking at your phone.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Runaway uses motion sensors to measure your running cadence during the onboarding assessment, helping personalize your training recommendations.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Runaway uses speech recognition to enable voice commands during your runs, allowing hands-free control of your workout.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -635,7 +609,7 @@
 			};
 			name = Release;
 		};
-		8EEECC6A2D64CF170053014A /* Debug */ = {
+		8EEECC6A2D64CF170053014A /* Debug configuration for PBXNativeTarget "Runaway iOSTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -653,7 +627,7 @@
 			};
 			name = Debug;
 		};
-		8EEECC6B2D64CF170053014A /* Release */ = {
+		8EEECC6B2D64CF170053014A /* Release configuration for PBXNativeTarget "Runaway iOSTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -671,7 +645,7 @@
 			};
 			name = Release;
 		};
-		8EEECC6D2D64CF170053014A /* Debug */ = {
+		8EEECC6D2D64CF170053014A /* Debug configuration for PBXNativeTarget "Runaway iOSUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -687,7 +661,7 @@
 			};
 			name = Debug;
 		};
-		8EEECC6E2D64CF170053014A /* Release */ = {
+		8EEECC6E2D64CF170053014A /* Release configuration for PBXNativeTarget "Runaway iOSUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -703,7 +677,7 @@
 			};
 			name = Release;
 		};
-		8EEECCE52D64D02D0053014A /* Debug */ = {
+		8EEECCE52D64D02D0053014A /* Debug configuration for PBXNativeTarget "RunawayWidgetExtension" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -731,7 +705,7 @@
 			};
 			name = Debug;
 		};
-		8EEECCE62D64D02D0053014A /* Release */ = {
+		8EEECCE62D64D02D0053014A /* Release configuration for PBXNativeTarget "RunawayWidgetExtension" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -765,46 +739,41 @@
 		8EEECC3D2D64CF150053014A /* Build configuration list for PBXProject "Runaway iOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				8EEECC642D64CF170053014A /* Debug */,
-				8EEECC652D64CF170053014A /* Release */,
+				8EEECC642D64CF170053014A /* Debug configuration for PBXProject "Runaway iOS" */,
+				8EEECC652D64CF170053014A /* Release configuration for PBXProject "Runaway iOS" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		8EEECC662D64CF170053014A /* Build configuration list for PBXNativeTarget "Runaway iOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				8EEECC672D64CF170053014A /* Debug */,
-				8EEECC682D64CF170053014A /* Release */,
+				8EEECC672D64CF170053014A /* Debug configuration for PBXNativeTarget "Runaway iOS" */,
+				8EEECC682D64CF170053014A /* Release configuration for PBXNativeTarget "Runaway iOS" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		8EEECC692D64CF170053014A /* Build configuration list for PBXNativeTarget "Runaway iOSTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				8EEECC6A2D64CF170053014A /* Debug */,
-				8EEECC6B2D64CF170053014A /* Release */,
+				8EEECC6A2D64CF170053014A /* Debug configuration for PBXNativeTarget "Runaway iOSTests" */,
+				8EEECC6B2D64CF170053014A /* Release configuration for PBXNativeTarget "Runaway iOSTests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		8EEECC6C2D64CF170053014A /* Build configuration list for PBXNativeTarget "Runaway iOSUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				8EEECC6D2D64CF170053014A /* Debug */,
-				8EEECC6E2D64CF170053014A /* Release */,
+				8EEECC6D2D64CF170053014A /* Debug configuration for PBXNativeTarget "Runaway iOSUITests" */,
+				8EEECC6E2D64CF170053014A /* Release configuration for PBXNativeTarget "Runaway iOSUITests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 		8EEECCE42D64D02D0053014A /* Build configuration list for PBXNativeTarget "RunawayWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				8EEECCE52D64D02D0053014A /* Debug */,
-				8EEECCE62D64D02D0053014A /* Release */,
+				8EEECCE52D64D02D0053014A /* Debug configuration for PBXNativeTarget "RunawayWidgetExtension" */,
+				8EEECCE62D64D02D0053014A /* Release configuration for PBXNativeTarget "RunawayWidgetExtension" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */

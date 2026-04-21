@@ -25,6 +25,14 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
     private var heartRateQuery: HKAnchoredObjectQuery?
     private var pendingLocations: [CLLocation] = []
 
+    // Live distance accumulator for the audio coach scheduler. This is a
+    // separate accumulation from pendingLocations (which gets drained into
+    // HealthKit in batches) so cue timing doesn't depend on the HealthKit
+    // insert cadence.
+    private var liveDistanceMeters: Double = 0
+    private var lastLocationForDistance: CLLocation?
+    private var workoutStartDate: Date?
+
     override init() {
         self.healthStore = HealthKitManager.shared.healthStore
         super.init()
@@ -49,11 +57,17 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
 
         routeBuilder = HKWorkoutRouteBuilder(healthStore: healthStore, device: .local())
         pendingLocations = []
+        liveDistanceMeters = 0
+        lastLocationForDistance = nil
+        workoutStartDate = Date()
 
         try await workoutBuilder?.beginCollection(at: Date())
 
         isRecording = true
         startHeartRateQuery()
+
+        // Prime the audio coach scheduler. No-op if audio coaching is off.
+        RunCoachScheduler.shared.start()
 
         print("HealthKit workout session started")
     }
@@ -63,6 +77,20 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
     func addLocationSample(_ location: CLLocation) {
         guard routeBuilder != nil, isRecording else { return }
         pendingLocations.append(location)
+
+        // Update the live distance accumulator and notify the audio coach.
+        // First location seeds the accumulator with no delta.
+        if let previous = lastLocationForDistance {
+            liveDistanceMeters += location.distance(from: previous)
+        }
+        lastLocationForDistance = location
+
+        if let startDate = workoutStartDate {
+            RunCoachScheduler.shared.update(
+                distance: liveDistanceMeters,
+                elapsedTime: Date().timeIntervalSince(startDate)
+            )
+        }
 
         // Batch insert every 10 locations for efficiency
         if pendingLocations.count >= 10 {
@@ -195,7 +223,14 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
         self.heartRateSamples = []
         self.currentHeartRate = nil
         self.pendingLocations = []
+        self.liveDistanceMeters = 0
+        self.lastLocationForDistance = nil
+        self.workoutStartDate = nil
         isRecording = false
+
+        // Stop the audio coach scheduler. This silences any in-flight cue
+        // and deactivates the audio session so Music/Spotify/Podcasts resume.
+        RunCoachScheduler.shared.stop()
     }
 
     // MARK: - Save Existing Activity to HealthKit

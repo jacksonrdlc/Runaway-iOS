@@ -190,18 +190,7 @@ struct SettingsView: View {
                 }
             }
 
-            // TODO: Re-enable when background audio mode is added back
-            // NavigationLink(destination: CoachSettingsView()) {
-            //     SettingsRow(
-            //         icon: "brain.head.profile",
-            //         title: "Coach Settings",
-            //         subtitle: "Customize AI coaching preferences",
-            //         color: AppTheme.Colors.success
-            //     ) {
-            //         // Navigation handled by NavigationLink
-            //     }
-            // }
-            // .buttonStyle(PlainButtonStyle())
+            AudioCoachingRow(colors: colors)
 
             if let athleteId = dataManager.athlete?.id {
                 NavigationLink(destination: RestDayHistoryView(athleteId: athleteId)) {
@@ -1297,6 +1286,98 @@ struct GarminIntegrationRow: View {
         .background(cardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(color: themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 4, x: 0, y: 1)
+    }
+}
+
+// MARK: - Audio Coaching Row
+
+/// Phase 1 audio-coaching settings — master toggle plus a Test cue button
+/// that speaks a short utterance through `AudioCueService`. Exercises the
+/// full session-activation / ducking / deactivation path so the user can
+/// verify ducking and recovery before relying on it during a run.
+struct AudioCoachingRow: View {
+    @ObservedObject private var coachSettings = CoachSettingsStore.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
+    let colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color)
+
+    private var isEnabled: Bool {
+        coachSettings.settings.isEnabled
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            HStack(spacing: AppTheme.Spacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.Colors.success.opacity(0.2))
+                        .frame(width: 40, height: 40)
+
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.title3)
+                        .foregroundColor(AppTheme.Colors.success)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Audio Coaching")
+                        .font(AppTheme.Typography.body.weight(.medium))
+                        .foregroundColor(colors.textPrimary)
+
+                    Text(isEnabled ? "Beta — spoken cues during runs" : "Spoken cues during runs")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(colors.textSecondary)
+                }
+
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { coachSettings.settings.isEnabled },
+                    set: { newValue in
+                        coachSettings.settings.isEnabled = newValue
+                        AnalyticsService.shared.track(
+                            newValue ? .audioCoachingEnabled : .audioCoachingDisabled,
+                            category: .audioCoaching
+                        )
+                        if !newValue {
+                            AudioCueService.shared.stop()
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .tint(AppTheme.Colors.accent)
+            }
+
+            if isEnabled {
+                Divider()
+
+                Button {
+                    AudioCueService.shared.prime()
+                    AudioCueService.shared.speakCue(
+                        "Audio coaching is working. You're all set."
+                    )
+                } label: {
+                    HStack(spacing: AppTheme.Spacing.sm) {
+                        Image(systemName: "play.circle.fill")
+                        Text("Test cue")
+                            .font(AppTheme.Typography.caption.weight(.medium))
+                    }
+                    .foregroundColor(AppTheme.Colors.accent)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(AppTheme.Colors.accent.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(colors.cardBg)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .shadow(
+            color: themeManager.isDarkMode ? Color.black.opacity(0.3) : Color.black.opacity(0.08),
+            radius: 4,
+            x: 0,
+            y: 2
+        )
     }
 }
 
