@@ -11,10 +11,38 @@ import Charts
 struct AthleteView: View {
     let athlete: Athlete
     let stats: AthleteStats
+    @Environment(DataManager.self) private var dataManager
 
     private var lifetimeMiles: Double { (stats.distance ?? 0) * 0.000621371 }
     private var lifetimeRuns: Int { stats.count ?? 0 }
     private var lifetimeHours: Int { Int((stats.elapsedTime ?? 0) / 3600) }
+
+    private struct PREntry { let label: String; let meters: ClosedRange<Double> }
+    private let prDistances: [PREntry] = [
+        PREntry(label: "5K",           meters: 4700...5300),
+        PREntry(label: "10K",          meters: 9400...10600),
+        PREntry(label: "Half Marathon", meters: 19500...22000),
+        PREntry(label: "Marathon",     meters: 40000...44500),
+    ]
+
+    private func bestTime(for range: ClosedRange<Double>) -> TimeInterval? {
+        dataManager.activities
+            .filter { a in
+                guard let d = a.distance, let t = a.elapsed_time, d > 0, t > 0 else { return false }
+                return range.contains(d)
+            }
+            .compactMap { $0.elapsed_time }
+            .min()
+    }
+
+    private func formatPRTime(_ seconds: TimeInterval) -> String {
+        let h = Int(seconds) / 3600
+        let m = (Int(seconds) % 3600) / 60
+        let s = Int(seconds) % 60
+        return h > 0
+            ? String(format: "%d:%02d:%02d", h, m, s)
+            : String(format: "%d:%02d", m, s)
+    }
 
     var body: some View {
         ZStack {
@@ -69,13 +97,15 @@ struct AthleteView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         EyebrowLabel(text: "PERSONAL BESTS")
                         VStack(spacing: 0) {
-                            PersonalBestEmptyRow(distance: "5K")
-                            Divider().background(Color.white.opacity(0.06))
-                            PersonalBestEmptyRow(distance: "10K")
-                            Divider().background(Color.white.opacity(0.06))
-                            PersonalBestEmptyRow(distance: "Half Marathon")
-                            Divider().background(Color.white.opacity(0.06))
-                            PersonalBestEmptyRow(distance: "Marathon")
+                            ForEach(Array(prDistances.enumerated()), id: \.offset) { index, entry in
+                                if index > 0 {
+                                    Divider().background(Color.white.opacity(0.06))
+                                }
+                                PersonalBestRow(
+                                    distance: entry.label,
+                                    time: bestTime(for: entry.meters).map { formatPRTime($0) }
+                                )
+                            }
                         }
                         .background(AppTheme.Colors.DarkMode.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -136,32 +166,37 @@ struct AthleteView: View {
     }
 }
 
-// MARK: - Personal Best Empty Row
-private struct PersonalBestEmptyRow: View {
+// MARK: - Personal Best Row
+private struct PersonalBestRow: View {
     let distance: String
+    let time: String? // nil = no PR yet
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(AppTheme.Colors.warmAmber.opacity(0.1))
+                    .fill(time != nil
+                          ? AppTheme.Colors.warmAmber.opacity(0.16)
+                          : Color.white.opacity(0.05))
                     .frame(width: 36, height: 36)
                 Image(systemName: "star.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(AppTheme.Colors.warmAmber.opacity(0.5))
+                    .foregroundColor(time != nil
+                                     ? AppTheme.Colors.warmAmber
+                                     : AppTheme.Colors.DarkMode.textTertiary.opacity(0.4))
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(distance)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
-                Text("No PR yet")
+                Text(time != nil ? "Personal best" : "No PR yet")
                     .font(.system(size: 12, design: .rounded))
                     .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
             }
             Spacer()
-            Text("--:--")
+            Text(time ?? "--:--")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                .foregroundColor(time != nil ? .white : AppTheme.Colors.DarkMode.textTertiary)
                 .monospacedDigit()
         }
         .padding(.horizontal, 14)

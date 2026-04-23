@@ -16,7 +16,6 @@ import SwiftUI
 struct TrainingView: View {
     @Environment(DataManager.self) var dataManager
     @Environment(AppRouter.self) private var router
-    @State private var showingCoachChat = false
 
     private var greetingPrefix: String {
         let h = Calendar.current.component(.hour, from: Date())
@@ -82,32 +81,9 @@ struct TrainingView: View {
                 }
             }
 
-            // ── AI Coach FAB ───────────────────────────────────────────
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: { showingCoachChat = true }) {
-                        Image(systemName: "brain.head.profile")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(Color(red: 0.10, green: 0.05, blue: 0))
-                            .frame(width: AppTheme.Layout.fabSize, height: AppTheme.Layout.fabSize)
-                            .background(AppTheme.Colors.accentGradient)
-                            .clipShape(Circle())
-                            .shadow(color: AppTheme.Colors.warmAmber.opacity(0.45), radius: 12, x: 0, y: 4)
-                    }
-                    .accessibilityLabel("Open AI Coach")
-                    .padding(.trailing, AppTheme.Layout.fabOffset)
-                    .padding(.bottom, AppTheme.Layout.fabOffset)
-                }
-            }
         }
         .navigationBarHidden(true)
         .refreshable { await dataManager.refreshActivities() }
-        .sheet(isPresented: $showingCoachChat) {
-            NavigationView { ChatView() }
-        }
     }
 
     // MARK: - Latest section
