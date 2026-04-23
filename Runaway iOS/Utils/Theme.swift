@@ -33,6 +33,7 @@ struct AppTheme {
         static let teal      = Color(red: 0.0, green: 0.475, blue: 0.420)
         static let tealLight = Color(red: 0.15, green: 0.60, blue: 0.55)
         static let tealDark  = Color(red: 0.0, green: 0.35, blue: 0.30)
+        static let swimBlue  = Color(red: 0.251, green: 0.651, blue: 0.902) // #40A6E6
         static let darkNavy  = Color(red: 0.05, green: 0.06, blue: 0.09)
 
         // MARK: - Accent (theme-aware)
@@ -139,7 +140,7 @@ struct AppTheme {
             case "walk", "hike": return forestGreenLight
             case "weight training", "weighttraining", "workout": return deepPurpleLight
             case "bike", "ride", "cycling": return tealLight
-            case "swim", "swimming": return Color(red: 0.25, green: 0.65, blue: 0.90)
+            case "swim", "swimming": return swimBlue
             case "yoga": return deepPurpleLight
             default: return amberLight
             }
@@ -248,6 +249,11 @@ struct AppTheme {
         static let xxxl: CGFloat = 32
         static let huge: CGFloat = 40
         static let massive: CGFloat = 48
+        // Design-system aliases (match CSS --sp-* tokens)
+        static let xl2: CGFloat = 24
+        static let xl3: CGFloat = 32
+        static let xl4: CGFloat = 40
+        static let xl5: CGFloat = 48
     }
 
     // MARK: - Corner Radius
@@ -259,6 +265,7 @@ struct AppTheme {
         static let extraLarge: CGFloat = 20
         static let huge:       CGFloat = 24
         static let massive:    CGFloat = 32
+        static let pill:       CGFloat = 999
     }
 
     // MARK: - Shadows (subtle on near-black — Copilot style)

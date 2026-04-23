@@ -14,12 +14,6 @@ struct CardView: View {
     let previousActivities: [LocalActivity]
     @State private var isPressed = false
 
-    private var hasValidRoute: Bool {
-        guard let polyline = activity.summary_polyline, !polyline.isEmpty else { return false }
-        guard let distance = activity.distance, distance >= 80 else { return false }
-        return true
-    }
-
     private var activityColor: Color {
         AppTheme.Colors.activityColor(for: activity.type ?? "")
     }
@@ -45,139 +39,66 @@ struct CardView: View {
 
     var body: some View {
         Button(action: { onTap?() }) {
-            VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: AppTheme.Spacing.md) {
+                // ── Activity disc ──────────────────────────────────────────
+                ActivityTypeDisc(
+                    activityType: activity.type ?? "",
+                    size: 40,
+                    iconSize: 18,
+                    cornerRadius: AppTheme.CornerRadius.small + 2
+                )
 
-                // ── MAP HERO ───────────────────────────────────────────────
-                if hasValidRoute {
-                    ZStack(alignment: .bottomLeading) {
-                        ActivityMapView(summaryPolyline: activity.summary_polyline!)
-                            .frame(height: 220)
-
-                        HStack(spacing: 8) {
-                            Image(systemName: activityIcon)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(activityColor)
-                            Text(activity.name ?? "Activity")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial)
-                        .background(Color.black.opacity(0.45))
-                        .cornerRadius(10)
-                        .padding(14)
-                    }
-                    .clipShape(
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 16,
-                            bottomLeadingRadius: 0,
-                            bottomTrailingRadius: 0,
-                            topTrailingRadius: 16
-                        )
-                    )
-                }
-
-                // ── CONTENT ────────────────────────────────────────────────
-                VStack(alignment: .leading, spacing: 14) {
-
-                    HStack(alignment: .top) {
-                        if !hasValidRoute {
-                            HStack(spacing: 10) {
-                                ZStack {
-                                    Circle()
-                                        .fill(activityColor.opacity(0.15))
-                                        .frame(width: 38, height: 38)
-                                    Image(systemName: activityIcon)
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(activityColor)
-                                }
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(activity.name ?? "Activity")
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-                                    Text(activity.type ?? "")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                                }
-                            }
-                        } else {
-                            HStack(spacing: 6) {
-                                Image(systemName: activityIcon)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(activityColor)
-                                Text((activity.type ?? "Run").capitalized)
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                            }
-                        }
-
-                        Spacer()
-
-                        if let date = activity.start_date {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(date, format: .dateTime.month(.abbreviated).day())
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
-                                Text(timeAgoString(from: date))
-                                    .font(.system(size: 11))
-                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                            }
-                        }
-                    }
-
-                    // ── HERO METRIC ────────────────────────────────────────
-                    if let distance = activity.distance, AppConstants.Conversion.metersToMiles * distance >= 0.1 {
-                        let miles = distance * AppConstants.Conversion.metersToMiles
-                        HStack(alignment: .firstTextBaseline, spacing: 3) {
-                            Text(String(format: miles >= 10 ? "%.1f" : "%.2f", miles))
-                                .font(.system(size: 38, weight: .bold, design: .rounded))
-                                .foregroundColor(activityColor)
-                                .monospacedDigit()
-                            Text(UnitFormatter.distanceUnitAbbreviation)
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
-                                .padding(.bottom, 4)
-                        }
-                    }
-
-                    // ── SUPPORTING STATS ───────────────────────────────────
-                    HStack(spacing: 0) {
-                        if let time = activity.elapsed_time {
-                            miniStat(value: formatElapsed(seconds: time), label: "time", icon: "clock")
-                        }
-                        if let distance = activity.distance, let time = activity.elapsed_time, distance >= 80 {
-                            Spacer()
-                            miniStat(
-                                value: calcPace(distance: distance, time: time),
-                                label: UnitFormatter.paceUnitLabel,
-                                icon: "gauge.medium"
-                            )
-                        }
+                // ── Name + stats ───────────────────────────────────────────
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(activity.name ?? "Activity")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
                         if let qi = quickInsight() {
-                            Spacer()
-                            HStack(spacing: 4) {
-                                Image(systemName: qi.icon)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(qi.color)
-                                Text(qi.label)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(qi.color)
-                            }
+                            TrendChip(percentage: qi.percentage)
                         }
                     }
+
+                    if let statsLine = statsSubtext {
+                        Text(statsLine)
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                            .lineLimit(1)
+                    }
+
+                    if let date = activity.start_date {
+                        Text(relativeDateString(from: date))
+                            .font(.system(size: 10, weight: .regular, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                            .opacity(0.7)
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+
+                Spacer(minLength: 0)
+
+                // ── Distance (right) ───────────────────────────────────────
+                if let distance = activity.distance,
+                   let miles = distanceMiles(distance) {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(String(format: miles >= 10 ? "%.1f" : "%.2f", miles))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .monospacedDigit()
+                        Text(UnitFormatter.distanceUnitAbbreviation)
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                    }
+                }
             }
+            .padding(.horizontal, AppTheme.Spacing.md)
+            .padding(.vertical, AppTheme.Spacing.md)
         }
         .buttonStyle(PlainButtonStyle())
         .background(AppTheme.Colors.DarkMode.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
                 .stroke(Color.white.opacity(isPressed ? 0.12 : 0.07), lineWidth: 1)
         )
         .scaleEffect(isPressed ? 0.98 : 1.0)
@@ -185,22 +106,32 @@ struct CardView: View {
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { isPressed = $0 }, perform: {})
     }
 
-    private func miniStat(value: String, label: String, icon: String) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 11))
-                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-            Text(value)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
-                .monospacedDigit()
-            Text(label)
-                .font(.system(size: 11))
-                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-        }
+    private func distanceMiles(_ meters: Double) -> Double? {
+        let miles = meters * AppConstants.Conversion.metersToMiles
+        return miles >= 0.1 ? miles : nil
     }
 
-    private struct QuickInsightData { let label: String; let icon: String; let color: Color }
+    private var statsSubtext: String? {
+        var parts: [String] = []
+        if let time = activity.elapsed_time {
+            parts.append(formatElapsed(seconds: time))
+        }
+        if let distance = activity.distance, let time = activity.elapsed_time, distance >= 80 {
+            parts.append(calcPace(distance: distance, time: time) + "/" + UnitFormatter.distanceUnitAbbreviation)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func relativeDateString(from date: Date) -> String {
+        let i = Date().timeIntervalSince(date)
+        if i < 3600 { return "\(Int(i / 60))m ago" }
+        if i < 86400 { return "Today" }
+        if i < 172800 { return "Yesterday" }
+        let f = DateFormatter(); f.dateFormat = "MMM d"
+        return f.string(from: date)
+    }
+
+    private struct QuickInsightData { let percentage: Double }
     private func quickInsight() -> QuickInsightData? {
         guard let cd = activity.distance, let ct = activity.elapsed_time, cd > 0,
               previousActivities.count >= 3 else { return nil }
@@ -216,9 +147,8 @@ struct CardView: View {
             return s + (t / 60) / (d * 0.000621371)
         } / Double(similar.count)
         let pct = ((ap - cp) / ap) * 100
-        if pct >= 5 { return QuickInsightData(label: "\(Int(pct))% faster", icon: "arrow.up.right", color: AppTheme.Colors.success) }
-        if pct <= -5 { return QuickInsightData(label: "\(Int(abs(pct)))% slower", icon: "arrow.down.right", color: AppTheme.Colors.DarkMode.textTertiary) }
-        return nil
+        guard abs(pct) >= 5 else { return nil }
+        return QuickInsightData(percentage: pct)
     }
 
     private func calcPace(distance: Double, time: Double) -> String {
@@ -231,13 +161,6 @@ struct CardView: View {
         return h > 0 ? "\(h)h \(m)m" : "\(m)m"
     }
 
-    private func timeAgoString(from date: Date) -> String {
-        let i = Date().timeIntervalSince(date)
-        if i < 3600 { return "\(Int(i / 60))m ago" }
-        if i < 86400 { return "\(Int(i / 3600))h ago" }
-        if i < 2592000 { return "\(Int(i / 86400))d ago" }
-        let f = DateFormatter(); f.dateStyle = .medium; return f.string(from: date)
-    }
 }
 
 // MARK: - Legacy compat

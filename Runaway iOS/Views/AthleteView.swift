@@ -9,53 +9,164 @@ import SwiftUI
 import Charts
 
 struct AthleteView: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     let athlete: Athlete
     let stats: AthleteStats
 
-    @State var userImage: String?
-    @State var name: String?
-
-    @State private var isAthleteDataReady = false
-    @State private var isActivitiesDataReady = false
-
-    private var background: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
-    }
+    private var lifetimeMiles: Double { (stats.distance ?? 0) * 0.000621371 }
+    private var lifetimeRuns: Int { stats.count ?? 0 }
+    private var lifetimeHours: Int { Int((stats.elapsedTime ?? 0) / 3600) }
 
     var body: some View {
         ZStack {
-            background.ignoresSafeArea()
-            
+            AppTheme.Colors.DarkMode.background.ignoresSafeArea()
+
             ScrollView {
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    // Profile Header
-                    ProfileHeader(athlete: athlete)
-                    
-                    // Twin Identity Summary
-                    TwinIdentityBadge()
-                    
-                    // Quick Stats Grid
-                    QuickStatsGrid(
-                        runs: String(format: "%d", stats.count ?? 0),
-                        miles: String(format: "%.0f", (stats.distance ?? 0) * 0.000621371),
-                        hours: String(format: "%.0f", (stats.elapsedTime ?? 0) / 3600)
-                    )
-                    
-                    // Detailed Stats Cards
-                    LazyVStack(spacing: AppTheme.Spacing.md) {
-                        AthleteWeeklyStatsCard(stats: stats)
-                        MonthlyStatsCard(stats: stats)
-                        AllTimeStatsCard(stats: stats)
+                VStack(alignment: .leading, spacing: 24) {
+
+                    // ── Profile header ─────────────────────────────────────
+                    HStack(spacing: 16) {
+                        AsyncImage(url: athlete.profile) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            ZStack {
+                                Circle().fill(AppTheme.Colors.warmAmber.opacity(0.16))
+                                Text(String((athlete.firstname ?? "?").prefix(1)).uppercased())
+                                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.warmAmber)
+                            }
+                        }
+                        .frame(width: 60, height: 60)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(AppTheme.Colors.warmAmber.opacity(0.25), lineWidth: 1.5))
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text([athlete.firstname, athlete.lastname].compactMap { $0 }.joined(separator: " "))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                            Text(locationSubtitle)
+                                .font(.system(size: 13, design: .rounded))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                        }
+                        Spacer()
                     }
 
-                    // Awards Section
-                    AwardsPreviewSection()
+                    // ── LIFETIME ───────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 10) {
+                        EyebrowLabel(text: "LIFETIME")
+                        HStack(spacing: 0) {
+                            LifetimeStatTile(value: String(format: "%.0f", lifetimeMiles), label: "MILES")
+                            Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1, height: 50)
+                            LifetimeStatTile(value: "\(lifetimeRuns)", label: "RUNS")
+                            Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1, height: 50)
+                            LifetimeStatTile(value: "\(lifetimeHours)", label: "HOURS")
+                        }
+                        .background(AppTheme.Colors.DarkMode.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
+                    }
+
+                    // ── PERSONAL BESTS ─────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 10) {
+                        EyebrowLabel(text: "PERSONAL BESTS")
+                        VStack(spacing: 0) {
+                            PersonalBestEmptyRow(distance: "5K")
+                            Divider().background(Color.white.opacity(0.06))
+                            PersonalBestEmptyRow(distance: "10K")
+                            Divider().background(Color.white.opacity(0.06))
+                            PersonalBestEmptyRow(distance: "Half Marathon")
+                            Divider().background(Color.white.opacity(0.06))
+                            PersonalBestEmptyRow(distance: "Marathon")
+                        }
+                        .background(AppTheme.Colors.DarkMode.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
+                    }
+
+                    // ── ACCOUNT ────────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 10) {
+                        EyebrowLabel(text: "ACCOUNT")
+                        VStack(spacing: 0) {
+                            AccountRow(icon: "bolt.fill", title: "Strava", subtitle: stravaSubtitle)
+                            Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
+                            AccountRow(icon: "applewatch", title: "Devices & sensors", subtitle: "Apple Watch")
+                            Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
+                            AccountRow(icon: "chart.bar.fill", title: "Training preferences", subtitle: "Goals & zones")
+                            Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
+                            AccountRow(icon: "bell.fill", title: "Notifications", subtitle: "Workout reminders")
+                        }
+                        .background(AppTheme.Colors.DarkMode.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
+                    }
+
+                    Spacer(minLength: 32)
                 }
-                .padding(AppTheme.Spacing.md)
+                .padding(20)
             }
         }
+    }
+
+    // MARK: - Computed strings
+
+    private var locationSubtitle: String {
+        var parts: [String] = []
+        if let city = athlete.city, !city.isEmpty { parts.append(city) }
+        if let state = athlete.state, !state.isEmpty { parts.append(state) }
+        if parts.isEmpty, let country = athlete.country, !country.isEmpty { parts.append(country) }
+        let location = parts.joined(separator: ", ")
+        let since = joinYear.map { "Runner since \($0)" }
+        return [location, since].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private var joinYear: String? {
+        guard let date = athlete.createdAt else { return nil }
+        return "\(Calendar.current.component(.year, from: date))"
+    }
+
+    private var stravaSubtitle: String {
+        guard athlete.stravaConnected == true else { return "Not connected" }
+        if let syncedAt = athlete.stravaConnectedAt {
+            let interval = Date().timeIntervalSince(syncedAt)
+            if interval < 3600 { return "Synced · \(Int(interval / 60))m ago" }
+            if interval < 86400 { return "Synced · \(Int(interval / 3600))h ago" }
+            let days = Int(interval / 86400)
+            return "Synced · \(days)d ago"
+        }
+        return "Connected"
+    }
+}
+
+// MARK: - Personal Best Empty Row
+private struct PersonalBestEmptyRow: View {
+    let distance: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(AppTheme.Colors.warmAmber.opacity(0.1))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "star.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(AppTheme.Colors.warmAmber.opacity(0.5))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(distance)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                Text("No PR yet")
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+            }
+            Spacer()
+            Text("--:--")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .frame(minHeight: 56)
     }
 }
 

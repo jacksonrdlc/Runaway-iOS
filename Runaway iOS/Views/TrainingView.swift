@@ -15,181 +15,137 @@ import SwiftUI
 
 struct TrainingView: View {
     @Environment(DataManager.self) var dataManager
-    @EnvironmentObject var themeManager: ThemeManager
     @Environment(AppRouter.self) private var router
-    @StateObject private var viewModel = TrainingViewModel()
-    @State private var selectedDetailView: DetailViewType?
     @State private var showingCoachChat = false
 
-    private var colors: (background: Color, cardBg: Color, textPrimary: Color, textSecondary: Color) {
-        if themeManager.isDarkMode {
-            return (
-                AppTheme.Colors.DarkMode.background,
-                AppTheme.Colors.DarkMode.cardBackground,
-                AppTheme.Colors.DarkMode.textPrimary,
-                AppTheme.Colors.DarkMode.textSecondary
-            )
-        } else {
-            return (
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
-            )
-        }
+    private var greetingPrefix: String {
+        let h = Calendar.current.component(.hour, from: Date())
+        if h < 12 { return "Morning" }
+        if h < 17 { return "Afternoon" }
+        return "Evening"
     }
 
-    enum DetailViewType: Identifiable {
-        case weather, vo2max, trainingLoad, activityTrends
-
-        var id: String {
-            switch self {
-            case .weather: return "weather"
-            case .vo2max: return "vo2max"
-            case .trainingLoad: return "trainingLoad"
-            case .activityTrends: return "activityTrends"
-            }
-        }
+    private var firstName: String { dataManager.athlete?.firstname ?? "there" }
+    private var avatarInitial: String {
+        String((dataManager.athlete?.firstname ?? "?").prefix(1)).uppercased()
     }
 
     var body: some View {
         ZStack {
-            colors.background.ignoresSafeArea()
+            AppTheme.Colors.DarkMode.background.ignoresSafeArea()
 
             if dataManager.activities.isEmpty {
                 EmptyInsightsStateView()
-            } else if viewModel.isLoading && !viewModel.hasData {
-                LoadingInsightsStateView()
             } else {
                 ScrollView {
                     VStack(spacing: 16) {
-                        // Digital Twin Mirror (Primary Identity Layer)
-                        DigitalTwinMirrorCard()
 
-                        // 0. Weekly Stats Card
+                        // ── 1. Greeting header ─────────────────────────────
+                        HStack(alignment: .bottom) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(Date(), format: .dateTime.weekday(.wide).month(.abbreviated).day())
+                                    .font(AppTheme.Typography.subheadline)
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                                Text("\(greetingPrefix), \(firstName)")
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                            }
+                            Spacer()
+                            ZStack {
+                                Circle()
+                                    .fill(AppTheme.Colors.warmAmber.opacity(0.16))
+                                    .frame(width: 40, height: 40)
+                                    .overlay(Circle().stroke(AppTheme.Colors.Semantic.border, lineWidth: 1))
+                                Text(avatarInitial)
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.warmAmber)
+                            }
+                        }
+                        .padding(.horizontal, AppTheme.Spacing.lg)
+                        .padding(.top, AppTheme.Spacing.sm)
+
+                        // ── 2. Readiness ring card ─────────────────────────
+                        ReadinessBanner()
+
+                        // ── 3. This Week (hero mileage + goal) ─────────────
                         WeeklyStatsCard()
 
-                        // 1. Adaptive Primary Insight (phase-aware dashboard)
-                        if let phaseContext = viewModel.trainingPhaseContext {
-                            AdaptivePrimaryInsightCard(
-                                phaseContext: phaseContext,
-                                activities: dataManager.activities,
-                                trainingLoad: viewModel.quickWinsData?.analyses.trainingLoad,
-                                racePredictions: viewModel.quickWinsData?.analyses.vo2maxEstimate?.racePredictions
-                            )
-                        } else {
-                            // Fallback: Readiness Banner (glanceable, color-coded)
-                            ReadinessBanner()
-                        }
-
-                        // 2. Today's Focus (most actionable - what to do NOW)
+                        // ── 4. Next Up (planned workout or ready prompt) ───
                         TodaysFocusCard()
 
-                        // 3. Week Progress (compact, glanceable)
-                        WeekProgressRow()
-
-                        // 4. Coach Insight (AI differentiator)
-                        CoachInsightCard(onAskCoach: navigateToCoach)
-
-                        // 5. Key Metrics (3 metrics max)
-                        KeyMetricsGrid(quickWinsData: viewModel.quickWinsData)
-
-                        // 6. Trends Chart (single, expandable)
-                        CompactTrendsChart(activities: dataManager.activities)
-
-                        // 7. Explore (deep dives at bottom - progressive disclosure)
-                        ExploreSection(
-                            quickWinsData: viewModel.quickWinsData,
-                            onWeatherTap: { selectedDetailView = .weather },
-                            onVO2MaxTap: { selectedDetailView = .vo2max },
-                            onTrainingLoadTap: { selectedDetailView = .trainingLoad },
-                            onActivityTrendsTap: { selectedDetailView = .activityTrends }
-                        )
+                        // ── 5. Latest activity ─────────────────────────────
+                        latestSection
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
+                    .padding(.bottom, 100) // clear FAB
                 }
             }
 
-            // Floating Action Button for AI Coach
+            // ── AI Coach FAB ───────────────────────────────────────────
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
-                    Button(action: {
-                        showingCoachChat = true
-                    }) {
+                    Button(action: { showingCoachChat = true }) {
                         Image(systemName: "brain.head.profile")
                             .font(.title2)
                             .fontWeight(.semibold)
-                            .foregroundColor(.white)
+                            .foregroundColor(Color(red: 0.10, green: 0.05, blue: 0))
                             .frame(width: AppTheme.Layout.fabSize, height: AppTheme.Layout.fabSize)
                             .background(AppTheme.Colors.accentGradient)
                             .clipShape(Circle())
-                            .themeShadow(.accentGlow)
+                            .shadow(color: AppTheme.Colors.warmAmber.opacity(0.45), radius: 12, x: 0, y: 4)
                     }
                     .accessibilityLabel("Open AI Coach")
-                    .accessibilityHint("Double tap to chat with your AI running coach")
                     .padding(.trailing, AppTheme.Layout.fabOffset)
                     .padding(.bottom, AppTheme.Layout.fabOffset)
                 }
             }
         }
-        .navigationTitle("Dashboard")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            #if DEBUG
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {
-                    Task {
-                        await viewModel.refresh(activities: dataManager.activities)
-                    }
-                }) {
-                    Image(systemName: "arrow.clockwise")
-                        .foregroundColor(AppTheme.Colors.accent)
-                }
-            }
-            #endif
-        }
-        .refreshable {
-            await viewModel.refresh(activities: dataManager.activities)
-            await dataManager.refreshActivities()
-        }
-        .sheet(item: $selectedDetailView) { detailType in
-            if let data = viewModel.quickWinsData {
-                switch detailType {
-                case .weather:
-                    if let weather = data.analyses.weatherContext {
-                        WeatherImpactView(weather: weather)
-                    }
-                case .vo2max:
-                    if let vo2max = data.analyses.vo2maxEstimate {
-                        VO2MaxRacingView(vo2max: vo2max)
-                    }
-                case .trainingLoad:
-                    if let trainingLoad = data.analyses.trainingLoad {
-                        TrainingLoadView(trainingLoad: trainingLoad)
-                    }
-                case .activityTrends:
-                    ActivityTrendsView(activities: dataManager.activities)
-                }
-            } else if detailType == .activityTrends {
-                ActivityTrendsView(activities: dataManager.activities)
-            }
-        }
-        .task {
-            await viewModel.loadAllData(activities: dataManager.activities)
-        }
+        .navigationBarHidden(true)
+        .refreshable { await dataManager.refreshActivities() }
         .sheet(isPresented: $showingCoachChat) {
-            NavigationView {
-                ChatView()
+            NavigationView { ChatView() }
+        }
+    }
+
+    // MARK: - Latest section
+
+    @ViewBuilder
+    private var latestSection: some View {
+        if let latest = dataManager.activities.first {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    EyebrowLabel(text: "LATEST")
+                    Spacer()
+                    Button(action: {}) {
+                        Text("See all")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.warmAmber)
+                    }
+                }
+                .padding(.horizontal, 2)
+
+                let previousSlice = Array(dataManager.activities.dropFirst().prefix(10).map { toLocal($0) })
+                CardView(
+                    activity: toLocal(latest),
+                    previousActivities: previousSlice
+                )
             }
         }
     }
 
-    private func navigateToCoach() {
-        // Open Coach chat sheet
-        showingCoachChat = true
+    private func toLocal(_ a: Activity) -> LocalActivity {
+        LocalActivity(
+            id: a.id,
+            name: a.name ?? "Activity",
+            type: a.type ?? "",
+            summary_polyline: a.summary_polyline ?? "",
+            distance: a.distance ?? 0,
+            start_date: (a.start_date).map { Date(timeIntervalSince1970: $0) },
+            elapsed_time: a.elapsed_time ?? 0
+        )
     }
 }
 

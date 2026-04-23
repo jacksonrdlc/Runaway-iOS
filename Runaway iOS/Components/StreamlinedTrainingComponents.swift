@@ -16,48 +16,61 @@ struct ReadinessBanner: View {
 
     var body: some View {
         Button(action: { showingDetail = true }) {
-            HStack(spacing: 12) {
-                // Color indicator circle
-                Circle()
-                    .fill(readinessColor)
-                    .frame(width: 12, height: 12)
-
-                // Status text
-                Text(readinessLabel)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(readinessColor)
-
-                Spacer()
-
-                // Score
-                if let score = readinessService.todaysReadiness?.score {
-                    HStack(spacing: 4) {
-                        Text("Score:")
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                        Text("\(score)")
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .foregroundColor(readinessColor)
+            HStack(spacing: 16) {
+                // ── Ring gauge ─────────────────────────────────────────────
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), lineWidth: 5)
+                        .frame(width: 64, height: 64)
+                    Circle()
+                        .trim(from: 0, to: ringProgress)
+                        .stroke(readinessColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .frame(width: 64, height: 64)
+                        .rotationEffect(.degrees(-90))
+                    if let score = readinessService.todaysReadiness?.score {
+                        VStack(spacing: 0) {
+                            Text("\(score)")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .monospacedDigit()
+                            Text("%")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                        }
+                    } else if readinessService.isCalculating {
+                        ProgressView().scaleEffect(0.7)
+                    } else {
+                        Image(systemName: "questionmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                     }
-                } else if readinessService.isCalculating {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                } else {
-                    Text("Tap to calculate")
-                        .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
                 }
 
+                // ── Text stack ─────────────────────────────────────────────
+                VStack(alignment: .leading, spacing: 4) {
+                    EyebrowLabel(text: "READINESS · \(readinessLevelLabel)", color: readinessColor)
+                    Text(readinessHeadline)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text(readinessSubtext)
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                }
+
+                Spacer(minLength: 0)
+
                 Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(readinessColor.opacity(0.1))
-            .cornerRadius(12)
+            .padding(.vertical, 14)
+            .background(readinessColor.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                    .stroke(readinessColor.opacity(0.18), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showingDetail) {
@@ -72,30 +85,47 @@ struct ReadinessBanner: View {
         }
     }
 
+    private var ringProgress: CGFloat {
+        guard let score = readinessService.todaysReadiness?.score else { return 0 }
+        return CGFloat(score) / 100.0
+    }
+
     private var readinessColor: Color {
-        guard let readiness = readinessService.todaysReadiness else {
-            return .gray
-        }
+        guard let readiness = readinessService.todaysReadiness else { return .gray }
         switch readiness.level {
-        case .optimal: return .green
-        case .good: return Color(red: 0.5, green: 0.8, blue: 0.1) // Lime
+        case .optimal: return AppTheme.Colors.success
+        case .good: return Color(red: 0.5, green: 0.8, blue: 0.1)
         case .moderate: return .yellow
         case .low: return .orange
         case .poor: return .red
         }
     }
 
-    private var readinessLabel: String {
-        guard let readiness = readinessService.todaysReadiness else {
-            return "Check Readiness"
-        }
+    private var readinessLevelLabel: String {
+        guard let readiness = readinessService.todaysReadiness else { return "UNKNOWN" }
         switch readiness.level {
-        case .optimal: return "Ready to Push"
-        case .good: return "Good to Train"
-        case .moderate: return "Moderate Recovery"
-        case .low: return "Take It Easy"
-        case .poor: return "Rest Day Recommended"
+        case .optimal: return "OPTIMAL"
+        case .good: return "GOOD"
+        case .moderate: return "MODERATE"
+        case .low: return "LOW"
+        case .poor: return "POOR"
         }
+    }
+
+    private var readinessHeadline: String {
+        guard let readiness = readinessService.todaysReadiness else { return "Tap to calculate" }
+        switch readiness.level {
+        case .optimal: return "Ready for a hard effort"
+        case .good: return "Good to train today"
+        case .moderate: return "Keep it moderate"
+        case .low: return "Take it easy today"
+        case .poor: return "Rest day recommended"
+        }
+    }
+
+    private var readinessSubtext: String {
+        guard let score = readinessService.todaysReadiness?.score else { return "Analyze your recovery" }
+        return "Score \(score) · Tap for full breakdown"
     }
 }
 
@@ -236,190 +266,204 @@ struct TodaysFocusCard: View {
         return .restDay
     }
 
+    private var nextUpLabel: String {
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        let names = ["", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"]
+        let name = weekday < names.count ? names[weekday] : "TODAY"
+        return "NEXT UP · \(name)"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
-                Text("TODAY")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
+                EyebrowLabel(text: nextUpLabel, color: AppTheme.Colors.warmAmber)
                 Spacer()
-
                 switch todaysFocus {
                 case .activityCompleted:
                     Text("Completed")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.green)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.success)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.green.opacity(0.15))
-                        .cornerRadius(6)
+                        .background(AppTheme.Colors.success.opacity(0.15))
+                        .clipShape(Capsule())
                 case .plannedWorkout(let workout):
                     Text(workout.workoutType.rawValue.capitalized)
-                        .font(.caption)
-                        .fontWeight(.medium)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(workout.workoutType.color)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(workout.workoutType.color.opacity(0.15))
-                        .cornerRadius(6)
+                        .clipShape(Capsule())
                 case .readyToRun:
                     Text("Ready")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.green)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.success)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.green.opacity(0.15))
-                        .cornerRadius(6)
+                        .background(AppTheme.Colors.success.opacity(0.15))
+                        .clipShape(Capsule())
                 case .restDay:
                     Text("Rest")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.purple)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.purple.opacity(0.15))
-                        .cornerRadius(6)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(Capsule())
                 }
             }
 
             switch todaysFocus {
             case .activityCompleted(let activity):
-                // Show completed activity
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.green)
-
-                    VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
+                            .fill(AppTheme.Colors.success.opacity(0.16))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.success)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(activity.name ?? "Activity Completed")
-                            .font(.headline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
                         HStack(spacing: 8) {
                             if let distance = activity.distance {
                                 Text(UnitFormatter.formatDistance(distance, decimals: 1, includeUnit: true))
-                                    .font(.caption)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                             }
                             if let elapsed = activity.elapsed_time {
-                                let minutes = Int(elapsed / 60)
-                                Text("\(minutes) min")
-                                    .font(.caption)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                Text("· \(Int(elapsed / 60)) min")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                             }
                         }
                     }
-
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(12)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(AppTheme.Colors.success.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
 
             case .plannedWorkout(let workout):
-                // Workout content
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: workout.workoutType.icon)
-                            .font(.title2)
-                            .foregroundColor(workout.workoutType.color)
+                HStack(spacing: 12) {
+                    // Amber bolt disc
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
+                            .fill(AppTheme.Colors.warmAmber.opacity(0.16))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.warmAmber)
+                    }
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(workout.title)
-                                .font(.headline)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                            if !workout.description.isEmpty {
-                                Text(workout.description)
-                                    .font(.caption)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                                    .lineLimit(2)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(workout.title)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                        HStack(spacing: 8) {
+                            if let distance = workout.formattedDistance {
+                                Text(distance)
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                            }
+                            if let pace = workout.targetPace {
+                                Text("·")
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                    .font(.system(size: 12))
+                                Text(pace)
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                             }
                         }
-
-                        Spacer()
+                        if !workout.description.isEmpty {
+                            Text(workout.description)
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                .lineLimit(1)
+                        }
                     }
 
-                    // Distance and pace
-                    HStack(spacing: 16) {
-                        if let distance = workout.formattedDistance {
-                            Label(distance, systemImage: "figure.run")
-                                .font(.subheadline)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                        }
+                    Spacer(minLength: 0)
 
-                        if let pace = workout.targetPace {
-                            Label(pace, systemImage: "speedometer")
-                                .font(.subheadline)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                        }
-
-                        Spacer()
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                 }
-                .padding()
-                .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
-                .cornerRadius(12)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(AppTheme.Colors.DarkMode.surfaceBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
                 .onTapGesture {
                     showingWorkoutDetail = true
                 }
 
             case .readyToRun:
-                // You rested yesterday, ready to go!
-                HStack {
-                    Image(systemName: "figure.run")
-                        .font(.title2)
-                        .foregroundColor(.green)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Ready to Run")
-                            .font(.headline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                        Text("You rested yesterday - great time for a run!")
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
+                            .fill(AppTheme.Colors.warmAmber.opacity(0.16))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "figure.run")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.warmAmber)
                     }
-
-                    Spacer()
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Ready to Run")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                        Text("You rested yesterday — great time for a run")
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                 }
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(12)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(AppTheme.Colors.DarkMode.surfaceBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
 
             case .restDay:
-                // Rest day
-                HStack {
-                    Image(systemName: "moon.zzz.fill")
-                        .font(.title2)
-                        .foregroundColor(.purple)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Rest Day")
-                            .font(.headline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
-                        Text("Recovery is part of training")
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
+                            .fill(Color.white.opacity(0.08))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "moon.zzz.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                     }
-
-                    Spacer()
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Rest Day")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                        Text("Recovery is part of training")
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                    }
+                    Spacer(minLength: 0)
                 }
-                .padding()
-                .background(Color.purple.opacity(0.1))
-                .cornerRadius(12)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(AppTheme.Colors.DarkMode.surfaceBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
             }
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
         .sheet(isPresented: $showingWorkoutDetail) {
             if let workout = todaysWorkout {
                 WorkoutDetailSheet(workout: workout)
@@ -552,92 +596,65 @@ struct WeekProgressRow: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // Header
             HStack {
-                Text("THIS WEEK")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
+                EyebrowLabel(text: "THIS WEEK")
                 Spacer()
-
-                // Mileage summary
                 HStack(spacing: 4) {
                     Text(String(format: "%.1f", weekStats.actual))
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .foregroundColor(AppTheme.Colors.accent)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.warmAmber)
+                        .monospacedDigit()
                     if weekStats.planned > 0 {
-                        Text("/")
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                        Text(String(format: "%.0f \(UnitFormatter.distanceUnitAbbreviation)", weekStats.planned))
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        Text("/ \(String(format: "%.0f", weekStats.planned)) \(UnitFormatter.distanceUnitAbbreviation)")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                     } else {
                         Text(UnitFormatter.distanceUnitAbbreviation)
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                     }
                 }
             }
 
-            // Day indicators with activity icons
             HStack(spacing: 4) {
                 ForEach(DayOfWeek.allCases, id: \.self) { day in
                     let entry = weekEntries.first { $0.dayOfWeek == day }
                     let restDay = hasRestDay(for: day)
-                    WeekDayActivityTile(
-                        day: day,
-                        entry: entry,
-                        restDay: restDay
-                    )
+                    WeekDayActivityTile(day: day, entry: entry, restDay: restDay)
                 }
             }
 
-            // Progress bar (only show if there's a plan)
             if weekStats.planned > 0 {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(height: 6)
-
-                        let progress = min(weekStats.actual / weekStats.planned, 1.0)
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(AppTheme.Colors.accent)
-                            .frame(width: geometry.size.width * progress, height: 6)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.white.opacity(0.08))
+                            .frame(height: 4)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(AppTheme.Colors.warmAmber)
+                            .frame(width: geometry.size.width * min(weekStats.actual / weekStats.planned, 1.0), height: 4)
                     }
                 }
-                .frame(height: 6)
-
-                HStack {
-                    Text("\(weekStats.completed) of \(weekStats.total) workouts completed")
-                        .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                    Spacer()
-                }
+                .frame(height: 4)
+                Text("\(weekStats.completed) of \(weekStats.total) workouts done")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
             } else {
-                // No plan - show activity count and rest days
-                HStack {
-                    let restCount = restDaysThisWeek
-                    if restCount > 0 {
-                        Text("\(weekStats.completed) activities, \(restCount) rest \(restCount == 1 ? "day" : "days") this week")
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                    } else {
-                        Text("\(weekStats.completed) activities this week")
-                            .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-                    }
-                    Spacer()
-                }
+                let restCount = restDaysThisWeek
+                Text(restCount > 0
+                    ? "\(weekStats.completed) activities, \(restCount) rest \(restCount == 1 ? "day" : "days") this week"
+                    : "\(weekStats.completed) activities this week")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
             }
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
         .onAppear {
             // Trigger rest day detection on appear
             if let athleteId = dataManager.athlete?.id {
@@ -715,56 +732,41 @@ struct WeekDayActivityTile: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            // Day label
             Text(String(day.shortName.prefix(1)))
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(isToday ? AppTheme.Colors.accent : ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(isToday ? AppTheme.Colors.warmAmber : AppTheme.Colors.DarkMode.textTertiary)
 
-            // Activity indicator
             ZStack {
-                // Background
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(backgroundColor)
+                    .fill(tileBackground)
                     .frame(width: 40, height: 44)
 
-                // Today indicator
                 if isToday {
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(AppTheme.Colors.accent, lineWidth: 2)
+                        .stroke(AppTheme.Colors.warmAmber, lineWidth: 1.5)
                         .frame(width: 40, height: 44)
                 }
 
-                // Content - use fixed layout for consistent alignment
                 VStack(spacing: 2) {
                     Image(systemName: iconName)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(iconColor)
+                        .foregroundColor(tileIconColor)
 
-                    // Metric text - always at bottom with consistent height
                     Group {
                         if hasActivity {
-                            if isMileageFocused {
-                                if let distance = activityDistance {
-                                    Text(String(format: "%.1f\(UnitFormatter.distanceUnitAbbreviation)", distance))
-                                        .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(iconColor)
-                                } else {
-                                    Text(" ")
-                                        .font(.system(size: 8, weight: .medium))
-                                }
+                            if isMileageFocused, let distance = activityDistance {
+                                Text(String(format: "%.1f\(UnitFormatter.distanceUnitAbbreviation)", distance))
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundColor(tileIconColor)
+                            } else if let minutes = activityElapsedMinutes {
+                                Text("\(minutes)m")
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundColor(tileIconColor)
                             } else {
-                                if let minutes = activityElapsedMinutes {
-                                    Text("\(minutes)min")
-                                        .font(.system(size: 8, weight: .medium))
-                                        .foregroundColor(iconColor)
-                                } else {
-                                    Text(" ")
-                                        .font(.system(size: 8, weight: .medium))
-                                }
+                                Text(" ").font(.system(size: 8))
                             }
                         } else {
-                            Text(" ")
-                                .font(.system(size: 8, weight: .medium))
+                            Text(" ").font(.system(size: 8))
                         }
                     }
                     .frame(height: 10)
@@ -775,112 +777,57 @@ struct WeekDayActivityTile: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var backgroundColor: Color {
-        if hasActivity {
-            return activityColor.opacity(0.15)
-        } else if hasRestDay {
-            // Rest day - show purple background
-            return Color.purple.opacity(0.15)
-        } else if isPast && hasPlannedWorkout {
-            return Color.orange.opacity(0.1)
-        } else if hasPlannedWorkout {
-            return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
-        } else if isToday {
-            return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
-        }
-        return Color.gray.opacity(0.05)
+    private var tileBackground: Color {
+        if hasActivity { return activityColor.opacity(0.15) }
+        if hasRestDay { return Color.white.opacity(0.06) }
+        if isPast && hasPlannedWorkout { return AppTheme.Colors.warmAmber.opacity(0.08) }
+        if hasPlannedWorkout || isToday { return AppTheme.Colors.DarkMode.surfaceBackground }
+        return Color.white.opacity(0.03)
     }
 
     private var iconName: String {
-        if hasActivity {
-            return activityIcon
-        } else if hasRestDay {
-            // Show rest day icon from the restDay reason
-            return restDay?.reason.icon ?? "moon.zzz.fill"
-        } else if hasPlannedWorkout {
-            return plannedWorkoutIcon
-        } else if isPast {
-            return "minus"
-        }
+        if hasActivity { return activityIcon }
+        if hasRestDay { return restDay?.reason.icon ?? "moon.zzz.fill" }
+        if hasPlannedWorkout { return plannedWorkoutIcon }
+        if isPast { return "minus" }
         return "circle"
     }
 
     private var activityIcon: String {
         guard let type = activityType else { return "figure.run" }
-
-        if type.contains("run") || type.contains("running") {
-            return "figure.run"
-        } else if type.contains("walk") {
-            return "figure.walk"
-        } else if type.contains("hike") {
-            return "figure.hiking"
-        } else if type.contains("cycle") || type.contains("ride") || type.contains("bike") {
-            return "figure.outdoor.cycle"
-        } else if type.contains("swim") {
-            return "figure.pool.swim"
-        } else if type.contains("yoga") {
-            return "figure.yoga"
-        } else if type.contains("strength") || type.contains("weight") {
-            return "dumbbell.fill"
-        }
+        if type.contains("run") || type.contains("running") { return "figure.run" }
+        if type.contains("walk") { return "figure.walk" }
+        if type.contains("hike") { return "figure.hiking" }
+        if type.contains("cycle") || type.contains("ride") || type.contains("bike") { return "figure.outdoor.cycle" }
+        if type.contains("swim") { return "figure.pool.swim" }
+        if type.contains("yoga") { return "figure.yoga" }
+        if type.contains("strength") || type.contains("weight") { return "dumbbell.fill" }
         return "figure.run"
     }
 
     private var plannedWorkoutIcon: String {
         guard let workout = entry?.plannedWorkout else { return "circle" }
-
         switch workout.workoutType {
-        case .easyRun, .recoveryRun:
-            return "figure.run"
-        case .longRun:
-            return "figure.run"
-        case .tempoRun, .hillRun:
-            return "flame.fill"
-        case .intervalRun:
-            return "bolt.fill"
-        case .rest:
-            return "moon.zzz.fill"
-        case .crossTraining:
-            return "figure.mixed.cardio"
-        case .strengthTraining, .upperBody, .lowerBody, .fullBody:
-            return "dumbbell.fill"
-        case .yoga, .stretchMobility:
-            return "figure.yoga"
+        case .easyRun, .recoveryRun, .longRun: return "figure.run"
+        case .tempoRun, .hillRun: return "flame.fill"
+        case .intervalRun: return "bolt.fill"
+        case .rest: return "moon.zzz.fill"
+        case .crossTraining: return "figure.mixed.cardio"
+        case .strengthTraining, .upperBody, .lowerBody, .fullBody: return "dumbbell.fill"
+        case .yoga, .stretchMobility: return "figure.yoga"
         }
     }
 
     private var activityColor: Color {
-        guard let type = activityType else { return .green }
-
-        if type.contains("run") || type.contains("running") {
-            return .green
-        } else if type.contains("walk") {
-            return .blue
-        } else if type.contains("hike") {
-            return .orange
-        } else if type.contains("cycle") || type.contains("ride") || type.contains("bike") {
-            return .purple
-        } else if type.contains("swim") {
-            return .cyan
-        } else if type.contains("yoga") {
-            return .purple
-        } else if type.contains("weight") || type.contains("strength") || type.contains("training") || type.contains("workout") {
-            return .green
-        }
-        return .green
+        AppTheme.Colors.activityColor(for: activityType ?? "")
     }
 
-    private var iconColor: Color {
-        if hasActivity {
-            return activityColor
-        } else if hasRestDay {
-            return .purple
-        } else if isPast && hasPlannedWorkout {
-            return .orange
-        } else if hasPlannedWorkout {
-            return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
-        }
-        return Color.gray.opacity(0.3)
+    private var tileIconColor: Color {
+        if hasActivity { return activityColor }
+        if hasRestDay { return AppTheme.Colors.DarkMode.textTertiary }
+        if isPast && hasPlannedWorkout { return AppTheme.Colors.warmAmber.opacity(0.6) }
+        if hasPlannedWorkout { return AppTheme.Colors.DarkMode.textTertiary }
+        return Color.white.opacity(0.2)
     }
 }
 
@@ -903,43 +850,40 @@ struct CoachInsightCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: "brain.head.profile")
-                    .font(.subheadline)
-                    .foregroundColor(AppTheme.Colors.accent)
-
-                Text("COACH SAYS")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(AppTheme.Colors.warmAmber)
+                EyebrowLabel(text: "COACH SAYS", color: AppTheme.Colors.warmAmber)
                 Spacer()
             }
 
             Text(insightText)
-                .font(.subheadline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack {
                 Spacer()
-
                 Button(action: onAskCoach) {
                     HStack(spacing: 4) {
                         Text("Ask Coach")
-                            .font(.caption)
-                            .fontWeight(.semibold)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
                         Image(systemName: "arrow.right")
-                            .font(.caption)
+                            .font(.system(size: 11))
                     }
-                    .foregroundColor(AppTheme.Colors.accent)
+                    .foregroundColor(AppTheme.Colors.warmAmber)
                 }
             }
         }
-        .padding()
-        .background(AppTheme.Colors.accent.opacity(0.08))
-        .cornerRadius(16)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.warmAmber.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                .stroke(AppTheme.Colors.warmAmber.opacity(0.16), lineWidth: 1)
+        )
     }
 }
 
@@ -951,44 +895,21 @@ struct KeyMetricsGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("YOUR PROGRESS")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+            EyebrowLabel(text: "YOUR PROGRESS")
 
-            HStack(spacing: 12) {
-                // Weekly Mileage
-                KeyMetricTile(
-                    title: "This Week",
-                    value: weeklyMileage,
-                    trend: weeklyTrend,
-                    trendLabel: weeklyTrendLabel,
-                    color: .blue
-                )
-
-                // Performance Trend
-                KeyMetricTile(
-                    title: "Fitness",
-                    value: fitnessTrend,
-                    trend: fitnessTrendDirection,
-                    trendLabel: nil,
-                    color: fitnessTrendColor
-                )
-
-                // Training Load
-                KeyMetricTile(
-                    title: "Load",
-                    value: trainingLoadValue,
-                    trend: trainingLoadTrend,
-                    trendLabel: trainingLoadLabel,
-                    color: trainingLoadColor
-                )
+            HStack(spacing: 10) {
+                KeyMetricTile(title: "This Week", value: weeklyMileage, trend: weeklyTrend, trendLabel: weeklyTrendLabel, color: AppTheme.Colors.warmAmber)
+                KeyMetricTile(title: "Fitness", value: fitnessTrend, trend: fitnessTrendDirection, trendLabel: nil, color: fitnessTrendColor)
+                KeyMetricTile(title: "Load", value: trainingLoadValue, trend: trainingLoadTrend, trendLabel: trainingLoadLabel, color: trainingLoadColor)
             }
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
     }
 
     // MARK: - Weekly Mileage
@@ -1108,34 +1029,32 @@ struct KeyMetricTile: View {
     let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(title)
-                .font(.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
 
             HStack(spacing: 4) {
                 Text(value)
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
-
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
                 if !trend.isEmpty {
                     Text(trend)
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundColor(color)
                 }
             }
 
             if let label = trendLabel {
                 Text(label)
-                    .font(.caption2)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(color)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(color.opacity(0.1))
-        .cornerRadius(12)
+        .padding(10)
+        .background(AppTheme.Colors.DarkMode.surfaceBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
     }
 }
 
@@ -1163,42 +1082,41 @@ struct ThisWeekActivitiesSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("THIS WEEK'S ACTIVITIES")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
+                EyebrowLabel(text: "THIS WEEK'S ACTIVITIES")
                 Spacer()
-
                 if !thisWeekActivities.isEmpty {
-                    Text("\(thisWeekActivities.count) runs")
-                        .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                    Text("\(thisWeekActivities.count) activities")
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                 }
             }
 
             if thisWeekActivities.isEmpty {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "figure.run")
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .font(.system(size: 14))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                     Text("No activities yet this week")
-                        .font(.subheadline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .font(.system(size: 14, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 20)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     ForEach(thisWeekActivities, id: \.id) { activity in
                         CompactActivityRow(activity: activity)
                     }
                 }
             }
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
     }
 }
 
@@ -1239,61 +1157,43 @@ struct CompactActivityRow: View {
         return formatter.string(from: date)
     }
 
+    private var activityColor: Color {
+        AppTheme.Colors.activityColor(for: activity.type ?? "")
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            // Day indicator
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(dayOfWeek)
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                 Circle()
-                    .fill(Color.green)
-                    .frame(width: 8, height: 8)
+                    .fill(activityColor)
+                    .frame(width: 7, height: 7)
             }
-            .frame(width: 32)
+            .frame(width: 28)
 
-            // Activity details
             VStack(alignment: .leading, spacing: 2) {
-                Text(activity.name ?? "Run")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                Text(activity.name ?? "Activity")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
                     .lineLimit(1)
 
-                HStack(spacing: 8) {
-                    Label(formattedDistance, systemImage: "figure.run")
-                        .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
-                    Text("•")
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-
-                    Label("\(paceString)\(UnitFormatter.paceUnitLabel)", systemImage: "speedometer")
-                        .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
-                    Text("•")
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
-
-                    Text(durationString)
-                        .font(.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-                }
+                Text([formattedDistance, "\(paceString)\(UnitFormatter.paceUnitLabel)", durationString].joined(separator: " · "))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
             }
 
             Spacer()
 
-            // Chevron for detail
             Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .font(.system(size: 11))
+                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
-        .cornerRadius(10)
+        .background(AppTheme.Colors.DarkMode.surfaceBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2))
     }
 }
 
@@ -1306,32 +1206,29 @@ struct CompactTrendsChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("TRENDS")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-
+                EyebrowLabel(text: "TRENDS")
                 Spacer()
-
                 Button(action: { showingFullChart = true }) {
                     HStack(spacing: 4) {
                         Text("See All")
-                            .font(.caption)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
                         Image(systemName: "chevron.right")
-                            .font(.caption2)
+                            .font(.system(size: 11))
                     }
-                    .foregroundColor(AppTheme.Colors.accent)
+                    .foregroundColor(AppTheme.Colors.warmAmber)
                 }
             }
 
-            // Mini chart visualization
             MiniWeeklyChart(activities: activities)
-                .frame(height: 60)
+                .frame(height: 56)
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
         .sheet(isPresented: $showingFullChart) {
             ActivityTrendsView(activities: activities)
         }
@@ -1396,78 +1293,53 @@ struct ExploreSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("EXPLORE")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+            EyebrowLabel(text: "EXPLORE")
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     if quickWinsData?.analyses.weatherContext != nil {
-                        ExplorePill(
-                            icon: "cloud.sun.fill",
-                            title: "Weather",
-                            color: .orange,
-                            action: onWeatherTap
-                        )
+                        ExplorePill(icon: "cloud.sun.fill", title: "Weather", action: onWeatherTap)
                     }
-
                     if quickWinsData?.analyses.vo2maxEstimate != nil {
-                        ExplorePill(
-                            icon: "flag.fill",
-                            title: "Race Times",
-                            color: .blue,
-                            action: onVO2MaxTap
-                        )
+                        ExplorePill(icon: "flag.fill", title: "Race Times", action: onVO2MaxTap)
                     }
-
                     if quickWinsData?.analyses.trainingLoad != nil {
-                        ExplorePill(
-                            icon: "chart.line.uptrend.xyaxis",
-                            title: "Training Load",
-                            color: .green,
-                            action: onTrainingLoadTap
-                        )
+                        ExplorePill(icon: "chart.line.uptrend.xyaxis", title: "Training Load", action: onTrainingLoadTap)
                     }
-
-                    ExplorePill(
-                        icon: "map.fill",
-                        title: "Heatmap",
-                        color: .purple,
-                        action: onActivityTrendsTap
-                    )
+                    ExplorePill(icon: "map.fill", title: "Heatmap", action: onActivityTrendsTap)
                 }
             }
         }
-        .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .padding(AppTheme.Spacing.md)
+        .background(AppTheme.Colors.DarkMode.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+        )
     }
 }
 
 struct ExplorePill: View {
     let icon: String
     let title: String
-    let color: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.subheadline)
-                    .foregroundColor(color)
-
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(AppTheme.Colors.warmAmber)
                 Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(color.opacity(0.1))
-            .cornerRadius(20)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(AppTheme.Colors.DarkMode.surfaceBackground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(0.09), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

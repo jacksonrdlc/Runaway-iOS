@@ -9,6 +9,24 @@ struct ActivitiesView: View {
     @Environment(RealtimeService.self) var realtimeService
     @EnvironmentObject var themeManager: ThemeManager
     @State private var selectedActivity: LocalActivity?
+    @State private var activeFilter: String = "All"
+
+    private let filterOptions = ["All", "Run", "Bike", "Strength", "Trail", "Swim"]
+
+    private var filteredActivities: [Activity] {
+        guard activeFilter != "All" else { return dataManager.activities }
+        return dataManager.activities.filter { activity in
+            let type = (activity.type ?? "").lowercased()
+            switch activeFilter {
+            case "Run":      return type.contains("run") && !type.contains("trail")
+            case "Bike":     return type.contains("bike") || type.contains("ride") || type.contains("cycling")
+            case "Strength": return type.contains("weight") || type.contains("workout") || type.contains("crossfit") || type.contains("yoga")
+            case "Trail":    return type.contains("trail") || type.contains("hike")
+            case "Swim":     return type.contains("swim")
+            default:         return true
+            }
+        }
+    }
 
     private var colors: (background: Color, textPrimary: Color, textSecondary: Color) {
         if themeManager.isDarkMode {
@@ -38,78 +56,93 @@ struct ActivitiesView: View {
         ZStack {
             colors.background.ignoresSafeArea()
 
-            VStack {
-                if dataManager.activities.isEmpty {
-                    if dataManager.isLoadingActivities {
-                        VStack(spacing: AppTheme.Spacing.md) {
-                            ProgressView()
-                                .scaleEffect(1.2)
-                                .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
-                            Text("Loading activities...")
-                                .font(AppTheme.Typography.body)
-                                .foregroundColor(colors.textSecondary)
-                        }
-                    } else {
-                        ScrollView {
-                            VStack(spacing: AppTheme.Spacing.lg) {
-                                // Compact Commitment Card
-                                CompactCommitmentCard()
-                                    .padding(.horizontal, AppTheme.Spacing.md)
+            VStack(spacing: 0) {
+                // ── Header ─────────────────────────────────────────────────
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        EyebrowLabel(text: "Log")
+                        Text("Activities")
+                            .font(AppTheme.Typography.largeTitle)
+                            .foregroundColor(colors.textPrimary)
+                    }
+                    Spacer()
+                    Button(action: { Task { await refreshActivities() } }) {
+                        Image(systemName: AppIcons.refresh)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundColor(Color(red: 0.10, green: 0.05, blue: 0))
+                            .frame(width: 40, height: 40)
+                            .background(AppTheme.Colors.warmAmber)
+                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+                            .shadow(color: AppTheme.Colors.warmAmber.opacity(0.3), radius: 8, x: 0, y: 3)
+                    }
+                    .disabled(dataManager.isLoadingActivities)
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.top, AppTheme.Spacing.md)
+                .padding(.bottom, AppTheme.Spacing.sm)
 
-                                // Empty state
-                                EmptyActivitiesView()
+                // ── Filter chips ───────────────────────────────────────────
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        ForEach(filterOptions, id: \.self) { option in
+                            FilterChip(label: option, isActive: activeFilter == option) {
+                                activeFilter = option
                             }
-                            .padding(.top, AppTheme.Spacing.md)
                         }
+                    }
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                }
+
+                // ── List ───────────────────────────────────────────────────
+                if dataManager.isLoadingActivities && dataManager.activities.isEmpty {
+                    Spacer()
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
+                        Text("Loading activities...")
+                            .font(AppTheme.Typography.body)
+                            .foregroundColor(colors.textSecondary)
+                    }
+                    Spacer()
+                } else if filteredActivities.isEmpty {
+                    ScrollView {
+                        VStack(spacing: AppTheme.Spacing.lg) {
+                            CompactCommitmentCard()
+                                .padding(.horizontal, AppTheme.Spacing.md)
+                            EmptyActivitiesView()
+                        }
+                        .padding(.top, AppTheme.Spacing.md)
                     }
                 } else {
                     ScrollView {
                         LazyVStack(spacing: AppTheme.Spacing.md) {
-                            // Compact Commitment Card
                             CompactCommitmentCard()
                                 .padding(.horizontal, AppTheme.Spacing.md)
 
-                            // Activities List
-                            ForEach(dataManager.activities.indices, id: \.self) { index in
-                                let activity = dataManager.activities[index]
-                                let previousActivities = dataManager.activities.dropFirst(index + 1)
+                            ForEach(filteredActivities.indices, id: \.self) { index in
+                                let activity = filteredActivities[index]
+                                let previousActivities = filteredActivities.dropFirst(index + 1)
                                     .map { convertToLocalActivity($0) }
-
                                 CardView(
                                     activity: convertToLocalActivity(activity),
                                     previousActivities: previousActivities,
-                                    onTap: {
-                                        selectedActivity = convertToLocalActivity(activity)
-                                    }
+                                    onTap: { selectedActivity = convertToLocalActivity(activity) }
                                 )
                                 .padding(.horizontal, AppTheme.Spacing.md)
                             }
                         }
                         .padding(.top, AppTheme.Spacing.md)
                     }
-                    .refreshable {
-                        await refreshActivities()
-                    }
+                    .refreshable { await refreshActivities() }
                 }
             }
-
-            .sheet(item: $selectedActivity) { activity in
-                NavigationView {
-                    ActivityDetailView(activity: activity)
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        Task {
-                            await refreshActivities()
-                        }
-                    }) {
-                        Image(systemName: AppIcons.refresh)
-                            .foregroundColor(AppTheme.Colors.accent)
-                    }
-                    .disabled(dataManager.isLoadingActivities)
-                }
+        }
+        .navigationBarHidden(true)
+        .sheet(item: $selectedActivity) { activity in
+            NavigationView {
+                ActivityDetailView(activity: activity)
             }
         }
     }

@@ -36,8 +36,6 @@ struct MainView: View {
                 Tab("Activities", systemImage: "figure.run", value: 1) {
                     NavigationStack(path: Bindable(router).path) {
                         ActivitiesView()
-                            .navigationTitle("Activities")
-                            .navigationBarTitleDisplayMode(.inline)
                             .navigationDestination(for: AppRouter.Route.self) { route in
                                 router.destination(for: route)
                             }
@@ -232,11 +230,11 @@ private struct StartRunFAB: View {
         }) {
             Image(systemName: "figure.run")
                 .font(.system(size: 28, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(width: 64, height: 64)
+                .foregroundColor(Color(red: 0.10, green: 0.05, blue: 0))
+                .frame(width: AppTheme.Layout.fabSize, height: AppTheme.Layout.fabSize)
                 .background(AppTheme.Colors.accent)
                 .clipShape(Circle())
-                .shadow(color: Color.black.opacity(0.25), radius: 6, x: 0, y: 3)
+                .shadow(color: AppTheme.Colors.warmAmber.opacity(0.45), radius: 12, x: 0, y: 4)
         }
         .accessibilityLabel("Start a new run")
         .accessibilityHint("Begins recording a run with GPS and audio coaching")

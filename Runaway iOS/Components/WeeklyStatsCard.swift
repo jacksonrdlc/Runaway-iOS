@@ -21,26 +21,10 @@ struct WeeklyStatsCard: View {
 
             // ── TOP ROW: date range + trend ────────────────────────────
             HStack {
-                Text(weekRangeLabel.uppercased())
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                    .kerning(1.2)
-
+                EyebrowLabel(text: weekRangeLabel)
                 Spacer()
-
                 if let trend = stats.weekOverWeekTrend {
-                    let isUp = trend >= 0
-                    HStack(spacing: 4) {
-                        Image(systemName: isUp ? "arrow.up.right" : "arrow.down.right")
-                            .font(.system(size: 10, weight: .bold))
-                        Text(String(format: "%.0f%%", abs(trend * 100)))
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundColor(isUp ? AppTheme.Colors.success : AppTheme.Colors.DarkMode.textTertiary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background((isUp ? AppTheme.Colors.success : AppTheme.Colors.DarkMode.textTertiary).opacity(0.12))
-                    .cornerRadius(6)
+                    TrendChip(percentage: trend * 100)
                 }
             }
             .padding(.horizontal, 16)
@@ -55,7 +39,7 @@ struct WeeklyStatsCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(String(format: stats.totalMiles >= 10 ? "%.1f" : "%.2f", stats.totalMiles))
                             .font(.system(size: 52, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.Colors.warmAmber)
                             .monospacedDigit()
                         Text(UnitFormatter.distanceUnitAbbreviation)
                             .font(.system(size: 20, weight: .medium, design: .rounded))
