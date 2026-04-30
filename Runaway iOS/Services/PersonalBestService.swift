@@ -66,6 +66,8 @@ class PersonalBestService {
 
     private func bestActivity(athleteId: Int, distance: PRDistance) async throws -> PersonalBest? {
         let range = distance.metersRange
+        // Require at least 3:00/km pace — filters GPS-corrupted or mis-categorized activities
+        let minElapsedTime = range.lowerBound * 0.18
 
         let rows: [ActivityRow] = try await supabase
             .from("activities")
@@ -73,6 +75,7 @@ class PersonalBestService {
             .eq("athlete_id", value: athleteId)
             .gte("distance", value: range.lowerBound)
             .lte("distance", value: range.upperBound)
+            .gte("elapsed_time", value: minElapsedTime)
             .not("elapsed_time", operator: .is, value: AnyJSON.null)
             .order("elapsed_time", ascending: true)
             .limit(1)
