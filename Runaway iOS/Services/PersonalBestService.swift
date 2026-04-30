@@ -52,14 +52,12 @@ class PersonalBestService {
 
     private struct ActivityRow: Decodable {
         let id: Int
-        let elapsedTime: Double?
-        let distance: Double?
+        let elapsedTime: Int?
         let startTime: Date?
 
         enum CodingKeys: String, CodingKey {
             case id
             case elapsedTime = "elapsed_time"
-            case distance
             case startTime   = "start_time"
         }
     }
@@ -67,11 +65,11 @@ class PersonalBestService {
     private func bestActivity(athleteId: Int, distance: PRDistance) async throws -> PersonalBest? {
         let range = distance.metersRange
         // Require at least 3:00/km pace — filters GPS-corrupted or mis-categorized activities
-        let minElapsedTime = range.lowerBound * 0.18
+        let minElapsedTime = Int(range.lowerBound * 0.18)
 
         let rows: [ActivityRow] = try await supabase
             .from("activities")
-            .select("id, elapsed_time, distance, start_time")
+            .select("id, elapsed_time, start_time")
             .eq("athlete_id", value: athleteId)
             .gte("distance", value: range.lowerBound)
             .lte("distance", value: range.upperBound)
@@ -84,15 +82,14 @@ class PersonalBestService {
 
         guard let best = rows.first,
               let elapsed = best.elapsedTime,
-              let dist = best.distance,
               elapsed > 0 else { return nil }
 
         return PersonalBest(
             id: 0,
             athleteId: athleteId,
             distanceLabel: distance.label,
-            distanceMeters: dist,
-            timeSeconds: Int(elapsed),
+            distanceMeters: distance.nominalMeters,
+            timeSeconds: elapsed,
             activityId: best.id,
             achievedAt: best.startTime ?? Date()
         )
