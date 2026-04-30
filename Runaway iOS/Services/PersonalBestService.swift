@@ -115,6 +115,9 @@ class PersonalBestService {
     }
 
     private func bestSplitTime(athleteId: Int, distance: PRDistance) async throws -> PersonalBest? {
+        if distance == .mile {
+            return try await bestMileFromSplits(athleteId: athleteId)
+        }
         guard let windowSize = distance.splitWindowSize else { return nil }
         let range = distance.metersRange
 
@@ -136,6 +139,33 @@ class PersonalBestService {
             distanceLabel: distance.label,
             distanceMeters: distance.nominalMeters,
             timeSeconds: best.elapsedSeconds,
+            activityId: best.activityId,
+            achievedAt: best.achievedAt
+        )
+    }
+
+    // Finds the fastest 1km split and scales to mile (1609m).
+    // 1km splits don't align to exactly 1 mile, so we use pace from the best km.
+    private func bestMileFromSplits(athleteId: Int) async throws -> PersonalBest? {
+        let rows: [SplitPRRow] = try await supabase
+            .rpc("best_split_pr", params: SplitPRParams(
+                p_athlete_id: athleteId,
+                p_window_splits: 1,
+                p_min_dist: 900,
+                p_max_dist: 1100
+            ))
+            .execute()
+            .value
+
+        guard let best = rows.first else { return nil }
+
+        let mileSeconds = Int(Double(best.elapsedSeconds) * 1609.34 / 1000.0)
+        return PersonalBest(
+            id: 0,
+            athleteId: athleteId,
+            distanceLabel: PRDistance.mile.label,
+            distanceMeters: PRDistance.mile.nominalMeters,
+            timeSeconds: mileSeconds,
             activityId: best.activityId,
             achievedAt: best.achievedAt
         )
