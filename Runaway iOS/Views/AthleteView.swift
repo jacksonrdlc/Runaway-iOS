@@ -61,7 +61,7 @@ struct AthleteView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         EyebrowLabel(text: "LIFETIME")
                         HStack(spacing: 0) {
-                            LifetimeStatTile(value: String(format: "%.0f", lifetimeMiles), label: "MILES")
+                            LifetimeStatTile(value: lifetimeMiles.formatted(.number.precision(.fractionLength(0))), label: "MILES")
                             Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1, height: 50)
                             LifetimeStatTile(value: "\(lifetimeRuns)", label: "RUNS")
                             Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1, height: 50)

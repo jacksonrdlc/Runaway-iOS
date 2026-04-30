@@ -25,7 +25,7 @@ struct PersonalBest: Identifiable, Codable {
         let s = timeSeconds % 60
         return h > 0
             ? String(format: "%d:%02d:%02d", h, m, s)
-            : String(format: "%d:%02d", m, s)
+            : String(format: "%d:%02d min", m, s)
     }
 }
 
