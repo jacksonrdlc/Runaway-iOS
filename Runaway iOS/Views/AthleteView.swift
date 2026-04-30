@@ -12,36 +12,15 @@ struct AthleteView: View {
     let athlete: Athlete
     let stats: AthleteStats
     @Environment(DataManager.self) private var dataManager
+    @State private var personalBests: [PersonalBest] = []
+    @State private var isLoadingPRs = false
 
     private var lifetimeMiles: Double { (stats.distance ?? 0) * 0.000621371 }
     private var lifetimeRuns: Int { stats.count ?? 0 }
     private var lifetimeHours: Int { Int((stats.elapsedTime ?? 0) / 3600) }
 
-    private struct PREntry { let label: String; let meters: ClosedRange<Double> }
-    private let prDistances: [PREntry] = [
-        PREntry(label: "5K",           meters: 4700...5300),
-        PREntry(label: "10K",          meters: 9400...10600),
-        PREntry(label: "Half Marathon", meters: 19500...22000),
-        PREntry(label: "Marathon",     meters: 40000...44500),
-    ]
-
-    private func bestTime(for range: ClosedRange<Double>) -> TimeInterval? {
-        dataManager.activities
-            .filter { a in
-                guard let d = a.distance, let t = a.elapsed_time, d > 0, t > 0 else { return false }
-                return range.contains(d)
-            }
-            .compactMap { $0.elapsed_time }
-            .min()
-    }
-
-    private func formatPRTime(_ seconds: TimeInterval) -> String {
-        let h = Int(seconds) / 3600
-        let m = (Int(seconds) % 3600) / 60
-        let s = Int(seconds) % 60
-        return h > 0
-            ? String(format: "%d:%02d:%02d", h, m, s)
-            : String(format: "%d:%02d", m, s)
+    private func prTime(for distance: PRDistance) -> String? {
+        personalBests.first(where: { $0.distanceLabel == distance.label })?.formattedTime
     }
 
     var body: some View {
@@ -95,15 +74,21 @@ struct AthleteView: View {
 
                     // ── PERSONAL BESTS ─────────────────────────────────────
                     VStack(alignment: .leading, spacing: 10) {
-                        EyebrowLabel(text: "PERSONAL BESTS")
+                        HStack {
+                            EyebrowLabel(text: "PERSONAL BESTS")
+                            if isLoadingPRs {
+                                Spacer()
+                                ProgressView().scaleEffect(0.7).tint(AppTheme.Colors.warmAmber)
+                            }
+                        }
                         VStack(spacing: 0) {
-                            ForEach(Array(prDistances.enumerated()), id: \.offset) { index, entry in
+                            ForEach(Array(PRDistance.allCases.enumerated()), id: \.offset) { index, distance in
                                 if index > 0 {
                                     Divider().background(Color.white.opacity(0.06))
                                 }
                                 PersonalBestRow(
-                                    distance: entry.label,
-                                    time: bestTime(for: entry.meters).map { formatPRTime($0) }
+                                    distance: distance.displayName,
+                                    time: prTime(for: distance)
                                 )
                             }
                         }
@@ -132,6 +117,16 @@ struct AthleteView: View {
                     Spacer(minLength: 32)
                 }
                 .padding(20)
+            }
+        }
+        .task {
+            guard personalBests.isEmpty, let athleteId = athlete.id else { return }
+            isLoadingPRs = true
+            defer { isLoadingPRs = false }
+            do {
+                personalBests = try await PersonalBestService.shared.recomputeAndSave(athleteId: athleteId)
+            } catch {
+                personalBests = (try? await PersonalBestService.shared.fetchPRs(athleteId: athleteId)) ?? []
             }
         }
     }

@@ -254,11 +254,16 @@ final class CommitmentManager: CommitmentManagerProtocol {
     // MARK: - Refresh
 
     func refresh() async {
-        guard let userId = UserSession.shared.userId else {
+        var userId = UserSession.shared.userId
+        if userId == nil {
+            // Auth state may not be fully restored yet; wait briefly and retry once
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            userId = UserSession.shared.userId
+        }
+        guard let userId else {
             print("❌ CommitmentManager: No user ID for refresh")
             return
         }
-
         await loadTodaysCommitment(for: userId)
     }
 

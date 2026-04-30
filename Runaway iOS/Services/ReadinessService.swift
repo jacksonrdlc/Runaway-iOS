@@ -212,18 +212,65 @@ class ReadinessService: ObservableObject {
         if let cached = todaysReadiness,
            cached.isToday,
            Date().timeIntervalSince(cached.calculatedAt) < cacheDuration {
-            // Cache is still valid
             return
         }
 
         do {
             _ = try await calculateTodaysReadiness()
+        } catch ReadinessError.healthKitNotAvailable, ReadinessError.notAuthorized {
+            // HealthKit unavailable — compute score from training data alone so the banner always shows
+            await calculateFallbackReadiness()
         } catch {
             lastError = error
             #if DEBUG
             print("Failed to calculate readiness: \(error.localizedDescription)")
             #endif
         }
+    }
+
+    /// Training-load-only readiness estimate used when HealthKit is unavailable.
+    private func calculateFallbackReadiness() async {
+        let athleteId = UserSession.shared.userId ?? 0
+        async let trainingLoadResult = calculateTrainingLoadScore()
+        async let restDayResult = calculateRestDayFactor(athleteId: athleteId)
+        let (trainingLoad, restDayFactor) = await (trainingLoadResult, restDayResult)
+
+        // Average the two available factors — weight them equally to 100
+        let score = (trainingLoad.score + restDayFactor.score) / 2
+
+        let factors = [
+            ReadinessFactor(
+                id: ReadinessFactor.trainingLoadId,
+                name: "Training Load",
+                score: trainingLoad.score,
+                weight: 0.50,
+                value: trainingLoad.description,
+                change: nil,
+                trend: trainingLoad.trend
+            ),
+            ReadinessFactor(
+                id: ReadinessFactor.restDaysId,
+                name: "Rest Days",
+                score: restDayFactor.score,
+                weight: 0.50,
+                value: restDayFactor.description,
+                change: nil,
+                trend: restDayFactor.trend
+            )
+        ]
+
+        let readiness = DailyReadiness(
+            athleteId: athleteId,
+            date: Date(),
+            score: score,
+            factors: factors,
+            recommendation: generateRecommendation(
+                score: score, sleep: nil, hrv: nil, restingHR: nil,
+                trainingLoad: trainingLoad, restDays: restDayFactor
+            )
+        )
+        todaysReadiness = readiness
+        cacheReadiness(readiness)
     }
 
     // MARK: - Private Methods

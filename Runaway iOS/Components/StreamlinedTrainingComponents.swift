@@ -235,13 +235,13 @@ struct TodaysFocusCard: View {
         }
     }
 
-    /// Check if yesterday was a rest day
-    private var hadRestYesterday: Bool {
+    /// Check if there was an activity logged yesterday (user may need recovery)
+    private var hadActivityYesterday: Bool {
         let calendar = Calendar.current
         guard let yesterday = calendar.date(byAdding: .day, value: -1, to: Date()) else { return false }
-
-        return restDayService.recentRestDays.contains { restDay in
-            calendar.isDate(restDay.date, inSameDayAs: yesterday)
+        return dataManager.activities.contains { activity in
+            guard let ts = activity.activity_date ?? activity.start_date else { return false }
+            return calendar.isDate(Date(timeIntervalSince1970: ts), inSameDayAs: yesterday)
         }
     }
 
@@ -257,13 +257,13 @@ struct TodaysFocusCard: View {
             return .plannedWorkout(workout)
         }
 
-        // Priority 3: Check recovery status - if well rested and no plan, suggest a run
-        if hadRestYesterday {
-            return .readyToRun
+        // Priority 3: Only suggest rest when user exercised yesterday and may need recovery
+        if hadActivityYesterday {
+            return .restDay
         }
 
-        // Default: Rest day
-        return .restDay
+        // Default: encourage a run
+        return .readyToRun
     }
 
     private var nextUpLabel: String {
