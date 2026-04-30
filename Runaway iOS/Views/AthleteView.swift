@@ -120,7 +120,7 @@ struct AthleteView: View {
             }
         }
         .task {
-            guard personalBests.isEmpty, let athleteId = athlete.id else { return }
+            guard let athleteId = athlete.id else { return }
             isLoadingPRs = true
             defer { isLoadingPRs = false }
             do {
