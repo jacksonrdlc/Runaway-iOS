@@ -23,30 +23,6 @@ struct AnyEncodable: Encodable {
 
 class ActivityService {
     
-    // Function to get all activities
-    static func getAllActivities() async throws -> [Activity] {
-        let activities: [Activity] = try await supabase
-            .from("activities")
-            .select(
-                """
-                id,
-                name,
-                athlete_id,
-                activity_type_id,
-                activity_types!inner(name),
-                map_summary_polyline,
-                distance,
-                activity_date,
-                elapsed_time,
-                elevation_gain
-                """
-            )
-            .order("activity_date", ascending: false)
-            .execute()
-            .value
-        return activities
-    }
-    
     // MARK: - Pagination Support
 
     struct PaginatedResponse<T> {
