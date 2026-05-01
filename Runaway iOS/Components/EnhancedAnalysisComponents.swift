@@ -30,11 +30,11 @@ struct PerformanceDashboardCard: View {
                     Text("Performance Dashboard")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text("This week vs last week")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
 
                 Spacer()
@@ -83,7 +83,7 @@ struct PerformanceDashboardCard: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -181,13 +181,13 @@ struct PerformanceMetricCard: View {
             Text(thisWeek)
                 .font(.title2)
                 .fontWeight(.bold)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(title)
                 .font(.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 .lineLimit(1)
 
             HStack {
@@ -200,7 +200,7 @@ struct PerformanceMetricCard: View {
         }
         .padding(AppTheme.Spacing.sm)
         .frame(minHeight: AppTheme.Layout.metricCardMinHeight)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+        .background(AppTheme.Colors.adaptiveSurfaceBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
@@ -245,11 +245,11 @@ struct ActivityHeatmapCard: View {
                     Text("Activity Heatmap")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text("Last 50 days of activity intensity")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
 
                 Spacer()
@@ -277,7 +277,7 @@ struct ActivityHeatmapCard: View {
             HStack {
                 Text("Less")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                 HStack(spacing: 2) {
                     ForEach(0..<5, id: \.self) { intensity in
@@ -289,13 +289,13 @@ struct ActivityHeatmapCard: View {
 
                 Text("More")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                 Spacer()
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -305,7 +305,7 @@ struct ActivityHeatmapCard: View {
     }
 
     private func heatmapColor(for intensity: Double) -> Color {
-        if intensity == 0 { return ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary.opacity(0.2) }
+        if intensity == 0 { return AppTheme.Colors.adaptiveTextTertiary.opacity(0.2) }
         if intensity <= 0.25 { return AppTheme.Colors.accent.opacity(0.4) }
         if intensity <= 0.5 { return AppTheme.Colors.accent.opacity(0.6) }
         if intensity <= 0.75 { return AppTheme.Colors.accent.opacity(0.8) }
@@ -351,11 +351,11 @@ struct PaceTrendsChart: View {
                     Text("Pace Trends")
                         .font(AppTheme.Typography.title)
                         .fontWeight(.bold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text("Last 20 runs - lower is better")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
 
                 Spacer()
@@ -405,7 +405,7 @@ struct PaceTrendsChart: View {
 
                     Text("Need at least 2 runs to show pace trends")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(height: 200)
@@ -413,7 +413,7 @@ struct PaceTrendsChart: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -468,7 +468,7 @@ struct MonthlyProgressRing: View {
             Text("Monthly Goal")
                 .font(AppTheme.Typography.title)
                 .fontWeight(.bold)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             ZStack {
                 // Background ring
@@ -491,11 +491,11 @@ struct MonthlyProgressRing: View {
                 VStack(spacing: 4) {
                     Text("\(Int(monthlyStats.progress * 100))%")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text("\(String(format: "%.1f", monthlyStats.distance)) / \(Int(monthlyStats.goal)) mi")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     Text("\(monthlyStats.runs) runs")
                         .font(AppTheme.Typography.caption)
@@ -504,7 +504,7 @@ struct MonthlyProgressRing: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)

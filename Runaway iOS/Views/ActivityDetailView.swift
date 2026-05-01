@@ -14,7 +14,6 @@ struct ActivityDetailView: View {
     let activity: LocalActivity
     @Environment(\.dismiss) private var dismiss
     @Environment(DataManager.self) var dataManager
-    @ObservedObject private var themeManager = ThemeManager.shared
 
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
@@ -59,19 +58,19 @@ struct ActivityDetailView: View {
     }
 
     private var background: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+        AppTheme.Colors.adaptiveBackground
     }
 
     private var cardBackground: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+        AppTheme.Colors.adaptiveCardBackground
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     // MARK: - Body

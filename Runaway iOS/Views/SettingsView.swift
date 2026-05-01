@@ -389,7 +389,7 @@ struct SettingsView: View {
     }
 
     private var appInfoSection: some View {
-        let textTertiary = themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+        let textTertiary = AppTheme.Colors.adaptiveTextTertiary
         return VStack(spacing: AppTheme.Spacing.sm) {
             Text("Runaway")
                 .font(AppTheme.Typography.caption)
@@ -513,15 +513,15 @@ struct SettingsRow: View {
     let action: () -> Void
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     private var textTertiary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+        AppTheme.Colors.adaptiveTextTertiary
     }
 
     var body: some View {
@@ -574,15 +574,15 @@ struct StravaConnectSheet: View {
     @State private var isLoading = false
 
     private var background: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+        AppTheme.Colors.adaptiveBackground
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     var body: some View {
@@ -721,7 +721,7 @@ struct BenefitRow: View {
 
             Text(text)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             Spacer()
         }
@@ -737,15 +737,15 @@ struct StravaIntegrationRow: View {
     let onSync: () -> Void
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     private var cardBackground: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+        AppTheme.Colors.adaptiveCardBackground
     }
 
     var body: some View {
@@ -1042,15 +1042,15 @@ struct GarminConnectSheet: View {
     @State private var webAuthSession: ASWebAuthenticationSession?
 
     private var background: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+        AppTheme.Colors.adaptiveBackground
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     var body: some View {
@@ -1222,15 +1222,15 @@ struct GarminIntegrationRow: View {
     let onDisconnect: () -> Void
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     private var cardBackground: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+        AppTheme.Colors.adaptiveCardBackground
     }
 
     var body: some View {

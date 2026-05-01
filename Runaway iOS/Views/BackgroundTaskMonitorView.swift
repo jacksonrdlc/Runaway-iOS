@@ -18,11 +18,11 @@ struct BackgroundTaskMonitorView: View {
                 Text("Background Task Status")
                     .font(AppTheme.Typography.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Text("Monitor your app's realtime background tasks")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
             }
             
             // Connection Status Card
@@ -52,7 +52,7 @@ struct BackgroundTaskMonitorView: View {
                 VStack(alignment: .leading) {
                     Text("Realtime Connection")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                     Text(connectionStatusText)
                         .font(AppTheme.Typography.caption)
                         .foregroundColor(connectionColor)
@@ -70,7 +70,7 @@ struct BackgroundTaskMonitorView: View {
             HStack {
                 Text("Health:")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                 Text(healthStatusText)
                     .font(AppTheme.Typography.caption)
@@ -82,12 +82,12 @@ struct BackgroundTaskMonitorView: View {
                 if let lastUpdate = realtimeService.lastUpdateTime {
                     Text("Updated \(timeAgoString(from: lastUpdate))")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
             }
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: AppTheme.Shadows.light.color,
@@ -101,7 +101,7 @@ struct BackgroundTaskMonitorView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Background Task Performance")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
             
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -138,7 +138,7 @@ struct BackgroundTaskMonitorView: View {
             }
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: AppTheme.Shadows.light.color,
@@ -170,8 +170,8 @@ struct BackgroundTaskMonitorView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .background(AppTheme.Colors.adaptiveCardBackground)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 .cornerRadius(AppTheme.CornerRadius.medium)
 
                 Button("View Details") {
@@ -179,8 +179,8 @@ struct BackgroundTaskMonitorView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .background(AppTheme.Colors.adaptiveCardBackground)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 .cornerRadius(AppTheme.CornerRadius.medium)
             }
         }
@@ -301,10 +301,10 @@ struct MetricView: View {
 
             Text(title)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
         }
         .padding(12)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+        .background(AppTheme.Colors.adaptiveBackground)
         .cornerRadius(AppTheme.CornerRadius.small)
     }
 }
@@ -412,7 +412,7 @@ struct DetailCard: View {
             HStack {
                 Text(title)
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Spacer()
 
@@ -427,13 +427,13 @@ struct DetailCard: View {
 
             Text(description)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
             
             if !recommendations.isEmpty {
                 Text("Recommendations:")
                     .font(AppTheme.Typography.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 ForEach(recommendations, id: \.self) { recommendation in
                     HStack(alignment: .top) {
@@ -441,13 +441,13 @@ struct DetailCard: View {
                             .foregroundColor(AppTheme.Colors.accent)
                         Text(recommendation)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     }
                 }
             }
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: AppTheme.Shadows.light.color,

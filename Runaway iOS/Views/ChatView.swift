@@ -96,7 +96,7 @@ struct ChatView: View {
             )
             .focused($isMessageFieldFocused)
         }
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+        .background(AppTheme.Colors.adaptiveBackground)
         .navigationTitle("AI Coach")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -151,7 +151,7 @@ struct WelcomeView: View {
 
             Text("A coach that believes in you before you do.")
                 .font(AppTheme.Typography.body)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 .italic()
                 .multilineTextAlignment(.center)
         }
@@ -180,13 +180,13 @@ struct ChatMessageBubble: View {
             var attributed = try AttributedString(markdown: message.content, options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace))
             // Apply default styling
             attributed.font = AppTheme.Typography.body
-            attributed.foregroundColor = ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+            attributed.foregroundColor = AppTheme.Colors.adaptiveTextPrimary
             return attributed
         } catch {
             // Fallback to plain text if markdown parsing fails
             var plain = AttributedString(message.content)
             plain.font = AppTheme.Typography.body
-            plain.foregroundColor = ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+            plain.foregroundColor = AppTheme.Colors.adaptiveTextPrimary
             return plain
         }
     }
@@ -206,14 +206,14 @@ struct ChatMessageBubble: View {
                 } else {
                     Text(formattedContent)
                         .padding(AppTheme.Spacing.md)
-                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+                        .background(AppTheme.Colors.adaptiveCardBackground)
                         .cornerRadius(AppTheme.CornerRadius.medium)
                 }
 
                 if let date = ISO8601DateFormatter().date(from: message.timestamp) {
                     Text(date, style: .time)
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                         .padding(.horizontal, 4)
                 }
             }
@@ -245,7 +245,7 @@ struct TypingIndicator: View {
             }
         }
         .padding(AppTheme.Spacing.md)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .onAppear {
             animating = true
@@ -263,7 +263,7 @@ struct SuggestedPromptsView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Suggestions")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 .padding(.horizontal)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -302,17 +302,17 @@ struct iOS26UpgradeBanner: View {
                 Text("iOS 26 Required")
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Text("Upgrade to use on-device AI coaching")
                     .font(.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                 .font(.caption)
         }
         .padding(AppTheme.Spacing.md)
@@ -331,7 +331,7 @@ struct OnDeviceAIIndicator: View {
 
             Text("On-device AI")
                 .font(.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
             Text("Private & Offline")
                 .font(.caption2)
@@ -365,11 +365,11 @@ struct UpgradeRequiredWelcomeView: View {
             VStack(spacing: AppTheme.Spacing.sm) {
                 Text("AI Coach Coming Soon")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Text("Your device needs iOS 26 or later to use on-device AI coaching. This feature uses Apple Intelligence to provide personalized, private coaching without sending data to external servers.")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     .multilineTextAlignment(.center)
             }
 
@@ -398,7 +398,7 @@ struct FeatureBenefitRow: View {
 
             Text(text)
                 .font(.subheadline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
             Spacer()
         }
@@ -436,7 +436,7 @@ struct MessageInputView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
     }
 }
 
@@ -535,11 +535,11 @@ struct AnalysisDetailSheet: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
                     Text("Analysis Type: \(analysis.type.capitalized)")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text("The coach has run an analysis for you. Check your Insights tab for detailed results.")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     Button(action: {
                         dismiss()

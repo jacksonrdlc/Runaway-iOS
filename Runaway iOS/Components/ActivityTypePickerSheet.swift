@@ -70,14 +70,14 @@ struct ActivityTypePickerSheet: View {
                 if let subtitle = subtitle {
                     Text(subtitle)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                         .padding(.top, AppTheme.Spacing.md)
                 }
 
                 if isLoading {
                     Spacer()
                     ProgressView("Loading activity types...")
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     Spacer()
                 } else if let error = errorMessage {
                     Spacer()
@@ -87,7 +87,7 @@ struct ActivityTypePickerSheet: View {
                             .foregroundColor(.orange)
                         Text(error)
                             .font(AppTheme.Typography.body)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                             .multilineTextAlignment(.center)
                         Button("Retry") {
                             Task { await loadActivityTypes() }
@@ -121,7 +121,7 @@ struct ActivityTypePickerSheet: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
             }
         }
@@ -164,14 +164,14 @@ struct ActivityTypeRow: View {
                     Image(systemName: activityType.icon)
                         .foregroundColor(isSelected ?
                                         AppTheme.Colors.accent :
-                                        ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                        AppTheme.Colors.adaptiveTextSecondary)
                         .font(.title3)
                 }
 
                 Text(activityType.name)
                     .font(AppTheme.Typography.body)
                     .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Spacer()
 

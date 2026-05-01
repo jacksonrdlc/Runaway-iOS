@@ -63,7 +63,7 @@ struct AdaptivePrimaryInsightCard: View {
                 )
             }
         }
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -161,7 +161,7 @@ struct ProgressionBasicsCard: View {
             Text("Milestones")
                 .font(AppTheme.Typography.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             ForEach(metrics.milestones.prefix(4)) { milestone in
                 MilestoneRow(milestone: milestone)
@@ -183,12 +183,12 @@ struct MilestoneRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(milestone.title)
                     .font(AppTheme.Typography.subheadline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                     .strikethrough(milestone.isAchieved)
 
                 Text(milestone.description)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
             }
 
             Spacer()
@@ -218,7 +218,7 @@ struct VolumeConsistencyCard: View {
                 VStack(spacing: 4) {
                     Text("This Week")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     Text(String(format: "%.1f", metrics.currentWeekMiles))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -226,7 +226,7 @@ struct VolumeConsistencyCard: View {
 
                     Text("miles")
                         .font(.caption2)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -243,7 +243,7 @@ struct VolumeConsistencyCard: View {
 
                     Text("vs last week")
                         .font(.caption2)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -251,15 +251,15 @@ struct VolumeConsistencyCard: View {
                 VStack(spacing: 4) {
                     Text("4-Week Avg")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     Text(String(format: "%.1f", metrics.fourWeekAverageMiles))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text("miles")
                         .font(.caption2)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -276,7 +276,7 @@ struct VolumeConsistencyCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Consistency")
                             .font(.caption2)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
 
                         Text(metrics.consistencyLevel)
                             .font(AppTheme.Typography.subheadline)
@@ -296,12 +296,12 @@ struct VolumeConsistencyCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Streak")
                             .font(.caption2)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
 
                         Text("\(metrics.streakWeeks) weeks")
                             .font(AppTheme.Typography.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                     }
                 }
             }
@@ -328,7 +328,7 @@ struct ConsistencyRing: View {
 
             Text("\(Int(score))")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
         }
     }
 }
@@ -345,7 +345,7 @@ struct TaperMetricsCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Race Day")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text("\(metrics.daysUntilRace)")
@@ -354,7 +354,7 @@ struct TaperMetricsCard: View {
 
                         Text("days")
                             .font(AppTheme.Typography.subheadline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     }
                 }
 
@@ -374,7 +374,7 @@ struct TaperMetricsCard: View {
                     if let predictedTime = metrics.predictedRaceTime {
                         Text("Goal: \(predictedTime)")
                             .font(.caption2)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                     }
                 }
             }
@@ -386,7 +386,7 @@ struct TaperMetricsCard: View {
                 Text("Volume Reduction")
                     .font(AppTheme.Typography.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 // Progress bar showing current vs target
                 GeometryReader { geometry in
@@ -418,7 +418,7 @@ struct TaperMetricsCard: View {
 
                             Text("Target: \(Int(metrics.targetVolumePercent))%")
                                 .font(.caption2)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                                 .padding(.trailing, 8)
                         }
                         .frame(height: 24)
@@ -428,7 +428,7 @@ struct TaperMetricsCard: View {
 
                 Text("of peak volume (\(String(format: "%.0f", metrics.peakVolumeMiles)) mi)")
                     .font(.caption2)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
             }
         }
         .padding()
@@ -459,7 +459,7 @@ struct RecoveryReadinessCard: View {
                     VStack(spacing: 0) {
                         Text("\(Int(metrics.recoveryScore))")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                         Text(metrics.recoveryLevel)
                             .font(.caption2)
@@ -476,17 +476,17 @@ struct RecoveryReadinessCard: View {
                         Text(metrics.statusDisplay)
                             .font(AppTheme.Typography.headline)
                             .fontWeight(.semibold)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                     }
 
                     HStack(spacing: AppTheme.Spacing.md) {
                         Label("\(metrics.restDaysLast7) rest days", systemImage: "bed.double")
                             .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                         Label("ACWR: \(String(format: "%.2f", metrics.acwr))", systemImage: "chart.line.uptrend.xyaxis")
                             .font(.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     }
                 }
 
@@ -502,7 +502,7 @@ struct RecoveryReadinessCard: View {
 
                     Text("Consider \(metrics.suggestedRestDays) more rest day\(metrics.suggestedRestDays > 1 ? "s" : "") this week")
                         .font(AppTheme.Typography.subheadline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 }
                 .padding(AppTheme.Spacing.sm)
                 .background(Color.orange.opacity(0.1))
@@ -513,7 +513,7 @@ struct RecoveryReadinessCard: View {
             if let recommendation = metrics.recommendations.first {
                 Text(recommendation)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     .padding(.top, 4)
             }
         }
@@ -545,7 +545,7 @@ struct ReturnToRunningCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Time Since Last Run")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text("\(daysSinceLastRun)")
@@ -554,7 +554,7 @@ struct ReturnToRunningCard: View {
 
                         Text("days")
                             .font(AppTheme.Typography.subheadline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     }
                 }
 
@@ -572,7 +572,7 @@ struct ReturnToRunningCard: View {
                 Text("Return Plan")
                     .font(AppTheme.Typography.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 ForEach(Array(phaseContext.recommendations.prefix(3).enumerated()), id: \.offset) { index, recommendation in
                     HStack(alignment: .top, spacing: 8) {
@@ -586,7 +586,7 @@ struct ReturnToRunningCard: View {
 
                         Text(recommendation)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     }
                 }
             }
@@ -625,7 +625,7 @@ struct AdaptiveStatPill: View {
 
             Text(label)
                 .font(.caption2)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)

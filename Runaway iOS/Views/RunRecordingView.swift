@@ -11,21 +11,20 @@ import SwiftUI
 struct RunRecordingView: View {
     @StateObject private var recorder = RunRecorder()
     @ObservedObject private var coachSettings = CoachSettingsStore.shared
-    @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var showingCancelAlert = false
 
     private var background: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+        AppTheme.Colors.adaptiveBackground
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     // MARK: - Body

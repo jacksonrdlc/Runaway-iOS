@@ -7,7 +7,6 @@ struct ActivitiesView: View {
     @Environment(UserSession.self) var userSession
     @Environment(DataManager.self) var dataManager
     @Environment(RealtimeService.self) var realtimeService
-    @EnvironmentObject var themeManager: ThemeManager
     @State private var selectedActivity: LocalActivity?
     @State private var activeFilter: String = "All"
 
@@ -29,11 +28,7 @@ struct ActivitiesView: View {
     }
 
     private var colors: (background: Color, textPrimary: Color, textSecondary: Color) {
-        if themeManager.isDarkMode {
-            return (AppTheme.Colors.DarkMode.background, AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
-        } else {
-            return (AppTheme.Colors.LightMode.background, AppTheme.Colors.LightMode.textPrimary, AppTheme.Colors.LightMode.textSecondary)
-        }
+        (AppTheme.Colors.adaptiveBackground, AppTheme.Colors.adaptiveTextPrimary, AppTheme.Colors.adaptiveTextSecondary)
     }
 
     private func convertToLocalActivity(_ activity: Activity) -> LocalActivity {
@@ -153,11 +148,7 @@ struct ActivitiesView: View {
 // MARK: - Empty Activities View
 struct EmptyActivitiesView: View {
     private var colors: (textPrimary: Color, textSecondary: Color) {
-        if ThemeManager.shared.isDarkMode {
-            return (AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
-        } else {
-            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-        }
+        (AppTheme.Colors.adaptiveTextPrimary, AppTheme.Colors.adaptiveTextSecondary)
     }
 
     var body: some View {

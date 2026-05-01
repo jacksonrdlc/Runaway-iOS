@@ -23,7 +23,7 @@ struct AccountInformationView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+                (AppTheme.Colors.adaptiveBackground).ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.xl) {
@@ -108,7 +108,7 @@ struct AccountInformationView: View {
 
             Text("Tap to change photo")
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
         }
         .padding(.top, AppTheme.Spacing.lg)
     }
@@ -129,18 +129,18 @@ struct AccountInformationView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Personal Information")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             // First Name
             VStack(alignment: .leading, spacing: 8) {
                 Text("First Name")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                 TextField("First name", text: $firstname)
                     .textFieldStyle(.plain)
                     .padding()
-                    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                    .background(AppTheme.Colors.adaptiveSurfaceBackground)
                     .cornerRadius(AppTheme.CornerRadius.medium)
                     .autocapitalization(.words)
             }
@@ -149,12 +149,12 @@ struct AccountInformationView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Last Name")
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                 TextField("Last name", text: $lastname)
                     .textFieldStyle(.plain)
                     .padding()
-                    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                    .background(AppTheme.Colors.adaptiveSurfaceBackground)
                     .cornerRadius(AppTheme.CornerRadius.medium)
                     .autocapitalization(.words)
             }
@@ -165,7 +165,7 @@ struct AccountInformationView: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Account Details")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             InfoRow(label: "Email", value: dataManager.athlete?.email ?? "Not available")
             InfoRow(label: "Athlete ID", value: "\(dataManager.athlete?.id ?? 0)")
@@ -255,16 +255,16 @@ struct InfoRow: View {
         HStack {
             Text(label)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
             Spacer()
 
             Text(value)
                 .font(AppTheme.Typography.body)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+        .background(AppTheme.Colors.adaptiveSurfaceBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
 }

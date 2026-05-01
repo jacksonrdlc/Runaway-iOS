@@ -75,7 +75,7 @@ struct ConsistencyCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Consistency Score")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             HStack {
                 // Circular progress
@@ -103,14 +103,14 @@ struct ConsistencyCard: View {
 
                     Text("Based on activity frequency over the last 30 days")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
 
                 Spacer()
             }
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
     }
 
@@ -159,7 +159,7 @@ struct BestWorstRunsCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             Text("Best & Worst Runs")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             if let best = bestRun {
                 RunSummaryRow(
@@ -180,7 +180,7 @@ struct BestWorstRunsCard: View {
             }
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
     }
 }
@@ -207,20 +207,20 @@ struct RunSummaryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                 if let speed = activity.average_speed {
                     let pace = calculatePace(from: speed)
                     Text(formatPace(pace))
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 }
 
                 if let distance = activity.distance {
                     Text(String(format: "%.2f mi", distance * 0.000621371))
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                 }
             }
 
@@ -230,7 +230,7 @@ struct RunSummaryRow: View {
                 let date = Date(timeIntervalSince1970: dateInterval)
                 Text(date, style: .date)
                     .font(AppTheme.Typography.caption)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
             }
         }
         .padding()

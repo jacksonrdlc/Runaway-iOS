@@ -14,14 +14,11 @@ struct CompactCommitmentCard: View {
     @State private var selectedActivityName = ""
     @State private var isCreatingCommitment = false
 
-    @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var goalStore = DailyGoalStore.shared
 
     private var backgroundColor: Color {
         // Slightly lighter/elevated background to stand out from activity cards
-        themeManager.isDarkMode
-            ? AppTheme.Colors.DarkMode.surfaceBackground
-            : AppTheme.Colors.LightMode.cardBackground
+        AppTheme.Colors.adaptiveSurfaceBackground
     }
 
     private var accentTint: Color {
@@ -29,15 +26,11 @@ struct CompactCommitmentCard: View {
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode
-            ? AppTheme.Colors.DarkMode.textPrimary
-            : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode
-            ? AppTheme.Colors.DarkMode.textSecondary
-            : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     var body: some View {
@@ -253,7 +246,6 @@ struct FullCommitmentSheet: View {
     @Environment(\.dismiss) var dismiss
     @Environment(DataManager.self) var dataManager
 
-    @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var goalStore = DailyGoalStore.shared
 
     @State private var showingActivityPicker = false
@@ -269,21 +261,15 @@ struct FullCommitmentSheet: View {
     }
 
     private var backgroundColor: Color {
-        themeManager.isDarkMode
-            ? AppTheme.Colors.DarkMode.background
-            : AppTheme.Colors.LightMode.background
+        AppTheme.Colors.adaptiveBackground
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode
-            ? AppTheme.Colors.DarkMode.textPrimary
-            : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode
-            ? AppTheme.Colors.DarkMode.textSecondary
-            : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     private var commitment: DailyCommitment? {
@@ -584,7 +570,7 @@ struct FullCommitmentSheet: View {
         .padding(AppTheme.Spacing.md)
         .background(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                .fill(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+                .fill(AppTheme.Colors.adaptiveCardBackground)
         )
     }
 
@@ -715,8 +701,6 @@ private struct GoalOptionButton: View {
     let sublabel: String
     let action: () -> Void
 
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     var body: some View {
         Button(action: action) {
             VStack(spacing: AppTheme.Spacing.xs) {
@@ -727,11 +711,11 @@ private struct GoalOptionButton: View {
                 Text(label)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Text(sublabel)
                     .font(.caption)
-                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppTheme.Spacing.md)

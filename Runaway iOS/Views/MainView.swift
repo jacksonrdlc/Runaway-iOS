@@ -11,14 +11,13 @@ struct MainView: View {
     @Environment(UserSession.self) var userSession
     @Environment(RealtimeService.self) var realtimeService
     @Environment(DataManager.self) var dataManager
-    @EnvironmentObject var themeManager: ThemeManager
     @Environment(AppRouter.self) private var router
     @State var selectedTab = 0
     @State var isDataReady: Bool = false
     @State private var showingRunRecording = false
 
     private var backgroundColor: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background
+        AppTheme.Colors.adaptiveBackground
     }
 
     var body: some View {
@@ -116,11 +115,11 @@ struct MainView: View {
                         VStack(spacing: AppTheme.Spacing.sm) {
                             Text("Loading your data...")
                                 .font(AppTheme.Typography.headline)
-                                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                             Text("Syncing activities and performance metrics")
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                                 .multilineTextAlignment(.center)
                         }
                     }
@@ -157,7 +156,7 @@ struct MainView: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
                     Text("Loading profile...")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(backgroundColor)
@@ -244,13 +243,12 @@ private struct StartRunFAB: View {
 // MARK: - Profile Loading Error View
 
 private struct ProfileLoadingErrorView: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
     let onRetry: () -> Void
     @State private var isRetrying = false
 
     var body: some View {
         ZStack {
-            (themeManager.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+            (AppTheme.Colors.adaptiveBackground).ignoresSafeArea()
 
             VStack(spacing: AppTheme.Spacing.lg) {
                 Image(systemName: "exclamationmark.triangle")
@@ -259,11 +257,11 @@ private struct ProfileLoadingErrorView: View {
 
                 Text("Couldn't load profile")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Text("Please check your connection and try again")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     .multilineTextAlignment(.center)
 
                 Button(action: {

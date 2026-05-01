@@ -26,7 +26,7 @@ struct RunningGoalCard: View {
                 Text("Running Goal")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Spacer()
 
@@ -75,7 +75,7 @@ struct RunningGoalCard: View {
             }
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
@@ -184,7 +184,7 @@ struct GoalOverviewSection: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(goal.title)
                         .font(.headline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text(goal.formattedTarget())
                         .font(.title3)
@@ -197,7 +197,7 @@ struct GoalOverviewSection: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("\(goal.daysRemaining) days left")
                         .font(.subheadline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     Text(analysis.trackingStatus.description)
                         .font(.caption)
@@ -217,7 +217,7 @@ struct GoalOverviewSection: View {
 
             Text("\(Int(analysis.progressPercentage))% Complete")
                 .font(.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
         }
     }
     
@@ -254,7 +254,7 @@ struct GoalProgressChart: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Progress Overview")
                 .font(.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
             
             ZStack {
                 // Background circle
@@ -295,7 +295,7 @@ struct GoalProgressChart: View {
 
                     Text("Complete")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -308,11 +308,11 @@ struct GoalProgressChart: View {
                         .frame(width: 12, height: 12)
                     Text("Current Progress")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                     Spacer()
                     Text("\(Int(currentProgress * 100))%")
                         .font(AppTheme.Typography.caption.weight(.semibold))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 }
 
                 HStack {
@@ -321,11 +321,11 @@ struct GoalProgressChart: View {
                         .frame(width: 12, height: 12)
                     Text("Target Progress")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     Spacer()
                     Text("\(Int(targetProgress * 100))%")
                         .font(AppTheme.Typography.caption.weight(.semibold))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
 
                 if currentProgress > 0 && targetProgress > 0 {
@@ -348,7 +348,7 @@ struct GoalProgressChart: View {
             .padding(.horizontal, 4)
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
     }
 }
@@ -364,11 +364,11 @@ struct GoalEmptyState: View {
             VStack(spacing: 8) {
                 Text("Set Your Running Goal")
                     .font(.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Text("Get AI-powered training recommendations based on your performance data")
                     .font(.subheadline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -611,7 +611,7 @@ struct GoalReadinessCompactCard: View {
             HStack {
                 Text("Goal Readiness")
                     .font(.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 
                 Spacer()
                 
@@ -663,14 +663,14 @@ struct GoalReadinessCompactCard: View {
 
                     Text(goalReadiness.recommendations.first ?? "")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                         .lineLimit(2)
                 }
                 .padding(.top, 4)
             }
         }
         .padding()
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
@@ -702,7 +702,7 @@ struct ReadinessIndicator: View {
             
             Text(title)
                 .font(AppTheme.Typography.caption2)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 .lineLimit(1)
             
             Circle()

@@ -202,16 +202,14 @@ private struct PersonalBestRow: View {
 
 // MARK: - Profile Header
 struct ProfileHeader: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     let athlete: Athlete
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     var body: some View {
@@ -310,8 +308,6 @@ struct QuickStatItem: View {
 
 // MARK: - Athlete Weekly Stats Card
 struct AthleteWeeklyStatsCard: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     let stats: AthleteStats
     @Environment(DataManager.self) private var dataManager
     @State private var weeklyRuns = 0
@@ -325,15 +321,15 @@ struct AthleteWeeklyStatsCard: View {
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     private var surfaceBackground: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+        AppTheme.Colors.adaptiveSurfaceBackground
     }
 
     var body: some View {
@@ -436,8 +432,6 @@ struct AthleteWeeklyStatsCard: View {
 
 // MARK: - Monthly Stats Card
 struct MonthlyStatsCard: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     let stats: AthleteStats
     @Environment(DataManager.self) private var dataManager
     @State private var monthlyRuns = 0
@@ -451,15 +445,15 @@ struct MonthlyStatsCard: View {
     }
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     private var surfaceBackground: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
+        AppTheme.Colors.adaptiveSurfaceBackground
     }
 
     var body: some View {
@@ -580,12 +574,10 @@ struct MonthlyStatsCard: View {
 
 // MARK: - All Time Stats Card
 struct AllTimeStatsCard: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     let stats: AthleteStats
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     var body: some View {
@@ -615,14 +607,12 @@ struct AllTimeStatsCard: View {
 
 // MARK: - Stat Pair
 struct StatPair: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     let label: String
     let value: String
     let color: Color
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     var body: some View {
@@ -655,7 +645,7 @@ struct TwinIdentityBadge: View {
     @ObservedObject private var themeManager = ThemeManager.shared
     
     private var cardBg: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+        AppTheme.Colors.adaptiveCardBackground
     }
     
     var body: some View {

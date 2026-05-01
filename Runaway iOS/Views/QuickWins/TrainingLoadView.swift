@@ -290,7 +290,7 @@ struct RecoveryStatusBanner: View {
 
                     Text(trainingLoad.recoveryStatusDisplay)
                         .font(.headline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 }
 
                 Spacer()

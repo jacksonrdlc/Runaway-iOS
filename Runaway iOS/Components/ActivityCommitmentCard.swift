@@ -23,11 +23,11 @@ struct ActivityCommitmentCard: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                     Text("Activity Tracker")
                         .font(AppTheme.Typography.headline)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     Text(dataManager.daysSinceLastActivityText)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
 
                 Spacer()
@@ -100,7 +100,7 @@ struct ActivityCommitmentCard: View {
 
         }
         .padding(AppTheme.Spacing.md)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
         .task {
@@ -167,12 +167,12 @@ struct NoCommitmentView: View {
             Text("Today's Commitment")
                 .font(AppTheme.Typography.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             HStack {
                 Text("I commit to:")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                 Spacer()
 
@@ -216,7 +216,7 @@ struct NoCommitmentView: View {
 
                         Text("Need to start smaller?")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                         Spacer()
 
@@ -270,7 +270,7 @@ struct ActiveCommitmentView: View {
                 Text("Today's Commitment")
                     .font(AppTheme.Typography.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Spacer()
 
@@ -293,12 +293,12 @@ struct ActiveCommitmentView: View {
                     Text(commitment.activityType.displayName)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     if commitment.timeRemainingToday > 0 {
                         Text(commitment.timeRemainingText)
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     } else {
                         Text("Commitment expired")
                             .font(AppTheme.Typography.caption)
@@ -456,16 +456,16 @@ struct FulfilledCommitmentView: View {
                 Text(commitment.isMicroCommitment ? "Great start! ✨" : "LET'S GO! 🔥")
                     .font(.title2)
                     .fontWeight(.heavy)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 if commitment.isMicroCommitment, let microType = commitment.microCommitmentType {
                     Text(microType.completionMessage)
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 } else {
                     Text("You crushed your \(commitment.displayTitle.lowercased()) commitment today!")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
             }
 
@@ -485,16 +485,16 @@ struct FulfilledCommitmentView: View {
                     Text(commitment.displayTitle)
                         .font(AppTheme.Typography.body)
                         .fontWeight(.semibold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                     if let fulfilledTime = commitment.fulfilledAtAsDate {
                         Text("Completed at \(fulfilledTime, formatter: timeFormatter)")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     } else {
                         Text("Completed today")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     }
                 }
 
@@ -602,13 +602,13 @@ struct EditCommitmentSheet: View {
             VStack(spacing: AppTheme.Spacing.lg) {
                 Text("Change your commitment type")
                     .font(AppTheme.Typography.body)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     .padding(.top, AppTheme.Spacing.md)
 
                 if isLoading {
                     Spacer()
                     ProgressView("Loading activity types...")
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     Spacer()
                 } else {
                     ScrollView {
@@ -630,14 +630,14 @@ struct EditCommitmentSheet: View {
                                             Image(systemName: activityType.icon)
                                                 .foregroundColor(selectedTypeName.lowercased() == activityType.name.lowercased() ?
                                                                 AppTheme.Colors.accent :
-                                                                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                                                AppTheme.Colors.adaptiveTextSecondary)
                                                 .font(.title3)
                                         }
 
                                         Text(activityType.name)
                                             .font(AppTheme.Typography.body)
                                             .fontWeight(selectedTypeName.lowercased() == activityType.name.lowercased() ? .semibold : .regular)
-                                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                                            .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                                         Spacer()
 
@@ -701,7 +701,7 @@ struct EditCommitmentSheet: View {
                         selectedType = currentType
                         dismiss()
                     }
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
             }
         }

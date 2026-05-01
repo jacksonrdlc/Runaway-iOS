@@ -135,11 +135,7 @@ extension Notification.Name {
 
 struct EmptyInsightsStateView: View {
     private var colors: (textPrimary: Color, textSecondary: Color) {
-        if ThemeManager.shared.isDarkMode {
-            return (AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
-        } else {
-            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-        }
+        (AppTheme.Colors.adaptiveTextPrimary, AppTheme.Colors.adaptiveTextSecondary)
     }
 
     var body: some View {
@@ -170,11 +166,7 @@ struct LoadingInsightsStateView: View {
     @State private var animationPhase = 0.0
 
     private var colors: (textPrimary: Color, textSecondary: Color) {
-        if ThemeManager.shared.isDarkMode {
-            return (AppTheme.Colors.DarkMode.textPrimary, AppTheme.Colors.DarkMode.textSecondary)
-        } else {
-            return (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary, ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
-        }
+        (AppTheme.Colors.adaptiveTextPrimary, AppTheme.Colors.adaptiveTextSecondary)
     }
 
     var body: some View {

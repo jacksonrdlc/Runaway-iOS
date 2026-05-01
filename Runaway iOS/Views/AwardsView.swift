@@ -20,7 +20,7 @@ struct AwardsView: View {
 
     var body: some View {
         ZStack {
-            (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+            (AppTheme.Colors.adaptiveBackground).ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: AppTheme.Spacing.lg) {
@@ -45,7 +45,7 @@ struct AwardsView: View {
                                 .scaleEffect(1.2)
                             Text("Loading stats...")
                                 .font(AppTheme.Typography.caption)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                         }
                         .padding(.top, 50)
                     } else {
@@ -53,7 +53,7 @@ struct AwardsView: View {
                         if let stats = awardsService.lifetimeStats {
                             Text("\(stats.totalRuns) runs • \(String(format: "%.0f", stats.totalDistanceMiles)) miles lifetime")
                                 .font(AppTheme.Typography.caption)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                         }
 
                         LazyVGrid(columns: [
@@ -144,7 +144,7 @@ struct BreakthroughsSection: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Breakthroughs")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 .padding(.horizontal, AppTheme.Spacing.md)
 
             ForEach(milestones) { milestone in
@@ -168,25 +168,21 @@ struct BreakthroughCard: View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
             Text(milestone.title)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             Text(milestone.coachMessage)
                 .font(.system(size: 14))
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(formattedDate)
                 .font(AppTheme.Typography.caption)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 .padding(.top, 2)
         }
         .padding(AppTheme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            ThemeManager.shared.isDarkMode
-                ? AppTheme.Colors.DarkMode.cardBackground
-                : AppTheme.Colors.LightMode.cardBackground
-        )
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(12)
         .padding(.horizontal, AppTheme.Spacing.md)
     }
@@ -202,7 +198,7 @@ struct AwardsSummaryHeader: View {
         VStack(spacing: AppTheme.Spacing.md) {
             ZStack {
                 Circle()
-                    .stroke(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary.opacity(0.2), lineWidth: 8)
+                    .stroke(AppTheme.Colors.adaptiveTextSecondary.opacity(0.2), lineWidth: 8)
                     .frame(width: 100, height: 100)
 
                 Circle()
@@ -217,13 +213,13 @@ struct AwardsSummaryHeader: View {
                         .foregroundColor(AppTheme.Colors.accent)
                     Text("of \(totalCount)")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
             }
 
             Text("Awards Earned")
                 .font(AppTheme.Typography.headline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
         }
         .padding(.vertical, AppTheme.Spacing.md)
     }
@@ -277,12 +273,12 @@ struct CategoryChip: View {
             .background(
                 isSelected ?
                 AppTheme.Colors.accent :
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground
+                AppTheme.Colors.adaptiveCardBackground
             )
             .foregroundColor(
                 isSelected ?
                 .white :
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+                AppTheme.Colors.adaptiveTextPrimary
             )
             .clipShape(Capsule())
         }
@@ -343,8 +339,8 @@ struct AwardBadgeView: View {
                 .font(size == .small ? AppTheme.Typography.caption : AppTheme.Typography.subheadline)
                 .foregroundColor(
                     isEarned ?
-                    ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary :
-                    ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+                    AppTheme.Colors.adaptiveTextPrimary :
+                    AppTheme.Colors.adaptiveTextSecondary
                 )
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
@@ -364,7 +360,7 @@ struct AwardBadgeView: View {
             if showProgress && !isEarned && progress > 0 {
                 Text("\(Int(progress * 100))%")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
             }
         }
         .frame(width: size.frameSize + 20)
@@ -393,7 +389,7 @@ struct AwardsPreviewSection: View {
 
                 Text("Awards")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Spacer()
 
@@ -416,7 +412,7 @@ struct AwardsPreviewSection: View {
                         .scaleEffect(0.8)
                     Text("Loading awards...")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AppTheme.Spacing.md)
@@ -425,15 +421,15 @@ struct AwardsPreviewSection: View {
                 VStack(spacing: AppTheme.Spacing.sm) {
                     Image(systemName: "medal")
                         .font(.system(size: 40))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary.opacity(0.5))
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary.opacity(0.5))
 
                     Text("No awards yet")
                         .font(AppTheme.Typography.body)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
 
                     Text("Keep running to earn your first award!")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
@@ -548,7 +544,7 @@ struct AwardDetailSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+                (AppTheme.Colors.adaptiveBackground).ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.xl) {
@@ -583,7 +579,7 @@ struct AwardDetailSheet: View {
                         VStack(spacing: AppTheme.Spacing.sm) {
                             Text(award.name)
                                 .font(AppTheme.Typography.title)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                             Text(award.tier.displayName)
                                 .font(AppTheme.Typography.subheadline)
@@ -595,13 +591,13 @@ struct AwardDetailSheet: View {
 
                             Text(award.category.displayName)
                                 .font(AppTheme.Typography.caption)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                         }
 
                         // Description
                         Text(award.description)
                             .font(AppTheme.Typography.body)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, AppTheme.Spacing.lg)
 
@@ -609,7 +605,7 @@ struct AwardDetailSheet: View {
                         VStack(spacing: AppTheme.Spacing.md) {
                             Text("Your Progress")
                                 .font(AppTheme.Typography.headline)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                             // Progress Bar
                             VStack(spacing: AppTheme.Spacing.sm) {
@@ -634,7 +630,7 @@ struct AwardDetailSheet: View {
 
                                     Text("/ \(progressDetails.formattedTarget) \(progressDetails.unit)")
                                         .font(AppTheme.Typography.body)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                                 }
                             }
                             .padding(.horizontal, AppTheme.Spacing.lg)
@@ -645,7 +641,7 @@ struct AwardDetailSheet: View {
                                 .foregroundColor(
                                     isEarned ?
                                     award.tier.color :
-                                    ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+                                    AppTheme.Colors.adaptiveTextSecondary
                                 )
 
                             // Remaining (if not earned)
@@ -654,12 +650,12 @@ struct AwardDetailSheet: View {
                                 if remaining > 0 {
                                     Text(remainingText(remaining: remaining))
                                         .font(AppTheme.Typography.caption)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                                 }
                             }
                         }
                         .padding()
-                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+                        .background(AppTheme.Colors.adaptiveCardBackground)
                         .cornerRadius(AppTheme.CornerRadius.large)
                         .padding(.horizontal, AppTheme.Spacing.md)
 
@@ -670,7 +666,7 @@ struct AwardDetailSheet: View {
                                     .foregroundColor(award.tier.color)
                                 Text("Earned on \(date.formatted(date: .long, time: .omitted))")
                                     .font(AppTheme.Typography.subheadline)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                             }
                             .padding()
                             .background(award.tier.color.opacity(0.1))
@@ -687,7 +683,7 @@ struct AwardDetailSheet: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { dismiss() }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                             .font(.title2)
                     }
                 }
@@ -750,7 +746,7 @@ struct AwardDetailSheetFromStats: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                (ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea()
+                (AppTheme.Colors.adaptiveBackground).ignoresSafeArea()
 
                 if awardsService.isLoading || !hasStats {
                     // Loading state - show while stats are loading
@@ -759,7 +755,7 @@ struct AwardDetailSheetFromStats: View {
                             .scaleEffect(1.2)
                         Text("Loading progress...")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     }
                 } else {
                     ScrollView {
@@ -795,7 +791,7 @@ struct AwardDetailSheetFromStats: View {
                             VStack(spacing: AppTheme.Spacing.sm) {
                                 Text(award.name)
                                     .font(AppTheme.Typography.title)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                                 Text(award.tier.displayName)
                                     .font(AppTheme.Typography.subheadline)
@@ -807,13 +803,13 @@ struct AwardDetailSheetFromStats: View {
 
                                 Text(award.category.displayName)
                                     .font(AppTheme.Typography.caption)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                             }
 
                             // Description
                             Text(award.description)
                                 .font(AppTheme.Typography.body)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                                 .multilineTextAlignment(.center)
                             .padding(.horizontal, AppTheme.Spacing.lg)
 
@@ -821,7 +817,7 @@ struct AwardDetailSheetFromStats: View {
                         VStack(spacing: AppTheme.Spacing.md) {
                             Text("Your Progress")
                                 .font(AppTheme.Typography.headline)
-                                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                             // Progress Bar
                             VStack(spacing: AppTheme.Spacing.sm) {
@@ -846,7 +842,7 @@ struct AwardDetailSheetFromStats: View {
 
                                     Text("/ \(progressDetails.formattedTarget) \(progressDetails.unit)")
                                         .font(AppTheme.Typography.body)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                                 }
                             }
                             .padding(.horizontal, AppTheme.Spacing.lg)
@@ -857,7 +853,7 @@ struct AwardDetailSheetFromStats: View {
                                 .foregroundColor(
                                     isEarned ?
                                     award.tier.color :
-                                    ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+                                    AppTheme.Colors.adaptiveTextSecondary
                                 )
 
                             // Remaining (if not earned)
@@ -866,12 +862,12 @@ struct AwardDetailSheetFromStats: View {
                                 if remaining > 0 {
                                     Text(remainingText(remaining: remaining))
                                         .font(AppTheme.Typography.caption)
-                                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                                 }
                             }
                         }
                         .padding()
-                        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+                        .background(AppTheme.Colors.adaptiveCardBackground)
                         .cornerRadius(AppTheme.CornerRadius.large)
                         .padding(.horizontal, AppTheme.Spacing.md)
 
@@ -882,7 +878,7 @@ struct AwardDetailSheetFromStats: View {
                                     .foregroundColor(award.tier.color)
                                 Text("Award Earned!")
                                     .font(AppTheme.Typography.subheadline)
-                                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                             }
                             .padding()
                             .background(award.tier.color.opacity(0.1))
@@ -900,7 +896,7 @@ struct AwardDetailSheetFromStats: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { dismiss() }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                             .font(.title2)
                     }
                 }

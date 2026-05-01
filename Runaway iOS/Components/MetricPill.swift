@@ -8,19 +8,11 @@ struct MetricPill: View {
     let color: Color
 
     private var colors: (textPrimary: Color, textSecondary: Color, surface: Color) {
-        if ThemeManager.shared.isDarkMode {
-            return (
-                AppTheme.Colors.DarkMode.textPrimary,
-                AppTheme.Colors.DarkMode.textSecondary,
-                AppTheme.Colors.DarkMode.surfaceBackground
-            )
-        } else {
-            return (
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary,
-                ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground
-            )
-        }
+        (
+            AppTheme.Colors.adaptiveTextPrimary,
+            AppTheme.Colors.adaptiveTextSecondary,
+            AppTheme.Colors.adaptiveSurfaceBackground
+        )
     }
 
     var body: some View {

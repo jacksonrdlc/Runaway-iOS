@@ -149,7 +149,7 @@ struct ReadinessCalculationSheet: View {
 
                 Text("We'll analyze your sleep, HRV, resting heart rate, and training load to determine how ready you are to train today.")
                     .font(.subheadline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
 

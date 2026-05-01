@@ -367,7 +367,7 @@ struct NavigationCard: View {
 
                 Text(title)
                     .font(.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Text(subtitle)
                     .font(.caption)

@@ -39,15 +39,15 @@ struct MetricCard: View {
     // MARK: - Theme Colors
 
     private var textPrimary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary
+        AppTheme.Colors.adaptiveTextPrimary
     }
 
     private var textSecondary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary
+        AppTheme.Colors.adaptiveTextSecondary
     }
 
     private var textTertiary: Color {
-        themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary
+        AppTheme.Colors.adaptiveTextTertiary
     }
 
     private var cardBackground: Color {
@@ -369,8 +369,6 @@ struct CompactMetricCard: View {
     let label: String
     let color: Color
 
-    @ObservedObject private var themeManager = ThemeManager.shared
-
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
@@ -379,18 +377,18 @@ struct CompactMetricCard: View {
 
             Text(value)
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
             Text(label)
                 .font(.caption2)
-                .foregroundColor(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .padding(.horizontal, 8)
-        .background(themeManager.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.medium)
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)

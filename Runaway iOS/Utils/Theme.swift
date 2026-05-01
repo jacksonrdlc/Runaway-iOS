@@ -531,6 +531,59 @@ enum ShadowLevel {
     case accentGlow, orangeGlow, purpleGlow, tealGlow, greenGlow
 }
 
+// MARK: - Adaptive Color Helpers
+// Theme-aware colors that resolve via UIKit trait collections —
+// no ThemeManager dependency required at the call site.
+extension AppTheme.Colors {
+    static var adaptiveBackground: Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(AppTheme.Colors.DarkMode.background)
+                : UIColor(AppTheme.Colors.LightMode.background)
+        })
+    }
+
+    static var adaptiveCardBackground: Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(AppTheme.Colors.DarkMode.cardBackground)
+                : UIColor(AppTheme.Colors.LightMode.cardBackground)
+        })
+    }
+
+    static var adaptiveSurfaceBackground: Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(AppTheme.Colors.DarkMode.surfaceBackground)
+                : UIColor(AppTheme.Colors.LightMode.surfaceBackground)
+        })
+    }
+
+    static var adaptiveTextPrimary: Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(AppTheme.Colors.DarkMode.textPrimary)
+                : UIColor(AppTheme.Colors.LightMode.textPrimary)
+        })
+    }
+
+    static var adaptiveTextSecondary: Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(AppTheme.Colors.DarkMode.textSecondary)
+                : UIColor(AppTheme.Colors.LightMode.textSecondary)
+        })
+    }
+
+    static var adaptiveTextTertiary: Color {
+        Color(UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(AppTheme.Colors.DarkMode.textTertiary)
+                : UIColor(AppTheme.Colors.LightMode.textTertiary)
+        })
+    }
+}
+
 // MARK: - SF Symbols Icons
 struct AppIcons {
     static let home         = "house.fill"

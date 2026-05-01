@@ -17,11 +17,11 @@ public struct LoaderView: View {
                     .scaleEffect(2)
                 Text("Loading...")
                     .font(AppTheme.Typography.title)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                     .padding(.top, 20)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background((ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background).ignoresSafeArea())
+            .background((AppTheme.Colors.adaptiveBackground).ignoresSafeArea())
             .navigationTitle("Loading")
             .navigationBarTitleDisplayMode(.inline)
         }

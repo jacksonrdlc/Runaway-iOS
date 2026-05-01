@@ -71,14 +71,14 @@ struct ElevationProfileChart: View {
             HStack {
                 Label("Elevation", systemImage: "mountain.2.fill")
                     .font(AppTheme.Typography.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Spacer()
 
                 if let range = summary.range {
                     Text("\(Int(range))m range")
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
             }
 
@@ -99,7 +99,7 @@ struct ElevationProfileChart: View {
             }
         }
         .padding(AppTheme.Spacing.lg)
-        .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.cardBackground : AppTheme.Colors.LightMode.cardBackground)
+        .background(AppTheme.Colors.adaptiveCardBackground)
         .cornerRadius(AppTheme.CornerRadius.large)
         .shadow(
             color: AppTheme.Shadows.medium.color,
@@ -154,7 +154,7 @@ struct ElevationProfileChart: View {
                         .foregroundStyle(AppTheme.Colors.textQuaternary.opacity(0.3))
                     AxisValueLabel()
                         .font(AppTheme.Typography.caption)
-                        .foregroundStyle(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundStyle(AppTheme.Colors.adaptiveTextTertiary)
                 }
             }
             .chartYAxis {
@@ -163,7 +163,7 @@ struct ElevationProfileChart: View {
                         .foregroundStyle(AppTheme.Colors.textQuaternary.opacity(0.3))
                     AxisValueLabel()
                         .font(AppTheme.Typography.caption)
-                        .foregroundStyle(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundStyle(AppTheme.Colors.adaptiveTextTertiary)
                 }
             }
             .chartXAxisLabel("Distance (\(distanceUnit))")
@@ -179,7 +179,7 @@ struct ElevationProfileChart: View {
 
                     Text(String(format: "%.2f %@ - %.0fm", selected.distance, distanceUnit, selected.elevation))
                         .font(AppTheme.Typography.caption)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textSecondary : AppTheme.Colors.LightMode.textSecondary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
                 .transition(.opacity)
             }
@@ -197,7 +197,7 @@ struct ElevationProfileChart: View {
                     ZStack(alignment: .bottom) {
                         // Background bar
                         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
-                            .fill(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                            .fill(AppTheme.Colors.adaptiveSurfaceBackground)
                             .frame(width: 40, height: 100)
 
                         // Filled portion (proportional to max value)
@@ -222,11 +222,11 @@ struct ElevationProfileChart: View {
 
                         Text("\(Int(gain))m")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                         Text("GAIN")
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                     }
                 }
             }
@@ -237,7 +237,7 @@ struct ElevationProfileChart: View {
                     ZStack(alignment: .bottom) {
                         // Background bar
                         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
-                            .fill(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.surfaceBackground : AppTheme.Colors.LightMode.surfaceBackground)
+                            .fill(AppTheme.Colors.adaptiveSurfaceBackground)
                             .frame(width: 40, height: 100)
 
                         // Filled portion
@@ -262,11 +262,11 @@ struct ElevationProfileChart: View {
 
                         Text("\(Int(loss))m")
                             .font(AppTheme.Typography.caption)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                         Text("LOSS")
                             .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                     }
                 }
             }
@@ -286,12 +286,12 @@ struct ElevationProfileChart: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("HIGH")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                         .tracking(1)
 
                     Text("\(Int(high))m")
                         .font(AppTheme.Typography.bodyBold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 }
             }
 
@@ -300,12 +300,12 @@ struct ElevationProfileChart: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("LOW")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
                         .tracking(1)
 
                     Text("\(Int(low))m")
                         .font(AppTheme.Typography.bodyBold)
-                        .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                        .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 }
             }
 
@@ -325,7 +325,7 @@ struct ElevationProfileChart: View {
 
             Text("No elevation data")
                 .font(AppTheme.Typography.subheadline)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textTertiary : AppTheme.Colors.LightMode.textTertiary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextTertiary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 120)
@@ -344,7 +344,7 @@ struct ElevationProfileChart: View {
         )
     )
     .padding()
-    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+    .background(AppTheme.Colors.adaptiveBackground)
 }
 
 #Preview("With Detailed Profile") {
@@ -369,7 +369,7 @@ struct ElevationProfileChart: View {
         ]
     )
     .padding()
-    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+    .background(AppTheme.Colors.adaptiveBackground)
 }
 
 #Preview("No Data") {
@@ -382,5 +382,5 @@ struct ElevationProfileChart: View {
         )
     )
     .padding()
-    .background(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.background : AppTheme.Colors.LightMode.background)
+    .background(AppTheme.Colors.adaptiveBackground)
 }

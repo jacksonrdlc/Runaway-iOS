@@ -66,7 +66,7 @@ struct ReadinessCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Today's Readiness")
                             .font(.headline)
-                            .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                            .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                         Text(readiness.date.formatted(date: .abbreviated, time: .omitted))
                             .font(.caption)
@@ -130,7 +130,7 @@ struct FactorPill: View {
                 Text(factor.name)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 HStack(spacing: 4) {
                     if !factor.value.isEmpty {
@@ -215,7 +215,7 @@ struct ReadinessSection: View {
             HStack {
                 Label("Daily Readiness", systemImage: "heart.circle.fill")
                     .font(.headline)
-                    .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
                 Spacer()
 
@@ -473,7 +473,7 @@ struct ReadinessErrorView: View {
             Text("Unable to calculate readiness")
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(ThemeManager.shared.isDarkMode ? AppTheme.Colors.DarkMode.textPrimary : AppTheme.Colors.LightMode.textPrimary)
+                .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
 
             Text(message)
                 .font(.caption)
