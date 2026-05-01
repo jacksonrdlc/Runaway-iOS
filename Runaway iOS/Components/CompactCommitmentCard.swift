@@ -9,10 +9,10 @@ import SwiftUI
 
 struct CompactCommitmentCard: View {
     @Environment(DataManager.self) var dataManager
+    @State private var viewModel = CommitmentCardViewModel()
     @State private var showingFullCommitment = false
     @State private var showingActivityPicker = false
     @State private var selectedActivityName = ""
-    @State private var isCreatingCommitment = false
 
     @ObservedObject private var goalStore = DailyGoalStore.shared
 
@@ -55,7 +55,7 @@ struct CompactCommitmentCard: View {
                 Spacer()
 
                 // Loading or action indicator
-                if isCreatingCommitment {
+                if viewModel.isLoading {
                     ProgressView()
                         .scaleEffect(0.8)
                 } else {
@@ -79,7 +79,7 @@ struct CompactCommitmentCard: View {
             .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 3)
         }
         .buttonStyle(PlainButtonStyle())
-        .disabled(isCreatingCommitment)
+        .disabled(viewModel.isLoading)
         .sheet(isPresented: $showingFullCommitment) {
             NavigationView {
                 FullCommitmentSheet()
@@ -111,29 +111,9 @@ struct CompactCommitmentCard: View {
     }
 
     private func createCommitment(for activityName: String) {
-        let activityType = mapToCommitmentType(activityName)
-
+        let activityType = CommitmentCardViewModel.commitmentActivityType(for: activityName)
         Task {
-            isCreatingCommitment = true
-            defer { isCreatingCommitment = false }
-
-            do {
-                try await dataManager.createCommitment(activityType)
-            } catch {
-                #if DEBUG
-                print("Failed to create commitment: \(error)")
-                #endif
-            }
-        }
-    }
-
-    private func mapToCommitmentType(_ name: String) -> CommitmentActivityType {
-        switch name.lowercased() {
-        case "run": return .run
-        case "walk": return .walk
-        case "yoga": return .yoga
-        case "weight training", "weighttraining", "workout": return .workout
-        default: return .run
+            await viewModel.createCommitment(activityType)
         }
     }
 
@@ -246,12 +226,12 @@ struct FullCommitmentSheet: View {
     @Environment(\.dismiss) var dismiss
     @Environment(DataManager.self) var dataManager
 
+    @State private var viewModel = CommitmentCardViewModel()
     @ObservedObject private var goalStore = DailyGoalStore.shared
 
     @State private var showingActivityPicker = false
     @State private var showingDeleteConfirmation = false
     @State private var selectedActivityName = ""
-    @State private var isUpdating = false
     @State private var showGoalSection = false
     @State private var selectedGoalType: GoalType? = nil
     @State private var goalValue: String = ""
@@ -403,8 +383,8 @@ struct FullCommitmentSheet: View {
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.bottom, AppTheme.Spacing.xl)
-            .disabled(isUpdating)
-            .opacity(isUpdating ? 0.5 : 1)
+            .disabled(viewModel.isLoading)
+            .opacity(viewModel.isLoading ? 0.5 : 1)
         }
     }
 
@@ -648,47 +628,18 @@ struct FullCommitmentSheet: View {
     // MARK: - Actions
 
     private func updateCommitment(to activityName: String) {
-        let activityType = mapToCommitmentType(activityName)
-
+        let activityType = CommitmentCardViewModel.commitmentActivityType(for: activityName)
         Task {
-            isUpdating = true
-            defer { isUpdating = false }
-
-            do {
-                try await dataManager.updateCommitment(to: activityType)
-            } catch {
-                #if DEBUG
-                print("Failed to update commitment: \(error)")
-                #endif
-            }
+            await viewModel.updateCommitment(to: activityType)
         }
     }
 
     private func deleteCommitment() {
         Task {
-            isUpdating = true
-            defer { isUpdating = false }
-
-            do {
-                try await dataManager.deleteCommitment()
-                await MainActor.run {
-                    dismiss()
-                }
-            } catch {
-                #if DEBUG
-                print("Failed to delete commitment: \(error)")
-                #endif
+            await viewModel.deleteCommitment()
+            if viewModel.errorMessage == nil {
+                dismiss()
             }
-        }
-    }
-
-    private func mapToCommitmentType(_ name: String) -> CommitmentActivityType {
-        switch name.lowercased() {
-        case "run": return .run
-        case "walk": return .walk
-        case "yoga": return .yoga
-        case "weight training", "weighttraining", "workout": return .workout
-        default: return .run
         }
     }
 }

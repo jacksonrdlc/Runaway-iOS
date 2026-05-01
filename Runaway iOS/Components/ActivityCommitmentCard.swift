@@ -11,10 +11,9 @@ import SwiftUI
 
 struct ActivityCommitmentCard: View {
     @Environment(DataManager.self) var dataManager
+    @State private var viewModel = CommitmentCardViewModel()
     @State private var selectedActivityType: CommitmentActivityType = .run
     @State private var showingCommitmentPicker = false
-    @State private var errorMessage: String?
-    @State private var showingSuccess = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
@@ -73,7 +72,7 @@ struct ActivityCommitmentCard: View {
             }
 
             // Error message
-            if let error = errorMessage {
+            if let error = viewModel.errorMessage {
                 Text(error)
                     .font(AppTheme.Typography.caption)
                     .foregroundColor(AppTheme.Colors.error)
@@ -84,7 +83,7 @@ struct ActivityCommitmentCard: View {
             }
 
             // Success message
-            if showingSuccess {
+            if viewModel.showingSuccess {
                 HStack(spacing: AppTheme.Spacing.xs) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(AppTheme.Colors.success)
@@ -113,41 +112,15 @@ struct ActivityCommitmentCard: View {
     }
 
     private func createCommitment() {
+        showingCommitmentPicker = false
         Task {
-            do {
-                errorMessage = nil
-                try await dataManager.createCommitment(selectedActivityType)
-
-                await MainActor.run {
-                    showingSuccess = true
-                    showingCommitmentPicker = false
-                }
-
-                // Hide success message after delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    showingSuccess = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to create commitment: \(error.localizedDescription)"
-                }
-            }
+            await viewModel.createCommitment(selectedActivityType)
         }
     }
 
     private func completeMicroCommitment() {
         Task {
-            do {
-                errorMessage = nil
-                try await CommitmentManager.shared.completeMicroCommitment()
-
-                // Refresh the data
-                await dataManager.refreshTodaysCommitment()
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to complete: \(error.localizedDescription)"
-                }
-            }
+            await viewModel.completeMicroCommitment()
         }
     }
 }
@@ -244,13 +217,12 @@ struct NoCommitmentView: View {
 
 struct ActiveCommitmentView: View {
     @Environment(DataManager.self) var dataManager
+    @State private var viewModel = CommitmentCardViewModel()
     let initialCommitment: DailyCommitment
     @State private var currentTime = Date()
     @State private var showingEditSheet = false
     @State private var showingDeleteConfirmation = false
     @State private var selectedActivityType: CommitmentActivityType
-    @State private var errorMessage: String?
-    @State private var isUpdating = false
 
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
@@ -326,7 +298,7 @@ struct ActiveCommitmentView: View {
                     .background(AppTheme.Colors.accent.opacity(0.1))
                     .cornerRadius(AppTheme.CornerRadius.small)
                 }
-                .disabled(isUpdating)
+                .disabled(viewModel.isLoading)
 
                 Button(action: { showingDeleteConfirmation = true }) {
                     HStack(spacing: AppTheme.Spacing.xs) {
@@ -340,11 +312,11 @@ struct ActiveCommitmentView: View {
                     .background(AppTheme.Colors.error.opacity(0.1))
                     .cornerRadius(AppTheme.CornerRadius.small)
                 }
-                .disabled(isUpdating)
+                .disabled(viewModel.isLoading)
 
                 Spacer()
 
-                if isUpdating {
+                if viewModel.isLoading {
                     ProgressView()
                         .scaleEffect(0.8)
                 }
@@ -352,7 +324,7 @@ struct ActiveCommitmentView: View {
             .padding(.top, AppTheme.Spacing.xs)
 
             // Error message
-            if let error = errorMessage {
+            if let error = viewModel.errorMessage {
                 Text(error)
                     .font(AppTheme.Typography.caption)
                     .foregroundColor(AppTheme.Colors.error)
@@ -395,37 +367,18 @@ struct ActiveCommitmentView: View {
         }
 
         Task {
-            isUpdating = true
-            errorMessage = nil
-            defer { isUpdating = false }
-
-            do {
-                try await dataManager.updateCommitment(to: selectedActivityType)
-                await MainActor.run {
-                    showingEditSheet = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to update: \(error.localizedDescription)"
-                    selectedActivityType = commitment.activityType
-                }
+            await viewModel.updateCommitment(to: selectedActivityType)
+            if viewModel.errorMessage == nil {
+                showingEditSheet = false
+            } else {
+                selectedActivityType = commitment.activityType
             }
         }
     }
 
     private func deleteCommitment() {
         Task {
-            isUpdating = true
-            errorMessage = nil
-            defer { isUpdating = false }
-
-            do {
-                try await dataManager.deleteCommitment()
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to remove: \(error.localizedDescription)"
-                }
-            }
+            await viewModel.deleteCommitment()
         }
     }
 }
@@ -727,12 +680,6 @@ struct EditCommitmentSheet: View {
 
     /// Map activity type name to CommitmentActivityType enum
     private func mapToCommitmentType(_ name: String) -> CommitmentActivityType {
-        switch name.lowercased() {
-        case "run": return .run
-        case "walk": return .walk
-        case "yoga": return .yoga
-        case "weight training", "workout": return .workout
-        default: return .run // Default to run for unmapped types
-        }
+        CommitmentCardViewModel.commitmentActivityType(for: name)
     }
 }
