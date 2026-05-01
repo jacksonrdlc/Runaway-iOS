@@ -1,6 +1,25 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Model Layer Conventions
+//
+// Activity      — Supabase API model. Decodable from PostgREST JSON. Network/API layer.
+//                 Full schema mirror of the `activities` table; owns all 40+ fields.
+//
+// LocalActivity — Lightweight view/display DTO. Passed to CardView, ActivityDetailView,
+//                 and used for list selection state. Only carries the 7 fields that
+//                 views actually need, using Swift-native types (Date vs TimeInterval).
+//                 Created by converting from Activity (network) or SDActivity (persistence).
+//                 Not Codable — never crosses a network or persistence boundary.
+//
+// SDActivity    — SwiftData persistence model. SD prefix = SwiftData convention.
+//                 Adds offline-sync metadata: localId (UUID), syncStatus, server/local
+//                 versioning. Lives in the local SwiftData store, not Supabase directly.
+//
+// Data flow:  Supabase JSON → Activity (decode) → SDActivity (persist) → LocalActivity (display)
+//
+// Do NOT conflate these types. Each layer has a distinct purpose and lifecycle.
+
 // MARK: - Activity Models
 public struct Activity: Identifiable, Codable, Equatable, Sendable {
     public let id: Int
@@ -303,6 +322,18 @@ public struct Activity: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
+/// Lightweight view/display DTO for activity data.
+///
+/// Contains only the 7 fields that UI components need, using Swift-native types
+/// (`Date` instead of `TimeInterval`). Not `Codable` — never crosses a network
+/// or persistence boundary.
+///
+/// Distinct from:
+/// - `Activity` — Supabase API model (Codable, network layer, 40+ fields)
+/// - `SDActivity` — SwiftData persistence model (offline-sync metadata, local DB layer)
+///
+/// Created by converting from `Activity` (network response) or `SDActivity` (local DB)
+/// via `ActivityMapper.toLocalActivity(_:)` or the `convertToLocalActivity(_:)` helpers in views.
 public struct LocalActivity: Identifiable, Hashable {
     public let id: Int
     public let name: String?
