@@ -110,7 +110,9 @@ struct PerformanceDashboardCard: View {
         let totalTime = weekActivities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
         let averagePace = totalDistance > 0 ? (totalTime / 60) / totalDistance : 0
 
+        #if DEBUG
         print("📊 PerformanceDashboard: Week stats - Activities: \(weekActivities.count), Distance: \(totalDistance) mi, Time: \(totalTime)s, Pace: \(averagePace)")
+        #endif
 
         return WeeklyStats(
             totalDistance: totalDistance,
@@ -431,8 +433,10 @@ struct MonthlyProgressRing: View {
         let currentMonth = Calendar.current.component(.month, from: Date())
         let currentYear = Calendar.current.component(.year, from: Date())
 
+        #if DEBUG
         print("📊 MonthlyProgressRing: Total activities: \(activities.count)")
         print("📊 MonthlyProgressRing: Current month: \(currentMonth), year: \(currentYear)")
+        #endif
 
         let monthlyActivities = activities.filter { activity in
             // Use activity_date if available, otherwise fall back to start_date
@@ -443,14 +447,18 @@ struct MonthlyProgressRing: View {
                    Calendar.current.component(.year, from: activityDate) == currentYear
         }
 
+        #if DEBUG
         print("📊 MonthlyProgressRing: Monthly activities found: \(monthlyActivities.count)")
+        #endif
 
         let totalDistance = monthlyActivities.reduce(0) { $0 + (($1.distance ?? 0) * 0.000621371) }
         let totalRuns = monthlyActivities.count
         let goal = 200.0 // miles (50 miles/week)
         let progress = min(totalDistance / goal, 1.0)
 
+        #if DEBUG
         print("📊 MonthlyProgressRing: Distance: \(totalDistance) miles, Runs: \(totalRuns), Progress: \(progress)")
+        #endif
 
         return MonthlyStats(distance: totalDistance, runs: totalRuns, goal: goal, progress: progress)
     }

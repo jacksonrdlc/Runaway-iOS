@@ -85,7 +85,9 @@ struct PlanView: View {
         lastRefreshError = nil
         do {
             let races = try await GoalService.getAllRaces()
+            #if DEBUG
             print("🔍 PlanView: Refresh fetched \(races.count) races")
+            #endif
             // Only update if we actually got data, to prevent flickering/wiping on network blips
             if !races.isEmpty {
                 allGoals = races
@@ -96,7 +98,9 @@ struct PlanView: View {
             // If we HAD data and got 0 back, we might be in a temporary state (refreshing),
             // so we keep the old data visible.
         } catch {
+            #if DEBUG
             print("❌ PlanView: Refresh failed: \(error)")
+            #endif
             lastRefreshError = error.localizedDescription
         }
         isLoadingGoals = false

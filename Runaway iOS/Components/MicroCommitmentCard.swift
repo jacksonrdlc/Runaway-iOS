@@ -289,7 +289,9 @@ struct MicroCommitmentCard: View {
 
 #Preview("Micro Commitment Selector") {
     MicroCommitmentSelector(onSelect: { type in
+        #if DEBUG
         print("Selected: \(type.displayName)")
+        #endif
     })
 }
 

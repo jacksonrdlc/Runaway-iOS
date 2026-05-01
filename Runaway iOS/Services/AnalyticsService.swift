@@ -162,7 +162,9 @@ final class AnalyticsService {
         // Start flush timer
         startFlushTimer()
 
+        #if DEBUG
         print("AnalyticsService: Initialized with device ID: \(deviceId)")
+        #endif
     }
 
     // MARK: - Public API
@@ -421,13 +423,17 @@ final class AnalyticsService {
         flushTimer = nil
         // Flush any pending events before pausing
         flush()
+        #if DEBUG
         print("⏸️ AnalyticsService: Paused flush timer for background")
+        #endif
     }
 
     /// Resume flush timer when app returns to foreground
     func resumeFromBackground() {
         startFlushTimer()
+        #if DEBUG
         print("▶️ AnalyticsService: Resumed flush timer from background")
+        #endif
     }
 
     deinit {

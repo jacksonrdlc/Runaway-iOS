@@ -103,7 +103,9 @@ class WebSearchService {
                 return parseSearchResults(from: htmlString)
             }
         } catch {
+            #if DEBUG
             print("Search error for query '\(query)': \(error)")
+            #endif
         }
         
         return []

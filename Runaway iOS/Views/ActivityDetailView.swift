@@ -264,7 +264,9 @@ struct ActivityDetailView: View {
                     dismiss()
                 }
             } catch {
+                #if DEBUG
                 print("❌ Failed to delete activity: \(error)")
+                #endif
                 await MainActor.run {
                     isDeleting = false
                 }

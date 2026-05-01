@@ -152,7 +152,9 @@ class DataManager {
 
     func refreshAllData() async {
         guard let userId = UserSession.shared.userId else {
+            #if DEBUG
             print("❌ DataManager: No user ID available for refresh")
+            #endif
             return
         }
 
@@ -161,13 +163,19 @@ class DataManager {
 
     func refreshActivities() async {
         guard let userId = UserSession.shared.userId else {
+            #if DEBUG
             print("❌ DataManager: No user ID available for activities refresh")
+            #endif
             return
         }
 
+        #if DEBUG
         print("🔄 DataManager: Refreshing activities...")
+        #endif
         await loadActivities(for: userId)
+        #if DEBUG
         print("✅ DataManager: Activities refreshed. Total: \(activities.count)")
+        #endif
 
         // Check if plan needs regeneration based on new activities
         await checkAndRegeneratePlanIfNeeded()

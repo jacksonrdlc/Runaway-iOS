@@ -54,7 +54,9 @@ final class PersistenceController {
             // Configure main context
             container.mainContext.autosaveEnabled = true
 
+            #if DEBUG
             print("[PersistenceController] Initialized with App Group: \(Self.appGroupIdentifier)")
+            #endif
         } catch {
             fatalError("[PersistenceController] Failed to create ModelContainer: \(error)")
         }
@@ -114,7 +116,9 @@ final class PersistenceController {
             try mainContext.delete(model: modelType)
         }
         try save()
+        #if DEBUG
         print("[PersistenceController] All data deleted")
+        #endif
     }
 
     /// Get counts for debugging
@@ -124,12 +128,16 @@ final class PersistenceController {
             let athleteCount = try mainContext.fetchCount(FetchDescriptor<SDAthlete>())
             let commitmentCount = try mainContext.fetchCount(FetchDescriptor<SDDailyCommitment>())
 
+            #if DEBUG
             print("[PersistenceController] Data counts:")
             print("  Activities: \(activityCount)")
             print("  Athletes: \(athleteCount)")
             print("  Commitments: \(commitmentCount)")
+            #endif
         } catch {
+            #if DEBUG
             print("[PersistenceController] Error getting counts: \(error)")
+            #endif
         }
     }
 
@@ -144,7 +152,9 @@ final class PersistenceController {
             )
             return activityCount + commitmentCount
         } catch {
+            #if DEBUG
             print("[PersistenceController] Error getting pending sync count: \(error)")
+            #endif
             return 0
         }
     }

@@ -39,7 +39,9 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         case .authorizedWhenInUse, .authorizedAlways:
             startLocationUpdates()
         case .denied, .restricted:
+            #if DEBUG
             print("Location access denied or restricted")
+            #endif
         @unknown default:
             break
         }
@@ -82,7 +84,9 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        #if DEBUG
         print("Location error: \(error.localizedDescription)")
+        #endif
     }
     
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
@@ -131,7 +135,9 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 self?.isCurrentlyGeocoding = false
                 
                 if let error = error {
+                    #if DEBUG
                     print("Geocoding error: \(error.localizedDescription)")
+                    #endif
                     return
                 }
                 

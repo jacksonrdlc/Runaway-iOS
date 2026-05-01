@@ -388,11 +388,15 @@ struct AthleteWeeklyStatsCard: View {
 
     private func loadWeeklyStats() {
         guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+            #if DEBUG
             print("❌ WeeklyStatsCard: Failed to access shared UserDefaults")
+            #endif
             return
         }
 
+        #if DEBUG
         print("🔍 WeeklyStatsCard: Loading weekly stats from UserDefaults")
+        #endif
 
         let dayArrays = [
             userDefaults.stringArray(forKey: "sunArray") ?? [],
@@ -424,7 +428,9 @@ struct AthleteWeeklyStatsCard: View {
         weeklyDistanceValue = totalDistance
         weeklyTime = formatTime(minutes: totalTime)
 
+        #if DEBUG
         print("✅ WeeklyStatsCard: Loaded - Runs: \(totalRuns), Distance: \(totalDistance) mi, Time: \(totalTime) min")
+        #endif
     }
 }
 
@@ -508,11 +514,15 @@ struct MonthlyStatsCard: View {
     
     private func loadMonthlyStats() {
         guard let userDefaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+            #if DEBUG
             print("❌ MonthlyStatsCard: Failed to access shared UserDefaults")
+            #endif
             return
         }
 
+        #if DEBUG
         print("🔍 MonthlyStatsCard: Loading monthly stats from UserDefaults")
+        #endif
         
         // Get monthly distance from UserDefaults
         let monthlyMiles = userDefaults.double(forKey: "monthlyMiles")
@@ -562,7 +572,9 @@ struct MonthlyStatsCard: View {
             averagePace = "0:00"
         }
 
+        #if DEBUG
         print("✅ MonthlyStatsCard: Loaded - Runs: \(totalMonthlyRuns), Distance: \(displayDistance) mi, Time: \(totalMonthlyTime) min, MonthlyMiles from UserDefaults: \(monthlyMiles)")
+        #endif
     }
 }
 

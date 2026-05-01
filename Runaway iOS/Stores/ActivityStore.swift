@@ -59,7 +59,9 @@ final class ActivityStore: ObservableObject, ActivityStoreProtocol {
             let previousCount = activities.count
             let fetchedActivities = try await repository.getActivities(userId: userId, limit: 50, offset: 0)
 
+            #if DEBUG
             print("🔍 ActivityStore: Loaded \(fetchedActivities.count) activities (previously had \(previousCount))")
+            #endif
 
             activities = fetchedActivities
             metricsCache.invalidateActivityCaches()
@@ -79,19 +81,27 @@ final class ActivityStore: ObservableObject, ActivityStoreProtocol {
                 }
             }
         } catch {
+            #if DEBUG
             print("❌ ActivityStore: Failed to load activities: \(error)")
+            #endif
         }
     }
 
     func refreshActivities() async {
         guard let userId = UserSession.shared.userId else {
+            #if DEBUG
             print("❌ ActivityStore: No user ID available for refresh")
+            #endif
             return
         }
 
+        #if DEBUG
         print("🔄 ActivityStore: Refreshing activities...")
+        #endif
         await loadActivities(for: userId)
+        #if DEBUG
         print("✅ ActivityStore: Activities refreshed. Total: \(activities.count)")
+        #endif
     }
 
     // MARK: - Data Modification

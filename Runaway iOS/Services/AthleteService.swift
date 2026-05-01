@@ -9,7 +9,9 @@ class AthleteService {
 
     // Function to get athlete by athlete ID
     static func getAthleteByUserId(userId: Int) async throws -> Athlete {
+        #if DEBUG
         print("🔍 AthleteService: Looking up athlete with id = \(userId)")
+        #endif
 
         let response = try await supabase
             .from("athletes")
@@ -41,11 +43,15 @@ class AthleteService {
         let athletes = try Self.decoder.decode([Athlete].self, from: data)
 
         if let athlete = athletes.first {
+            #if DEBUG
             print("✅ AthleteService: Found athlete: \(athlete.firstname ?? "Unknown")")
+            #endif
             return athlete
         }
 
+        #if DEBUG
         print("❌ AthleteService: No athlete found for id \(userId)")
+        #endif
         throw AthleteServiceError.athleteNotFound
     }
 
@@ -61,7 +67,9 @@ class AthleteService {
                 .value
         } catch {
             // If no stats found, return nil (this is normal for new athletes)
+            #if DEBUG
             print("⚠️ AthleteService: No stats found for athlete \(userId), this is normal for new athletes")
+            #endif
             return nil
         }
     }
@@ -101,7 +109,9 @@ class AthleteService {
         let uuidUppercase = authId.uuidString
         let uuidLowercase = authId.uuidString.lowercased()
 
+        #if DEBUG
         print("🔍 AthleteService: Looking up athlete by auth_user_id = \(uuidUppercase)")
+        #endif
 
         // Try uppercase first
         let response = try await supabase
@@ -132,12 +142,16 @@ class AthleteService {
 
         let athletes = try Self.decoder.decode([Athlete].self, from: response.data)
         if let athlete = athletes.first {
+            #if DEBUG
             print("✅ AthleteService: Found athlete \(athlete.id ?? 0) (uppercase)")
+            #endif
             return athlete
         }
 
         // Try lowercase
+        #if DEBUG
         print("🔄 AthleteService: Trying lowercase format...")
+        #endif
         let response2 = try await supabase
             .from("athletes")
             .select(
@@ -166,12 +180,16 @@ class AthleteService {
 
         let athletes2 = try Self.decoder.decode([Athlete].self, from: response2.data)
         if let athlete = athletes2.first {
+            #if DEBUG
             print("✅ AthleteService: Found athlete \(athlete.id ?? 0) (lowercase)")
+            #endif
             return athlete
         }
 
         // No athlete found - this is expected for new users
+        #if DEBUG
         print("⚠️ AthleteService: No athlete found for auth user \(authId)")
+        #endif
         return nil
     }
 
@@ -182,12 +200,16 @@ class AthleteService {
         // First check if athlete already exists
         if let existingAthlete = try await getAthleteByAuthId(authId: authId),
            let athleteId = existingAthlete.id {
+            #if DEBUG
             print("✅ AthleteService: Athlete already exists with ID \(athleteId)")
+            #endif
             return athleteId
         }
 
         // Call the database function to create athlete
+        #if DEBUG
         print("🔄 AthleteService: Creating new athlete for auth user \(authId)")
+        #endif
 
         struct EnsureAthleteParams: Encodable {
             let p_auth_user_id: String
@@ -209,7 +231,9 @@ class AthleteService {
             .execute()
             .value
 
+        #if DEBUG
         print("✅ AthleteService: Created athlete with ID \(result.ensure_athlete_exists)")
+        #endif
         return result.ensure_athlete_exists
     }
 }

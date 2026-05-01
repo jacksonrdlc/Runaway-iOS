@@ -105,17 +105,23 @@ class HealthKitManager: ObservableObject {
     /// Request authorization and return Bool indicating success
     func requestAuthorization() async -> Bool {
         guard isHealthKitAvailable else {
+            #if DEBUG
             print("HealthKit is not available on this device")
+            #endif
             return false
         }
 
         do {
             try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
             await updateAuthorizationStatus()
+            #if DEBUG
             print("HealthKit authorization completed")
+            #endif
             return isAuthorized
         } catch {
+            #if DEBUG
             print("HealthKit authorization failed: \(error)")
+            #endif
             return false
         }
     }
@@ -123,16 +129,22 @@ class HealthKitManager: ObservableObject {
     /// Request authorization and throw on failure
     func requestAuthorizationThrowing() async throws {
         guard isHealthKitAvailable else {
+            #if DEBUG
             print("HealthKit is not available on this device")
+            #endif
             throw HealthKitError.notAvailable
         }
 
         do {
             try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
             await updateAuthorizationStatus()
+            #if DEBUG
             print("HealthKit authorization completed")
+            #endif
         } catch {
+            #if DEBUG
             print("HealthKit authorization failed: \(error)")
+            #endif
             throw HealthKitError.authorizationFailed(error)
         }
     }

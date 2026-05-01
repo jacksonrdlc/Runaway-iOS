@@ -53,7 +53,9 @@ public final class UserSession {
     // MARK: - Initialization
 
     private init() {
+        #if DEBUG
         print("UserSession initialized")
+        #endif
         Task {
             await checkAuthState()
             await listenForAuthChanges()
@@ -65,10 +67,14 @@ public final class UserSession {
     private func checkAuthState() async {
         do {
             let session = try await supabase.auth.session
+            #if DEBUG
             print("✅ Found existing session for user: \(session.user.email ?? "unknown")")
+            #endif
             await updateAuthState(with: session.user)
         } catch {
+            #if DEBUG
             print("⚠️ No existing session found: \(error.localizedDescription)")
+            #endif
             await MainActor.run {
                 self.isAuthenticated = false
             }
@@ -106,7 +112,9 @@ public final class UserSession {
     }
 
     private func updateAuthState(with user: Supabase.User) async {
+        #if DEBUG
         print("🔐 UserSession: Updating auth state for user \(user.email ?? "unknown")")
+        #endif
 
         await MainActor.run {
             self.currentUser = user
@@ -114,14 +122,18 @@ public final class UserSession {
             self.isCheckingOnboarding = true // Start checking onboarding
         }
 
+        #if DEBUG
         print("🔐 UserSession: isAuthenticated=true, isCheckingOnboarding=true")
+        #endif
 
         // Refresh widgets after authentication state update
         WidgetRefreshService.refreshForAuthUpdate()
 
         // Ensure athlete record exists and get the athlete ID
         let athleteId = await ensureAthleteRecordExists(for: user)
+        #if DEBUG
         print("🔐 UserSession: Got athlete ID: \(athleteId?.description ?? "nil")")
+        #endif
 
         // Store the athlete ID so it's available before profile is loaded
         await MainActor.run {
@@ -138,14 +150,18 @@ public final class UserSession {
             await checkOnboardingStatusForAthlete(athleteId: athleteId)
         } else {
             // No athlete ID - default to showing onboarding for new users
+            #if DEBUG
             print("🔐 UserSession: No athlete ID, defaulting to onboarding not completed")
+            #endif
             await MainActor.run {
                 self.hasCompletedOnboarding = false
                 self.isCheckingOnboarding = false
             }
         }
 
+        #if DEBUG
         print("🔐 UserSession: Final state - hasCompletedOnboarding=\(hasCompletedOnboarding), isCheckingOnboarding=\(isCheckingOnboarding)")
+        #endif
     }
 
     /// Ensures athlete record exists for the authenticated user
@@ -156,21 +172,29 @@ public final class UserSession {
                 authId: user.id,
                 email: user.email
             )
+            #if DEBUG
             print("✅ UserSession: Athlete record confirmed with ID \(athleteId)")
+            #endif
             return athleteId
         } catch {
+            #if DEBUG
             print("⚠️ UserSession: Failed to ensure athlete exists: \(error)")
+            #endif
             return nil
         }
     }
 
     /// Check onboarding status for a specific athlete ID
     private func checkOnboardingStatusForAthlete(athleteId: Int) async {
+        #if DEBUG
         print("🔍 UserSession: Checking onboarding status for athlete \(athleteId)")
+        #endif
 
         // Skip if user just completed onboarding in this session
         if onboardingCompletedInSession {
+            #if DEBUG
             print("✅ UserSession: Skipping onboarding check - completed in this session")
+            #endif
             await MainActor.run {
                 self.hasCompletedOnboarding = true
                 self.isCheckingOnboarding = false
@@ -180,7 +204,9 @@ public final class UserSession {
 
         do {
             let isCompleted = try await OnboardingService.checkOnboardingStatus(athleteId: athleteId)
+            #if DEBUG
             print("✅ UserSession: OnboardingService returned isCompleted=\(isCompleted)")
+            #endif
             await MainActor.run {
                 self.hasCompletedOnboarding = isCompleted
                 self.isCheckingOnboarding = false
@@ -189,10 +215,14 @@ public final class UserSession {
                     self.onboardingCompletedInSession = true
                 }
             }
+            #if DEBUG
             print("✅ UserSession: Set hasCompletedOnboarding=\(isCompleted)")
+            #endif
         } catch {
+            #if DEBUG
             print("⚠️ UserSession: Failed to check onboarding status: \(error)")
             print("⚠️ UserSession: Defaulting to hasCompletedOnboarding=false (show onboarding)")
+            #endif
             await MainActor.run {
                 // Default to NOT completed for new users - show onboarding
                 self.hasCompletedOnboarding = false
@@ -210,19 +240,25 @@ public final class UserSession {
     private func checkOnboardingStatus() async {
         // Skip if user just completed onboarding in this session
         if onboardingCompletedInSession {
+            #if DEBUG
             print("✅ UserSession: Skipping onboarding check - completed in this session")
+            #endif
             return
         }
 
         // Skip if we've already checked (prevents repeated checks from setProfile calls)
         if hasCheckedOnboarding {
+            #if DEBUG
             print("✅ UserSession: Skipping onboarding check - already checked")
+            #endif
             return
         }
 
         guard let athleteId = userId else {
             // No athlete ID yet - default to showing onboarding for new users
+            #if DEBUG
             print("⚠️ UserSession: No athlete ID for onboarding check, defaulting to not completed")
+            #endif
             await MainActor.run {
                 self.hasCompletedOnboarding = false
             }

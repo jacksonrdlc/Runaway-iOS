@@ -155,7 +155,9 @@ class OnboardingViewModel: ObservableObject {
             weeklyGoal = goalStore.weeklyGoal
             monthlyGoal = goalStore.monthlyGoal
         } catch {
+            #if DEBUG
             print("❌ OnboardingViewModel: Failed to load state: \(error)")
+            #endif
             // Mark as loaded even on error to prevent infinite retry
             self.hasLoadedInitialState = true
         }
@@ -191,7 +193,9 @@ class OnboardingViewModel: ObservableObject {
         do {
             try await OnboardingService.updateCurrentStep(stateId: stateId, step: currentStep.rawValue)
         } catch {
+            #if DEBUG
             print("❌ OnboardingViewModel: Failed to save current step: \(error)")
+            #endif
         }
     }
 
@@ -252,9 +256,13 @@ class OnboardingViewModel: ObservableObject {
             // Mark as complete
             let completedState = try await OnboardingService.completeOnboarding(stateId: stateId)
             self.onboardingState = completedState
+            #if DEBUG
             print("✅ OnboardingViewModel: Onboarding completed!")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ OnboardingViewModel: Failed to complete onboarding: \(error)")
+            #endif
         }
     }
 
@@ -262,7 +270,9 @@ class OnboardingViewModel: ObservableObject {
 
     private func saveProfileData() async {
         guard let athleteId = athleteId else {
+            #if DEBUG
             print("⚠️ OnboardingViewModel: No athlete ID, skipping profile save")
+            #endif
             return
         }
 
@@ -273,9 +283,13 @@ class OnboardingViewModel: ObservableObject {
                 lastname: lastName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : lastName.trimmingCharacters(in: .whitespaces),
                 profileURL: nil
             )
+            #if DEBUG
             print("✅ OnboardingViewModel: Profile data saved")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ OnboardingViewModel: Failed to save profile data: \(error)")
+            #endif
         }
     }
 
@@ -283,7 +297,9 @@ class OnboardingViewModel: ObservableObject {
         let goalStore = GoalSettingsStore.shared
         goalStore.weeklyGoal = weeklyGoal
         goalStore.monthlyGoal = monthlyGoal
+        #if DEBUG
         print("✅ OnboardingViewModel: Goals saved - Weekly: \(weeklyGoal)mi, Monthly: \(monthlyGoal)mi")
+        #endif
     }
 }
 

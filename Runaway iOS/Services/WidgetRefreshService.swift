@@ -18,13 +18,17 @@ class WidgetRefreshService {
     /// Refresh all widgets immediately
     static func refreshAllWidgets() {
         WidgetCenter.shared.reloadAllTimelines()
+        #if DEBUG
         print("🔄 All widgets refreshed")
+        #endif
     }
-    
+
     /// Refresh specific widget kind
     static func refreshWidget(kind: String) {
         WidgetCenter.shared.reloadTimelines(ofKind: kind)
+        #if DEBUG
         print("🔄 Widget '\(kind)' refreshed")
+        #endif
     }
     
     /// Refresh widgets after a delay (useful for batch operations)

@@ -861,8 +861,10 @@ struct ProgressOverviewCard: View {
         let currentMonth = Calendar.current.component(.month, from: Date())
         let currentYear = Calendar.current.component(.year, from: Date())
 
+        #if DEBUG
         print("📊 AnalysisView: Calculating monthly miles - Total activities: \(activities.count)")
         print("📊 AnalysisView: Current month: \(currentMonth), year: \(currentYear)")
+        #endif
 
         // Filter activities for current month only
         let monthlyActivities = activities.filter { activity in
@@ -874,7 +876,9 @@ struct ProgressOverviewCard: View {
                    Calendar.current.component(.year, from: activityDate) == currentYear
         }
 
+        #if DEBUG
         print("📊 AnalysisView: Monthly activities found: \(monthlyActivities.count)")
+        #endif
 
         // Calculate monthly miles
         let activitiesWithDistance = monthlyActivities.compactMap { activity -> Double? in
@@ -884,7 +888,9 @@ struct ProgressOverviewCard: View {
         let totalMeters = activitiesWithDistance.reduce(0, +)
         let miles = totalMeters * 0.000621371 // Convert meters to miles
 
+        #if DEBUG
         print("📊 AnalysisView: Monthly miles calculated: \(miles)")
+        #endif
 
         return miles
     }

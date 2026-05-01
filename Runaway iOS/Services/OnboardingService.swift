@@ -47,7 +47,9 @@ class OnboardingService {
             throw OnboardingError.creationFailed
         }
 
+        #if DEBUG
         print("✅ OnboardingService: Created onboarding state for athlete \(athleteId)")
+        #endif
         return createdState
     }
 
@@ -73,7 +75,9 @@ class OnboardingService {
             throw OnboardingError.updateFailed
         }
 
+        #if DEBUG
         print("✅ OnboardingService: Updated onboarding state")
+        #endif
         return updatedState
     }
 
@@ -89,7 +93,9 @@ class OnboardingService {
             .eq("id", value: stateId)
             .execute()
 
+        #if DEBUG
         print("✅ OnboardingService: Updated step to \(step)")
+        #endif
     }
 
     // MARK: - Update Experience Level
@@ -104,7 +110,9 @@ class OnboardingService {
             .eq("id", value: stateId)
             .execute()
 
+        #if DEBUG
         print("✅ OnboardingService: Updated experience level to \(level.rawValue)")
+        #endif
     }
 
     // MARK: - Update Movement Test Results
@@ -122,7 +130,9 @@ class OnboardingService {
             .eq("id", value: stateId)
             .execute()
 
+        #if DEBUG
         print("✅ OnboardingService: Updated movement test results - cadence: \(cadence), variance: \(variance)")
+        #endif
     }
 
     // MARK: - Update Coach Personality
@@ -137,7 +147,9 @@ class OnboardingService {
             .eq("id", value: stateId)
             .execute()
 
+        #if DEBUG
         print("✅ OnboardingService: Updated coach personality to \(personality.rawValue)")
+        #endif
     }
 
     // MARK: - Update Location Permission
@@ -152,7 +164,9 @@ class OnboardingService {
             .eq("id", value: stateId)
             .execute()
 
+        #if DEBUG
         print("✅ OnboardingService: Updated location permission to \(granted)")
+        #endif
     }
 
     // MARK: - Complete Onboarding
@@ -179,7 +193,9 @@ class OnboardingService {
             throw OnboardingError.completionFailed
         }
 
+        #if DEBUG
         print("✅ OnboardingService: Completed onboarding!")
+        #endif
         return completedState
     }
 
@@ -187,7 +203,9 @@ class OnboardingService {
 
     /// Check if athlete has completed onboarding
     static func checkOnboardingStatus(athleteId: Int) async throws -> Bool {
+        #if DEBUG
         print("🔍 OnboardingService: Checking onboarding status for athlete \(athleteId)")
+        #endif
 
         // Query the onboarding table directly
         let response = try await supabase
@@ -203,12 +221,16 @@ class OnboardingService {
         let results = try SupabaseDecoder.shared.decode([OnboardingStatusResult].self, from: response.data)
 
         if let result = results.first {
+            #if DEBUG
             print("✅ OnboardingService: Onboarding completed = \(result.is_completed)")
+            #endif
             return result.is_completed
         }
 
         // No onboarding record found - default to not completed (new user)
+        #if DEBUG
         print("⚠️ OnboardingService: No onboarding record found for athlete \(athleteId), defaulting to not completed")
+        #endif
         return false
     }
 

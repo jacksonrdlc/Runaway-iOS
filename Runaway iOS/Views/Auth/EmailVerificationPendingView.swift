@@ -169,19 +169,25 @@ struct EmailVerificationPendingView: View {
         .onChange(of: userSession.isAuthenticated) { _, isAuthenticated in
             if isAuthenticated {
                 // User verified their email - dismiss to let ContentView handle navigation
+                #if DEBUG
                 print("✅ EmailVerificationPendingView: User authenticated via state change, dismissing")
+                #endif
                 dismiss()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("EmailVerificationCompleted"))) { _ in
             // Email verification completed via deep link - dismiss to let ContentView handle navigation
+            #if DEBUG
             print("✅ EmailVerificationPendingView: Email verification completed notification received, dismissing")
+            #endif
             dismiss()
         }
         .onAppear {
             // Check if user is already authenticated (e.g., app was relaunched after verification)
             if userSession.isAuthenticated {
+                #if DEBUG
                 print("✅ EmailVerificationPendingView: User already authenticated on appear, dismissing")
+                #endif
                 dismiss()
             }
         }
@@ -189,7 +195,9 @@ struct EmailVerificationPendingView: View {
             // Continuously check auth state in case it changes while view is visible
             for await _ in supabase.auth.authStateChanges.map({ $0.0 }) {
                 if userSession.isAuthenticated {
+                    #if DEBUG
                     print("✅ EmailVerificationPendingView: Auth state changed, dismissing")
+                    #endif
                     await MainActor.run {
                         dismiss()
                     }

@@ -169,12 +169,18 @@ struct DebugMenuView: View {
             DispatchQueue.main.async {
                 if granted {
                     notificationStatus = "Authorized"
+                    #if DEBUG
                     print("✅ Notification permission granted")
+                    #endif
                 } else if let error = error {
+                    #if DEBUG
                     print("❌ Notification permission error: \(error)")
+                    #endif
                 } else {
                     notificationStatus = "Denied"
+                    #if DEBUG
                     print("❌ Notification permission denied")
+                    #endif
                 }
             }
         }
@@ -191,20 +197,28 @@ struct DebugMenuView: View {
 
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
+                #if DEBUG
                 print("❌ Failed to schedule notification: \(error)")
+                #endif
             } else {
+                #if DEBUG
                 print("✅ Test notification scheduled (3 second delay)")
+                #endif
             }
         }
     }
 
     private func simulateActivitySyncNotification() {
+        #if DEBUG
         print("🔄 Simulating activity sync notification...")
+        #endif
 
         // Simulate the background sync that would happen from a push notification
         Task {
             await DataManager.shared.refreshActivities()
+            #if DEBUG
             print("✅ Activity sync completed (simulated)")
+            #endif
 
             // Also show a local notification to confirm it worked
             let content = UNMutableNotificationContent()

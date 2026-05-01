@@ -152,11 +152,15 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             try localRepository.batchUpsertFromServer(remoteActivities)
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Refreshed \(remoteActivities.count) activities from server")
+                #endif
             }
         } catch {
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Refresh failed: \(error)")
+                #endif
             }
         }
     }
@@ -196,11 +200,15 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             try PersistenceController.shared.save()
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Full sync complete")
+                #endif
             }
         } catch {
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Full sync failed: \(error)")
+                #endif
             }
         }
     }
@@ -218,11 +226,15 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             }
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Immediate sync successful for activity \(created.id)")
+                #endif
             }
         } catch {
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Immediate sync failed: \(error)")
+                #endif
             }
             // Activity remains in pending state, will be synced later
         }
@@ -236,11 +248,15 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             _ = try await remoteRepository.updateActivity(activity)
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Immediate update sync successful")
+                #endif
             }
         } catch {
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Immediate update sync failed: \(error)")
+                #endif
             }
         }
     }
@@ -256,11 +272,15 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             try localRepository.purgeDeletedActivities()
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Immediate deletion sync successful")
+                #endif
             }
         } catch {
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[HybridActivityRepository] Immediate deletion sync failed: \(error)")
+                #endif
             }
         }
     }

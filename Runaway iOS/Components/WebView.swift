@@ -86,20 +86,26 @@ struct WebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             parent.isLoading = false
             let errorMessage = "Navigation failed: \(error.localizedDescription)"
+            #if DEBUG
             print("WebView navigation failed: \(error.localizedDescription)")
+            #endif
             parent.onError?(errorMessage)
         }
-        
+
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             parent.isLoading = false
             let errorMessage = "Failed to load: \(error.localizedDescription)"
+            #if DEBUG
             print("WebView provisional navigation failed: \(error.localizedDescription)")
+            #endif
             parent.onError?(errorMessage)
         }
-        
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             // Allow all navigation for now, but log it
+            #if DEBUG
             print("WebView navigation to: \(navigationAction.request.url?.absoluteString ?? "unknown")")
+            #endif
             decisionHandler(.allow)
         }
     }

@@ -123,7 +123,9 @@ struct RunningGoalCard: View {
                     errorMessage = "Failed to load goal: \(error.localizedDescription)"
                     isLoadingGoal = false
                 }
+                #if DEBUG
                 print("❌ Error loading goal: \(error)")
+                #endif
             }
         }
     }
@@ -164,7 +166,9 @@ struct RunningGoalCard: View {
             }
         } catch {
             errorMessage = "Failed to refresh goal: \(error.localizedDescription)"
+            #if DEBUG
             print("❌ Error refreshing goal: \(error)")
+            #endif
         }
     }
 }
@@ -537,7 +541,9 @@ struct GoalInputSheet: View {
                     errorMessage = "Failed to save goal: \(error.localizedDescription)"
                     isSaving = false
                 }
+                #if DEBUG
                 print("❌ Error saving goal: \(error)")
+                #endif
             }
         }
     }

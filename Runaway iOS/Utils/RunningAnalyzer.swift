@@ -37,7 +37,9 @@ class RunningAnalyzer: ObservableObject {
                     lastUpdated: Date()
                 )
             } catch {
+                #if DEBUG
                 print("Analysis error: \(error)")
+                #endif
                 return nil
             }
         }.value
@@ -223,13 +225,17 @@ class RunningAnalyzer: ObservableObject {
             let regressor = try MLLinearRegressor(trainingData: dataTable, targetColumn: "targetPace")
             return regressor.model
         } catch {
+            #if DEBUG
             print("Model training error: \(error)")
+            #endif
             return nil
         }
         #else
         // ML model training only available on macOS
         // On iOS, the app will use local analysis without ML predictions
+        #if DEBUG
         print("ML model training not available on iOS - using local analysis only")
+        #endif
         return nil
         #endif
     }
@@ -464,7 +470,9 @@ class RunningAnalyzer: ObservableObject {
             let output = try model.prediction(from: input)
             return output.featureValue(for: "targetPace")?.doubleValue
         } catch {
+            #if DEBUG
             print("Prediction error: \(error)")
+            #endif
             return nil
         }
     }

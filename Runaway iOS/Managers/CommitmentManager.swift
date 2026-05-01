@@ -70,7 +70,9 @@ final class CommitmentManager: CommitmentManagerProtocol {
             // Load micro-commitment suggestions
             await loadMicroCommitmentSuggestions(for: userId)
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Failed to load commitment: \(error)")
+            #endif
         }
     }
 
@@ -89,7 +91,9 @@ final class CommitmentManager: CommitmentManagerProtocol {
             // Get suggested level
             self.suggestedLevel = try await CommitmentService.getSuggestedCommitmentLevel(for: userId)
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Failed to load micro-commitment data: \(error)")
+            #endif
         }
     }
 
@@ -109,7 +113,9 @@ final class CommitmentManager: CommitmentManagerProtocol {
             self.todaysCommitment = createdCommitment
             syncCommitmentToWidget()
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Failed to create commitment: \(error)")
+            #endif
             throw error
         }
     }
@@ -129,9 +135,13 @@ final class CommitmentManager: CommitmentManagerProtocol {
             let createdCommitment = try await repository.createCommitment(commitment)
             self.todaysCommitment = createdCommitment
             syncCommitmentToWidget()
+            #if DEBUG
             print("✅ CommitmentManager: Created micro-commitment: \(type.displayName)")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Failed to create micro-commitment: \(error)")
+            #endif
             throw error
         }
     }
@@ -161,9 +171,13 @@ final class CommitmentManager: CommitmentManagerProtocol {
                 await loadMicroCommitmentSuggestions(for: userId)
             }
 
+            #if DEBUG
             print("✅ CommitmentManager: Completed micro-commitment!")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Failed to complete micro-commitment: \(error)")
+            #endif
             throw error
         }
     }
@@ -196,9 +210,13 @@ final class CommitmentManager: CommitmentManagerProtocol {
             let result = try await repository.updateCommitment(updatedCommitment)
             self.todaysCommitment = result
             syncCommitmentToWidget()
+            #if DEBUG
             print("✅ CommitmentManager: Updated commitment to \(activityType.displayName)")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Failed to update commitment: \(error)")
+            #endif
             throw error
         }
     }
@@ -217,9 +235,13 @@ final class CommitmentManager: CommitmentManagerProtocol {
             try await repository.deleteCommitment(id: commitmentId)
             self.todaysCommitment = nil
             syncCommitmentToWidget()
+            #if DEBUG
             print("✅ CommitmentManager: Deleted commitment")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Failed to delete commitment: \(error)")
+            #endif
             throw error
         }
     }
@@ -228,11 +250,15 @@ final class CommitmentManager: CommitmentManagerProtocol {
 
     func checkActivityFulfillsCommitment(_ activity: Activity) async {
         guard let userId = UserSession.shared.userId else {
+            #if DEBUG
             print("❌ CommitmentManager: No user ID for commitment check")
+            #endif
             return
         }
 
+        #if DEBUG
         print("🔍 CommitmentManager: Checking if '\(activity.type ?? "unknown")' fulfills commitment")
+        #endif
 
         do {
             let fulfilled = try await repository.checkAndFulfillCommitment(
@@ -241,13 +267,19 @@ final class CommitmentManager: CommitmentManagerProtocol {
             )
 
             if fulfilled {
+                #if DEBUG
                 print("🎉 CommitmentManager: Commitment fulfilled!")
+                #endif
                 await loadTodaysCommitment(for: userId)
             } else {
+                #if DEBUG
                 print("💡 CommitmentManager: Activity did not fulfill commitment")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("❌ CommitmentManager: Fulfillment check failed: \(error)")
+            #endif
         }
     }
 
@@ -261,7 +293,9 @@ final class CommitmentManager: CommitmentManagerProtocol {
             userId = UserSession.shared.userId
         }
         guard let userId else {
+            #if DEBUG
             print("❌ CommitmentManager: No user ID for refresh")
+            #endif
             return
         }
         await loadTodaysCommitment(for: userId)

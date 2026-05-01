@@ -65,7 +65,9 @@ struct DigitalTwinMirrorCard: View {
         do {
             insight = try await TwinEngineService.shared.fetchTwinInsights()
         } catch {
+            #if DEBUG
             print("❌ TwinMirror: \(error)")
+            #endif
         }
         isLoading = false
     }

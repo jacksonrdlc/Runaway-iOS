@@ -50,12 +50,18 @@ final class AthleteStore: ObservableObject, AthleteStoreProtocol {
         defer { isLoading = false }
 
         do {
+            #if DEBUG
             print("🔍 AthleteStore: Loading athlete for user ID: \(userId)")
+            #endif
             let fetchedAthlete = try await repository.getAthlete(userId: userId)
+            #if DEBUG
             print("✅ AthleteStore: Loaded athlete: \(fetchedAthlete.firstname ?? "Unknown") \(fetchedAthlete.lastname ?? "Athlete")")
+            #endif
             self.athlete = fetchedAthlete
         } catch {
+            #if DEBUG
             print("❌ AthleteStore: Failed to load athlete: \(error)")
+            #endif
         }
     }
 
@@ -64,10 +70,14 @@ final class AthleteStore: ObservableObject, AthleteStoreProtocol {
             let fetchedStats = try await repository.getAthleteStats(userId: userId)
             self.stats = fetchedStats
             if fetchedStats == nil {
+                #if DEBUG
                 print("⚠️ AthleteStore: No stats available")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("❌ AthleteStore: Failed to load stats: \(error)")
+            #endif
         }
     }
 
@@ -82,7 +92,9 @@ final class AthleteStore: ObservableObject, AthleteStoreProtocol {
 
     func refresh() async {
         guard let userId = UserSession.shared.userId else {
+            #if DEBUG
             print("❌ AthleteStore: No user ID available for refresh")
+            #endif
             return
         }
 

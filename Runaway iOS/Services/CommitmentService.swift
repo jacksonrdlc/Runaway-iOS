@@ -26,7 +26,9 @@ class CommitmentService {
             throw SupabaseError.decodingError("Failed to decode created commitment")
         }
 
+        #if DEBUG
         print("✅ CommitmentService: Created commitment: \(result)")
+        #endif
         return result
     }
 
@@ -34,7 +36,9 @@ class CommitmentService {
 
     static func getTodaysCommitment(for userId: Int) async throws -> DailyCommitment? {
         let today = DateFormatter.dateOnly.string(from: Date())
+        #if DEBUG
         print("🔍 CommitmentService: Getting today's commitment for user \(userId) on \(today)")
+        #endif
 
         let response = try await supabase
             .from("daily_commitments")
@@ -46,10 +50,12 @@ class CommitmentService {
         let data = response.data
         let commitments = try SupabaseDecoder.shared.decode([DailyCommitment].self, from: data)
 
+        #if DEBUG
         print("🔍 CommitmentService: Found \(commitments.count) commitment(s) for today")
         if let commitment = commitments.first {
             print("🔍 CommitmentService: Today's commitment - Type: \(commitment.activityType.rawValue), Fulfilled: \(commitment.isFulfilled)")
         }
+        #endif
 
         return commitments.first
     }
@@ -75,7 +81,9 @@ class CommitmentService {
             throw SupabaseError.decodingError("Failed to decode updated commitment")
         }
 
+        #if DEBUG
         print("✅ CommitmentService: Updated commitment: \(result)")
+        #endif
         return result
     }
 
@@ -104,7 +112,9 @@ class CommitmentService {
             throw SupabaseError.decodingError("Failed to decode fulfilled commitment")
         }
 
+        #if DEBUG
         print("✅ CommitmentService: Fulfilled commitment: \(result)")
+        #endif
         return result
     }
 
@@ -145,7 +155,9 @@ class CommitmentService {
             }
         }
 
+        #if DEBUG
         print("🔍 CommitmentService: Checking activity type '\(normalizedActivityType)' against commitment '\(commitmentType)' - Match: \(isMatch)")
+        #endif
 
         if isMatch {
             _ = try await fulfillCommitment(commitmentId: todaysCommitment.id!)
@@ -181,7 +193,9 @@ class CommitmentService {
             .eq("id", value: id)
             .execute()
 
+        #if DEBUG
         print("✅ CommitmentService: Deleted commitment with id: \(id)")
+        #endif
     }
 
     // MARK: - Get Commitment Stats

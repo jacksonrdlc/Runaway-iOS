@@ -45,9 +45,13 @@ class BiometricService {
                     .execute()
             }
             
+            #if DEBUG
             print("✅ BiometricService: Health data synced")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ BiometricService: Sync failed: \(error)")
+            #endif
         }
     }
     

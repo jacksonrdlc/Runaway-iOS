@@ -69,7 +69,9 @@ final class SyncEngine: ObservableObject {
                 self?.isOnline = path.status == .satisfied
 
                 if FeatureFlags.debugSyncLogging {
+                    #if DEBUG
                     print("[SyncEngine] Network status: \(path.status == .satisfied ? "online" : "offline")")
+                    #endif
                 }
 
                 // Trigger sync when coming back online
@@ -98,7 +100,9 @@ final class SyncEngine: ObservableObject {
             savePendingOperations()
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[SyncEngine] Queued upload: \(entityType) \(entityId)")
+                #endif
             }
         }
     }
@@ -121,7 +125,9 @@ final class SyncEngine: ObservableObject {
             savePendingOperations()
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[SyncEngine] Queued deletion: \(entityType) \(entityId)")
+                #endif
             }
         }
     }
@@ -132,14 +138,18 @@ final class SyncEngine: ObservableObject {
     func syncPendingChanges() async {
         guard isOnline else {
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[SyncEngine] Skipping sync - offline")
+                #endif
             }
             return
         }
 
         guard !isSyncing else {
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[SyncEngine] Skipping sync - already in progress")
+                #endif
             }
             return
         }
@@ -148,7 +158,9 @@ final class SyncEngine: ObservableObject {
         lastError = nil
 
         if FeatureFlags.debugSyncLogging {
+            #if DEBUG
             print("[SyncEngine] Starting sync - \(uploadQueue.count) uploads, \(deletionQueue.count) deletions")
+            #endif
         }
 
         do {
@@ -162,7 +174,9 @@ final class SyncEngine: ObservableObject {
             updatePendingCount()
 
             if FeatureFlags.debugSyncLogging {
+                #if DEBUG
                 print("[SyncEngine] Sync complete")
+                #endif
             }
         }
 
@@ -185,7 +199,9 @@ final class SyncEngine: ObservableObject {
                     failedOperations.append(operation)
                 } else {
                     if FeatureFlags.debugSyncLogging {
+                        #if DEBUG
                         print("[SyncEngine] Deletion failed after \(maxRetryCount) retries: \(operation.entityType) \(operation.entityId)")
+                        #endif
                     }
                 }
             }
@@ -211,7 +227,9 @@ final class SyncEngine: ObservableObject {
                     failedOperations.append(operation)
                 } else {
                     if FeatureFlags.debugSyncLogging {
+                        #if DEBUG
                         print("[SyncEngine] Upload failed after \(maxRetryCount) retries: \(operation.entityType) \(operation.entityId)")
+                        #endif
                     }
                 }
             }
@@ -317,7 +335,9 @@ final class SyncEngine: ObservableObject {
         }
 
         if FeatureFlags.debugSyncLogging {
+            #if DEBUG
             print("[SyncEngine] Background sync started with interval: \(interval)s")
+            #endif
         }
     }
 
@@ -327,7 +347,9 @@ final class SyncEngine: ObservableObject {
         syncTimer = nil
 
         if FeatureFlags.debugSyncLogging {
+            #if DEBUG
             print("[SyncEngine] Background sync stopped")
+            #endif
         }
     }
 
@@ -347,7 +369,9 @@ final class SyncEngine: ObservableObject {
         savePendingOperations()
 
         if FeatureFlags.debugSyncLogging {
+            #if DEBUG
             print("[SyncEngine] Cleared all pending operations")
+            #endif
         }
     }
 }

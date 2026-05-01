@@ -718,7 +718,9 @@ struct EditCommitmentSheet: View {
             activityTypes = try await ActivityTypeService.getAllActivityTypes()
             isLoading = false
         } catch {
+            #if DEBUG
             print("Failed to load activity types: \(error)")
+            #endif
             isLoading = false
         }
     }

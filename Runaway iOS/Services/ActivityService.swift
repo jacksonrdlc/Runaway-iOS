@@ -59,7 +59,9 @@ class ActivityService {
 
     // Function to get all activities for a user (with pagination)
     static func getAllActivitiesByUser(userId: Int, limit: Int = defaultPageSize, offset: Int = 0) async throws -> [Activity] {
+        #if DEBUG
         print("🔍 ActivityService: Fetching activities for user \(userId) (limit: \(limit), offset: \(offset))")
+        #endif
 
         let activities: [Activity] = try await supabase
             .from("activities")
@@ -83,7 +85,9 @@ class ActivityService {
             .execute()
             .value
 
+        #if DEBUG
         print("🔍 ActivityService: Successfully fetched \(activities.count) activities")
+        #endif
         return activities
     }
 
@@ -114,7 +118,9 @@ class ActivityService {
             offset += batchSize
         }
 
+        #if DEBUG
         print("🔍 ActivityService: Loaded \(allActivities.count) total activities")
+        #endif
         return allActivities
     }
     
@@ -337,23 +343,29 @@ class ActivityService {
 
     static func updateActivity(id: Int, endTime: Date, endLocationLongitude: Double, endLocationLatitude: Double, status: String) async throws {
         do {
+            #if DEBUG
             print("Updating activity with ID: \(id)")
+            #endif
             try await supabase.from("activities")
                 .update([
                     "end_latitude": endLocationLatitude,
                     "end_longitude": endLocationLongitude,
-                    // Note: The ERD shows activities don't have a 'status' field, 
+                    // Note: The ERD shows activities don't have a 'status' field,
                     // you may need to add this field to your database if needed
                     // "status": status
                 ])
                 .eq("id", value: id)
                 .execute()
+            #if DEBUG
             print("Activity successfully updated")
-            
+            #endif
+
             // Refresh widgets after updating activity
             WidgetRefreshService.refreshForActivityUpdate()
         } catch {
+            #if DEBUG
             print("Failed to update activity: \(error)")
+            #endif
             throw error  // Optionally rethrow to handle elsewhere
         }
     }

@@ -6,7 +6,9 @@ import Supabase
 let supabase: SupabaseClient = {
     do {
         let client = try SupabaseConfiguration.createClient()
+        #if DEBUG
         print("✅ Supabase client initialized successfully")
+        #endif
         SupabaseConfiguration.printConfiguration()
         return client
     } catch {

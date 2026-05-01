@@ -122,7 +122,9 @@ struct CourseReconView: View {
                 eventId: race.eventId ?? 0
             )
         } catch {
+            #if DEBUG
             print("❌ CourseRecon: Failed to load: \(error)")
+            #endif
         }
         isLoading = false
     }

@@ -127,7 +127,9 @@ struct CompactCommitmentCard: View {
             do {
                 try await dataManager.createCommitment(activityType)
             } catch {
+                #if DEBUG
                 print("Failed to create commitment: \(error)")
+                #endif
             }
         }
     }
@@ -669,7 +671,9 @@ struct FullCommitmentSheet: View {
             do {
                 try await dataManager.updateCommitment(to: activityType)
             } catch {
+                #if DEBUG
                 print("Failed to update commitment: \(error)")
+                #endif
             }
         }
     }
@@ -685,7 +689,9 @@ struct FullCommitmentSheet: View {
                     dismiss()
                 }
             } catch {
+                #if DEBUG
                 print("Failed to delete commitment: \(error)")
+                #endif
             }
         }
     }

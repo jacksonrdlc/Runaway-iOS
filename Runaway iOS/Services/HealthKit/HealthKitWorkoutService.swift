@@ -69,7 +69,9 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
         // Prime the audio coach scheduler. No-op if audio coaching is off.
         RunCoachScheduler.shared.start()
 
+        #if DEBUG
         print("HealthKit workout session started")
+        #endif
     }
 
     // MARK: - Add Location Data
@@ -109,7 +111,9 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             routeBuilder.insertRouteData(locations) { success, error in
                 if let error = error {
+                    #if DEBUG
                     print("Failed to add route data: \(error)")
+                    #endif
                 }
                 continuation.resume()
             }
@@ -119,11 +123,15 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
     // MARK: - Pause/Resume Workout
 
     func pauseWorkout() {
+        #if DEBUG
         print("HealthKit workout paused (collection continues)")
+        #endif
     }
 
     func resumeWorkout() {
+        #if DEBUG
         print("HealthKit workout resumed")
+        #endif
     }
 
     // MARK: - End Workout
@@ -172,7 +180,9 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
         }
 
         cleanup()
+        #if DEBUG
         print("HealthKit workout finished: \(workout?.uuid.uuidString ?? "nil")")
+        #endif
 
         return workout
     }
@@ -195,9 +205,13 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             routeBuilder.finishRoute(with: workout, metadata: nil) { route, error in
                 if let error = error {
+                    #if DEBUG
                     print("Failed to add route to workout: \(error)")
+                    #endif
                 } else {
+                    #if DEBUG
                     print("Route added to workout")
+                    #endif
                 }
                 continuation.resume()
             }
@@ -208,7 +222,9 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
 
     func cancelWorkout() {
         cleanup()
+        #if DEBUG
         print("HealthKit workout cancelled")
+        #endif
     }
 
     private func cleanup() {
@@ -323,7 +339,9 @@ class HealthKitWorkoutService: NSObject, ObservableObject {
             }
         }
 
+        #if DEBUG
         print("Activity saved to HealthKit: \(workout.uuid.uuidString)")
+        #endif
         return workout
     }
 

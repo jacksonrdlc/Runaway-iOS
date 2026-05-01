@@ -57,14 +57,18 @@ class AwardsService: ObservableObject {
     func loadLifetimeStats(for athleteId: Int) async {
         // Skip if already loaded for this user
         if lastLoadedUserId == athleteId && lifetimeStats != nil {
+            #if DEBUG
             print("✅ AwardsService: Using cached lifetime stats")
+            #endif
             return
         }
 
         await MainActor.run { isLoading = true }
 
         do {
+            #if DEBUG
             print("🔄 AwardsService: Loading lifetime stats for athlete \(athleteId)...")
+            #endif
 
             let stats: LifetimeRunningStats = try await supabase
                 .rpc("get_lifetime_running_stats", params: ["p_athlete_id": athleteId])
@@ -76,10 +80,14 @@ class AwardsService: ObservableObject {
                 self.lastLoadedUserId = athleteId
                 self.isLoading = false
             }
+            #if DEBUG
             print("✅ AwardsService: Loaded stats - \(stats.totalRuns) runs, \(String(format: "%.1f", stats.totalDistanceMiles)) miles")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ AwardsService: Failed to load stats from DB: \(error)")
             print("⚠️ AwardsService: Falling back to client-side calculation...")
+            #endif
             // Fallback to client-side calculation if RPC doesn't exist yet
             await loadLifetimeStatsFallback(for: athleteId)
         }
@@ -104,9 +112,13 @@ class AwardsService: ObservableObject {
                 self.lastLoadedUserId = athleteId
                 self.isLoading = false
             }
+            #if DEBUG
             print("✅ AwardsService: Loaded stats via fallback - \(activities.count) activities processed")
+            #endif
         } catch {
+            #if DEBUG
             print("❌ AwardsService: Fallback also failed: \(error)")
+            #endif
             await MainActor.run { isLoading = false }
         }
     }

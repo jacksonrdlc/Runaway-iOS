@@ -34,7 +34,9 @@ public final class RealtimeService {
     private var subscriptionTasks: [Task<Void, Never>] = []
     
     private init() {
+        #if DEBUG
         print("RealtimeService initialized")
+        #endif
         // Background tasks disabled - using silent push notifications instead
         // registerBackgroundTask()
     }
@@ -47,7 +49,9 @@ public final class RealtimeService {
                 UserSession.shared.userId
             }
             guard let userId = userId else {
+                #if DEBUG
                 print("No authenticated user, cannot start realtime subscription")
+                #endif
                 return
             }
 
@@ -107,7 +111,9 @@ public final class RealtimeService {
             filter: "athlete_id=eq.\(userId)"
         )
         
+        #if DEBUG
         print("Subscribing to realtime channel for user: \(userId)")
+        #endif
         await channel.subscribe()
         
         await MainActor.run {
@@ -126,8 +132,10 @@ public final class RealtimeService {
         let insertionTask = Task {
             for await insertion in insertions {
                 guard !Task.isCancelled else { break }
+                #if DEBUG
                 print("🆕 Activity inserted via Realtime - refreshing data")
                 print("   Insertion data: \(insertion)")
+                #endif
                 await handleRealtimeUpdate()
                 await updateConnectionHealth(.healthy)
             }
@@ -138,7 +146,9 @@ public final class RealtimeService {
         let updateTask = Task {
             for await _ in updates {
                 guard !Task.isCancelled else { break }
+                #if DEBUG
                 print("Activity updated - refreshing data")
+                #endif
                 await handleRealtimeUpdate()
                 await updateConnectionHealth(.healthy)
             }
@@ -149,7 +159,9 @@ public final class RealtimeService {
         let deletionTask = Task {
             for await _ in deletions {
                 guard !Task.isCancelled else { break }
+                #if DEBUG
                 print("Activity deleted - refreshing data")
+                #endif
                 await handleRealtimeUpdate()
                 await updateConnectionHealth(.healthy)
             }
@@ -186,7 +198,9 @@ public final class RealtimeService {
             UserSession.shared.userId
         }
         guard let userId = userId else {
+            #if DEBUG
             print("No authenticated user for data refresh")
+            #endif
             return
         }
 
@@ -200,7 +214,9 @@ public final class RealtimeService {
             }
 
         } catch {
+            #if DEBUG
             print("Error refreshing activity data: \(error)")
+            #endif
         }
     }
     
@@ -221,21 +237,29 @@ public final class RealtimeService {
             self.connectionHealth = .disconnected
         }
 
+        #if DEBUG
         print("Realtime subscription cleaned up")
+        #endif
     }
     
     // MARK: - Background Task Management
     
     private func registerBackgroundTask() {
         let success = BGTaskScheduler.shared.register(forTaskWithIdentifier: backgroundTaskIdentifier, using: nil) { task in
+            #if DEBUG
             print("🎯 Background task triggered: \(task.identifier)")
+            #endif
             self.handleBackgroundTask(task: task as! BGAppRefreshTask)
         }
         
         if success {
+            #if DEBUG
             print("✅ Background task registered successfully: \(backgroundTaskIdentifier)")
+            #endif
         } else {
+            #if DEBUG
             print("❌ Failed to register background task: \(backgroundTaskIdentifier)")
+            #endif
         }
     }
     
@@ -280,7 +304,9 @@ public final class RealtimeService {
     
     public func scheduleBackgroundRefresh() {
         // Background tasks disabled - using silent push notifications for background sync
+        #if DEBUG
         print("ℹ️ Background refresh via BGTaskScheduler is disabled. Using silent push notifications instead.")
+        #endif
         return
     }
     
@@ -330,13 +356,17 @@ public final class RealtimeService {
 
     /// Pause connection monitoring when app enters background to save battery
     func pauseForBackground() {
+        #if DEBUG
         print("⏸️ RealtimeService: Pausing heartbeat timer for background")
+        #endif
         stopConnectionMonitoring()
     }
 
     /// Resume connection monitoring when app returns to foreground
     func resumeFromBackground() {
+        #if DEBUG
         print("▶️ RealtimeService: Resuming heartbeat timer from background")
+        #endif
         if isConnected {
             startConnectionMonitoring()
         }

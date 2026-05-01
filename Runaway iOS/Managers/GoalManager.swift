@@ -45,7 +45,9 @@ final class GoalManager: GoalManagerProtocol {
             let goals = try await GoalService.getActiveGoals()
             self.currentGoal = Self.selectPriorityGoal(from: goals)
         } catch {
+            #if DEBUG
             print("❌ GoalManager: Failed to load goals: \(error)")
+            #endif
         }
     }
 
@@ -69,7 +71,9 @@ final class GoalManager: GoalManagerProtocol {
 
     func refresh() async {
         guard let userId = UserSession.shared.userId else {
+            #if DEBUG
             print("❌ GoalManager: No user ID for refresh")
+            #endif
             return
         }
 

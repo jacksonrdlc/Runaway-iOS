@@ -243,6 +243,7 @@ struct SupabaseConfiguration {
     // MARK: - Debug Helpers
 
     static func printConfiguration() {
+        #if DEBUG
         print("🔧 Supabase Configuration:")
         print("   URL Configured: \(hasSupabaseURL ? "✅" : "❌")")
         print("   Key Configured: \(hasSupabaseKey ? "✅" : "❌")")
@@ -255,10 +256,7 @@ struct SupabaseConfiguration {
             print("   Supabase Domain: \(domain)")
         }
 
-        #if DEBUG
         print("   Build Mode: DEBUG")
-        #else
-        print("   Build Mode: RELEASE")
         #endif
     }
 

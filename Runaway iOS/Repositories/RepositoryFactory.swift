@@ -66,7 +66,9 @@ enum RepositoryFactory {
     // MARK: - Debug
 
     static func printConfiguration() {
+        #if DEBUG
         print("[RepositoryFactory] Using HybridActivityRepository (SwiftData + Supabase)")
+        #endif
     }
 }
 
