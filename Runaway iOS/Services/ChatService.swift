@@ -133,8 +133,6 @@ class ChatService {
 
     /// Get full conversation by ID (Not yet implemented in new backend)
     static func getConversation(id: String) async throws -> Conversation {
-        // TODO: Implement conversation storage in new backend
-        // For now, return empty conversation
         let now = ISO8601DateFormatter().string(from: Date())
         return Conversation(
             id: id,
@@ -146,17 +144,9 @@ class ChatService {
         )
     }
 
-    /// List recent conversations (Not yet implemented in new backend)
-    static func listConversations(limit: Int = 10) async throws -> [ConversationSummary] {
-        // TODO: Implement conversation list in new backend
-        // For now, return empty list
-        return []
-    }
 
     /// Delete a conversation (Not yet implemented in new backend)
     static func deleteConversation(id: String) async throws {
-        // TODO: Implement conversation deletion in new backend
-        // For now, do nothing
         return
     }
 
