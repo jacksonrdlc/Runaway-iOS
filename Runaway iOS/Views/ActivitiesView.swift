@@ -9,10 +9,11 @@ struct ActivitiesView: View {
     @Environment(RealtimeService.self) var realtimeService
     @State private var selectedActivity: LocalActivity?
     @State private var activeFilter: String = "All"
+    @State private var filteredActivities: [Activity] = []
 
     private let filterOptions = ["All", "Run", "Bike", "Strength", "Trail", "Swim"]
 
-    private var filteredActivities: [Activity] {
+    private func applyFilter() -> [Activity] {
         guard activeFilter != "All" else { return dataManager.activities }
         return dataManager.activities.filter { activity in
             let type = (activity.type ?? "").lowercased()
@@ -133,6 +134,15 @@ struct ActivitiesView: View {
                     .refreshable { await refreshActivities() }
                 }
             }
+        }
+        .task {
+            filteredActivities = applyFilter()
+        }
+        .onChange(of: activeFilter) { _, _ in
+            filteredActivities = applyFilter()
+        }
+        .onChange(of: dataManager.activities) { _, _ in
+            filteredActivities = applyFilter()
         }
         .navigationBarHidden(true)
         .sheet(item: $selectedActivity) { activity in
