@@ -101,7 +101,7 @@ public final class UserSession {
         case .signedOut:
             await clearSession()
             // Refresh widgets after sign out
-            WidgetRefreshService.refreshForAuthUpdate()
+            WidgetSyncService.refreshForAuthUpdate()
         case .tokenRefreshed:
             if let user = session?.user {
                 await updateAuthState(with: user)
@@ -127,7 +127,7 @@ public final class UserSession {
         #endif
 
         // Refresh widgets after authentication state update
-        WidgetRefreshService.refreshForAuthUpdate()
+        WidgetSyncService.refreshForAuthUpdate()
 
         // Ensure athlete record exists and get the athlete ID
         let athleteId = await ensureAthleteRecordExists(for: user)

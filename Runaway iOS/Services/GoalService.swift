@@ -198,7 +198,7 @@ class GoalService {
         return active.first { $0.type == type }
     }
     static func deleteGoal(goalId: Int) async throws {
-        WidgetRefreshService.refreshForGoalUpdate()
+        WidgetSyncService.refreshForGoalUpdate()
     }
     static func getGoalStats() async throws -> GoalStats {
         let all = try await getAllGoals()

@@ -115,6 +115,28 @@ final class WidgetSyncService {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+    // MARK: - Semantic Refresh Methods (replaces WidgetRefreshService)
+
+    nonisolated static func refreshForActivityUpdate() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    nonisolated static func refreshForGoalUpdate() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    nonisolated static func refreshForAuthUpdate() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    nonisolated static func refreshForUserUpdate() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    nonisolated static func refreshForLocationUpdate() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     // MARK: - Private Methods
 
     private func performWidgetUpdate(with activities: [Activity]) async {

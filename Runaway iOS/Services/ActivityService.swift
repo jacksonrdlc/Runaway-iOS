@@ -148,7 +148,7 @@ class ActivityService {
             .value
 
         // Refresh widgets after creating activity
-        WidgetRefreshService.refreshForActivityUpdate()
+        WidgetSyncService.refreshForActivityUpdate()
 
         return createdActivity
     }
@@ -176,7 +176,7 @@ class ActivityService {
             .value
 
         // Refresh widgets after creating activity
-        WidgetRefreshService.refreshForActivityUpdate()
+        WidgetSyncService.refreshForActivityUpdate()
 
         return createdActivity
     }
@@ -337,7 +337,7 @@ class ActivityService {
             #endif
 
             // Refresh widgets after updating activity
-            WidgetRefreshService.refreshForActivityUpdate()
+            WidgetSyncService.refreshForActivityUpdate()
         } catch {
             #if DEBUG
             print("Failed to update activity: \(error)")
@@ -356,7 +356,7 @@ class ActivityService {
             .value
 
         // Refresh widgets after deleting activity
-        WidgetRefreshService.refreshForActivityUpdate()
+        WidgetSyncService.refreshForActivityUpdate()
     }
 
     // MARK: - Aggregated Stats (Database Functions)
