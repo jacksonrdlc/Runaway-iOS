@@ -37,7 +37,7 @@ struct TrainingView: View {
                 EmptyInsightsStateView()
             } else {
                 ScrollView {
-                    VStack(spacing: 16) {
+                    LazyVStack(spacing: 16) {
 
                         // ── 1. Greeting header ─────────────────────────────
                         HStack(alignment: .bottom) {
