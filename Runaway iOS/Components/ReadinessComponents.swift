@@ -526,6 +526,207 @@ extension Color {
     }
 }
 
+// MARK: - Readiness Banner (Color-coded, glanceable)
+
+struct ReadinessBanner: View {
+    @StateObject private var readinessService = ReadinessService.shared
+    @State private var showingDetail = false
+
+    var body: some View {
+        Button(action: { showingDetail = true }) {
+            HStack(spacing: 16) {
+                // ── Ring gauge ─────────────────────────────────────────────
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), lineWidth: 5)
+                        .frame(width: 64, height: 64)
+                    Circle()
+                        .trim(from: 0, to: ringProgress)
+                        .stroke(readinessColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .frame(width: 64, height: 64)
+                        .rotationEffect(.degrees(-90))
+                    if let score = readinessService.todaysReadiness?.score {
+                        VStack(spacing: 0) {
+                            Text("\(score)")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .monospacedDigit()
+                            Text("%")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                        }
+                    } else if readinessService.isCalculating {
+                        ProgressView().scaleEffect(0.7)
+                    } else {
+                        Image(systemName: "questionmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                    }
+                }
+
+                // ── Text stack ─────────────────────────────────────────────
+                VStack(alignment: .leading, spacing: 4) {
+                    EyebrowLabel(text: "READINESS · \(readinessLevelLabel)", color: readinessColor)
+                    Text(readinessHeadline)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text(readinessSubtext)
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(readinessColor.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium + 2)
+                    .stroke(readinessColor.opacity(0.18), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showingDetail) {
+            if let readiness = readinessService.todaysReadiness {
+                ReadinessDetailView(readiness: readiness)
+            } else {
+                ReadinessCalculationSheet()
+            }
+        }
+        .task {
+            await readinessService.refreshIfNeeded()
+        }
+    }
+
+    private var ringProgress: CGFloat {
+        guard let score = readinessService.todaysReadiness?.score else { return 0 }
+        return CGFloat(score) / 100.0
+    }
+
+    private var readinessColor: Color {
+        guard let readiness = readinessService.todaysReadiness else { return .gray }
+        switch readiness.level {
+        case .optimal: return AppTheme.Colors.success
+        case .good: return Color(red: 0.5, green: 0.8, blue: 0.1)
+        case .moderate: return .yellow
+        case .low: return .orange
+        case .poor: return .red
+        }
+    }
+
+    private var readinessLevelLabel: String {
+        guard let readiness = readinessService.todaysReadiness else { return "UNKNOWN" }
+        switch readiness.level {
+        case .optimal: return "OPTIMAL"
+        case .good: return "GOOD"
+        case .moderate: return "MODERATE"
+        case .low: return "LOW"
+        case .poor: return "POOR"
+        }
+    }
+
+    private var readinessHeadline: String {
+        guard let readiness = readinessService.todaysReadiness else { return "Tap to calculate" }
+        switch readiness.level {
+        case .optimal: return "Ready for a hard effort"
+        case .good: return "Good to train today"
+        case .moderate: return "Keep it moderate"
+        case .low: return "Take it easy today"
+        case .poor: return "Rest day recommended"
+        }
+    }
+
+    private var readinessSubtext: String {
+        guard let score = readinessService.todaysReadiness?.score else { return "Analyze your recovery" }
+        return "Score \(score) · Tap for full breakdown"
+    }
+}
+
+// MARK: - Readiness Calculation Sheet
+
+struct ReadinessCalculationSheet: View {
+    @StateObject private var readinessService = ReadinessService.shared
+    @Environment(\.dismiss) private var dismiss
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                Image(systemName: "heart.text.square")
+                    .font(.system(size: 60))
+                    .foregroundColor(AppTheme.Colors.accent)
+
+                Text("Calculate Your Readiness")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("We'll analyze your sleep, HRV, resting heart rate, and training load to determine how ready you are to train today.")
+                    .font(.subheadline)
+                    .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                if let error = errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                }
+
+                Button {
+                    Task {
+                        await calculateReadiness()
+                    }
+                } label: {
+                    HStack {
+                        if readinessService.isCalculating {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "waveform.path.ecg")
+                        }
+                        Text(readinessService.isCalculating ? "Calculating..." : "Calculate Now")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppTheme.Colors.accent)
+                    .cornerRadius(12)
+                }
+                .disabled(readinessService.isCalculating)
+                .padding(.horizontal)
+
+                Spacer()
+            }
+            .padding(.top, 40)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func calculateReadiness() async {
+        errorMessage = nil
+        do {
+            _ = try await readinessService.calculateTodaysReadiness()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
 // MARK: - Preview
 
 #Preview {
