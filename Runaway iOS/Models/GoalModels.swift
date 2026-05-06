@@ -44,7 +44,8 @@ struct RunningGoal: Codable, Identifiable, Sendable {
     let isCompleted: Bool
     let currentProgress: Double
     let completedDate: Date?
-    
+    let goalFraming: String?
+
     // Client-side init for new goals
     init(type: GoalType, targetValue: Double, deadline: Date, title: String) {
         self.id = nil
@@ -59,12 +60,13 @@ struct RunningGoal: Codable, Identifiable, Sendable {
         self.isCompleted = false
         self.currentProgress = 0.0
         self.completedDate = nil
+        self.goalFraming = nil
     }
-    
+
     // Database init for existing goals
     init(id: Int?, athleteId: Int?, type: GoalType, targetValue: Double, deadline: Date,
          createdDate: Date, updatedDate: Date?, title: String, isActive: Bool,
-         isCompleted: Bool, currentProgress: Double, completedDate: Date?) {
+         isCompleted: Bool, currentProgress: Double, completedDate: Date?, goalFraming: String? = nil) {
         self.id = id
         self.athleteId = athleteId
         self.type = type
@@ -77,8 +79,9 @@ struct RunningGoal: Codable, Identifiable, Sendable {
         self.isCompleted = isCompleted
         self.currentProgress = currentProgress
         self.completedDate = completedDate
+        self.goalFraming = goalFraming
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case athleteId = "athlete_id"
@@ -92,6 +95,7 @@ struct RunningGoal: Codable, Identifiable, Sendable {
         case isCompleted = "is_completed"
         case currentProgress = "current_progress"
         case completedDate = "completed_at"
+        case goalFraming = "goal_framing"
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -108,6 +112,7 @@ struct RunningGoal: Codable, Identifiable, Sendable {
         try container.encode(isCompleted, forKey: .isCompleted)
         try container.encode(currentProgress, forKey: .currentProgress)
         try container.encodeIfPresent(completedDate, forKey: .completedDate)
+        try container.encodeIfPresent(goalFraming, forKey: .goalFraming)
     }
     
     public init(from decoder: Decoder) throws {
@@ -131,6 +136,7 @@ struct RunningGoal: Codable, Identifiable, Sendable {
         isCompleted = try container.decode(Bool.self, forKey: .isCompleted)
         currentProgress = try container.decode(Double.self, forKey: .currentProgress)
         completedDate = try container.decodeIfPresent(Date.self, forKey: .completedDate)
+        goalFraming = try container.decodeIfPresent(String.self, forKey: .goalFraming)
     }
     
     func formattedTarget(isMetric: Bool = false) -> String {
