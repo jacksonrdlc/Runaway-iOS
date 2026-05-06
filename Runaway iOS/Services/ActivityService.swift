@@ -150,9 +150,18 @@ class ActivityService {
         // Refresh widgets after creating activity
         WidgetSyncService.refreshForActivityUpdate()
 
+        // Fire-and-forget Adlerian feedback generation
+        Task {
+            guard let athleteId = createdActivity.athlete_id else { return }
+            try? await FeedbackWorkoutService.generateFeedback(
+                athleteId: athleteId,
+                activityId: createdActivity.id
+            )
+        }
+
         return createdActivity
     }
-    
+
     // Function to create an activity with custom data (for recording)
     static func createActivity(data: [String: AnyEncodable]) async throws -> Activity {
         let createdActivity: Activity = try await supabase.from("activities")
@@ -178,9 +187,18 @@ class ActivityService {
         // Refresh widgets after creating activity
         WidgetSyncService.refreshForActivityUpdate()
 
+        // Fire-and-forget Adlerian feedback generation
+        Task {
+            guard let athleteId = createdActivity.athlete_id else { return }
+            try? await FeedbackWorkoutService.generateFeedback(
+                athleteId: athleteId,
+                activityId: createdActivity.id
+            )
+        }
+
         return createdActivity
     }
-    
+
     // Function to create an activity with enhanced data (matching new schema)
     static func createActivityWithFullData(
         athleteId: Int,
