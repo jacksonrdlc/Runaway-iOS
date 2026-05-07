@@ -69,11 +69,14 @@ struct AthleteView: View {
                                 guard let athleteId = athlete.id else { return }
                                 mindsetLoadError = false
                                 Task {
+                                    async let p = RunnerMindsetService.fetchProfile(athleteId: athleteId)
+                                    async let m = RunnerMindsetService.fetchMilestones(athleteId: athleteId)
                                     do {
-                                        mindsetProfile = try await RunnerMindsetService.fetchProfile(athleteId: athleteId)
+                                        mindsetProfile = try await p
                                     } catch {
                                         mindsetLoadError = true
                                     }
+                                    milestones = (try? await m) ?? []
                                 }
                             } label: {
                                 HStack {
@@ -215,17 +218,21 @@ struct AthleteView: View {
             guard let athleteId = athlete.id else { return }
 
             isLoadingPRs = true
-            personalBests = (try? await PersonalBestService.shared.recomputeAndSave(athleteId: athleteId))
+            async let prTask = PersonalBestService.shared.recomputeAndSave(athleteId: athleteId)
+            async let profileTask = RunnerMindsetService.fetchProfile(athleteId: athleteId)
+            async let milestonesTask = RunnerMindsetService.fetchMilestones(athleteId: athleteId)
+
+            personalBests = (try? await prTask)
                 ?? (try? await PersonalBestService.shared.fetchPRs(athleteId: athleteId))
                 ?? []
             isLoadingPRs = false
 
             do {
-                mindsetProfile = try await RunnerMindsetService.fetchProfile(athleteId: athleteId)
+                mindsetProfile = try await profileTask
             } catch {
                 mindsetLoadError = true
             }
-            milestones = (try? await RunnerMindsetService.fetchMilestones(athleteId: athleteId)) ?? []
+            milestones = (try? await milestonesTask) ?? []
         }
         .sheet(isPresented: $showingEditMindset) {
             if let athleteId = athlete.id {
