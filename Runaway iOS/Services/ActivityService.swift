@@ -150,7 +150,7 @@ class ActivityService {
         // Refresh widgets after creating activity
         WidgetSyncService.refreshForActivityUpdate()
 
-        // Fire-and-forget Adlerian feedback generation
+        // Fire-and-forget runner identity feedback generation
         Task {
             guard let athleteId = createdActivity.athlete_id else { return }
             try? await FeedbackWorkoutService.generateFeedback(
@@ -187,7 +187,7 @@ class ActivityService {
         // Refresh widgets after creating activity
         WidgetSyncService.refreshForActivityUpdate()
 
-        // Fire-and-forget Adlerian feedback generation
+        // Fire-and-forget runner identity feedback generation
         Task {
             guard let athleteId = createdActivity.athlete_id else { return }
             try? await FeedbackWorkoutService.generateFeedback(
