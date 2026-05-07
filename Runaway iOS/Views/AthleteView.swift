@@ -141,7 +141,7 @@ struct AthleteView: View {
                                     if index > 0 {
                                         Divider().background(Color.white.opacity(0.06))
                                     }
-                                    MilestoneRow(milestone: milestone)
+                                    RunnerMilestoneRow(milestone: milestone)
                                 }
                             }
                             .background(AppTheme.Colors.DarkMode.cardBackground)
@@ -218,13 +218,15 @@ struct AthleteView: View {
             guard let athleteId = athlete.id else { return }
 
             isLoadingPRs = true
-            async let prTask = PersonalBestService.shared.recomputeAndSave(athleteId: athleteId)
             async let profileTask = RunnerMindsetService.fetchProfile(athleteId: athleteId)
             async let milestonesTask = RunnerMindsetService.fetchMilestones(athleteId: athleteId)
 
-            personalBests = (try? await prTask)
-                ?? (try? await PersonalBestService.shared.fetchPRs(athleteId: athleteId))
-                ?? []
+            let recomputed = try? await PersonalBestService.shared.recomputeAndSave(athleteId: athleteId)
+            if let prs = recomputed {
+                personalBests = prs
+            } else {
+                personalBests = (try? await PersonalBestService.shared.fetchPRs(athleteId: athleteId)) ?? []
+            }
             isLoadingPRs = false
 
             do {
@@ -318,7 +320,7 @@ private struct PersonalBestRow: View {
 
 // MARK: - Milestone Row
 
-private struct MilestoneRow: View {
+private struct RunnerMilestoneRow: View {
     let milestone: RunnerIdentityMilestone
 
     var body: some View {
