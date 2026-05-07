@@ -75,4 +75,11 @@ enum AppConstants {
         static let healthyThreshold: TimeInterval = 60
         static let degradedThreshold: TimeInterval = 300
     }
+
+    enum Mindset {
+        static let coreValuePresets: [String] = [
+            "consistency", "mental health", "stress relief", "community",
+            "competition", "adventure", "fitness", "routine", "solitude", "speed"
+        ]
+    }
 }

@@ -13,10 +13,7 @@ struct EditRunnerMindsetView: View {
     @State private var isSaving = false
     @State private var saveError: String? = nil
 
-    private let presetValues = [
-        "consistency", "mental health", "stress relief", "community",
-        "competition", "adventure", "fitness", "routine", "solitude", "speed"
-    ]
+    private let presetValues = AppConstants.Mindset.coreValuePresets
 
     private var canSave: Bool {
         whyIRun.trimmingCharacters(in: .whitespaces).count >= 10 && !selectedValues.isEmpty

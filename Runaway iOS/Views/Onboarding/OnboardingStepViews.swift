@@ -945,13 +945,8 @@ struct RunnerMindsetStepView: View {
 
     @State private var whyIRun: String = ""
     @State private var selectedValues: [String] = []
-    @State private var isSaving = false
-    @State private var saveError: String? = nil
 
-    private let presetValues = [
-        "consistency", "mental health", "stress relief", "community",
-        "competition", "adventure", "fitness", "routine", "solitude", "speed"
-    ]
+    private let presetValues = AppConstants.Mindset.coreValuePresets
 
     private var canContinue: Bool {
         whyIRun.trimmingCharacters(in: .whitespaces).count >= 10 && !selectedValues.isEmpty
@@ -971,16 +966,6 @@ struct RunnerMindsetStepView: View {
                         Text("Understanding why you run helps your AI coach support you better.")
                             .font(.system(size: 14, design: .rounded))
                             .foregroundColor(.secondary)
-                    }
-
-                    if let error = saveError {
-                        Text(error)
-                            .font(.system(size: 13, design: .rounded))
-                            .foregroundColor(.red)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.red.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
 
                     // WHY I RUN
@@ -1044,24 +1029,15 @@ struct RunnerMindsetStepView: View {
                             selectedValues
                         )
                     } label: {
-                        HStack {
-                            if isSaving {
-                                ProgressView()
-                                    .progressViewStyle(.circular)
-                                    .tint(.white)
-                                    .scaleEffect(0.85)
-                            } else {
-                                Text("Continue")
-                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(canContinue ? Color.accentColor : Color.accentColor.opacity(0.3))
-                        .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        Text("Continue")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(canContinue ? Color.accentColor : Color.accentColor.opacity(0.3))
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .disabled(!canContinue || isSaving)
+                    .disabled(!canContinue)
 
                     // Skip link
                     Button {
@@ -1154,4 +1130,8 @@ private struct OnboardingChipGrid: View {
         coachPersonality: .balanced,
         onComplete: {}
     )
+}
+
+#Preview("Runner Mindset") {
+    RunnerMindsetStepView(onContinue: { _, _ in }, onSkip: {})
 }
