@@ -18,6 +18,7 @@ struct ActivityDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var showContent = false
+    @State private var fetchedFeedback: String? = nil
 
     // MARK: - Computed Properties
 
@@ -156,7 +157,7 @@ struct ActivityDetailView: View {
                             }
                             EyebrowLabel(text: "AI COACH", color: AppTheme.Colors.warmAmber)
                         }
-                        Text(coachInsight)
+                        Text(fetchedFeedback ?? coachInsight)
                             .font(.system(size: 14, design: .rounded))
                             .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -181,6 +182,9 @@ struct ActivityDetailView: View {
                     Spacer(minLength: 32)
                 }
                 .padding(20)
+            }
+            .task(id: activity.id) {
+                fetchedFeedback = try? await ActivityInsightService.fetchFeedback(activityId: activity.id)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
