@@ -159,6 +159,14 @@ class ActivityService {
             )
         }
 
+        Task {
+            guard let athleteId = createdActivity.athlete_id else { return }
+            try? await MilestoneService.checkMilestones(
+                athleteId: athleteId,
+                activityId: createdActivity.id
+            )
+        }
+
         return createdActivity
     }
 
@@ -191,6 +199,14 @@ class ActivityService {
         Task {
             guard let athleteId = createdActivity.athlete_id else { return }
             try? await FeedbackWorkoutService.generateFeedback(
+                athleteId: athleteId,
+                activityId: createdActivity.id
+            )
+        }
+
+        Task {
+            guard let athleteId = createdActivity.athlete_id else { return }
+            try? await MilestoneService.checkMilestones(
                 athleteId: athleteId,
                 activityId: createdActivity.id
             )
