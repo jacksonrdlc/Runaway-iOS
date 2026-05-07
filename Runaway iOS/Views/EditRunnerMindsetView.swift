@@ -32,10 +32,10 @@ struct EditRunnerMindsetView: View {
                         if let error = saveError {
                             Text(error)
                                 .font(.system(size: 13, design: .rounded))
-                                .foregroundColor(.red)
+                                .foregroundColor(AppTheme.Colors.error)
                                 .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.red.opacity(0.1))
+                                .background(AppTheme.Colors.errorBackground)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
 
