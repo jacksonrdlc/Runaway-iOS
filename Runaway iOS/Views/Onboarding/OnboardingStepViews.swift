@@ -937,6 +937,196 @@ struct SummaryRow: View {
     }
 }
 
+// MARK: - Runner Mindset Step
+
+struct RunnerMindsetStepView: View {
+    let onContinue: (String, [String]) -> Void
+    let onSkip: () -> Void
+
+    @State private var whyIRun: String = ""
+    @State private var selectedValues: [String] = []
+    @State private var isSaving = false
+    @State private var saveError: String? = nil
+
+    private let presetValues = [
+        "consistency", "mental health", "stress relief", "community",
+        "competition", "adventure", "fitness", "routine", "solitude", "speed"
+    ]
+
+    private var canContinue: Bool {
+        whyIRun.trimmingCharacters(in: .whitespaces).count >= 10 && !selectedValues.isEmpty
+    }
+
+    var body: some View {
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    Spacer().frame(height: 8)
+
+                    // Header
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Your Running Mindset")
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                        Text("Understanding why you run helps your AI coach support you better.")
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+
+                    if let error = saveError {
+                        Text(error)
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundColor(.red)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+
+                    // WHY I RUN
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("WHY I RUN")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .kerning(1.2)
+
+                        ZStack(alignment: .topLeading) {
+                            if whyIRun.isEmpty {
+                                Text("I run to clear my head and feel strong")
+                                    .font(.system(size: 15, design: .rounded))
+                                    .foregroundColor(Color(.tertiaryLabel))
+                                    .padding(.horizontal, 12)
+                                    .padding(.top, 12)
+                            }
+                            TextEditor(text: $whyIRun)
+                                .font(.system(size: 15, design: .rounded))
+                                .scrollContentBackground(.hidden)
+                                .padding(8)
+                                .frame(minHeight: 100)
+                                .onChange(of: whyIRun) { _, newValue in
+                                    if newValue.count > 200 {
+                                        whyIRun = String(newValue.prefix(200))
+                                    }
+                                }
+                        }
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                        Text("\(whyIRun.count)/200")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+
+                    // WHAT MATTERS MOST
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("WHAT MATTERS MOST")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(.secondary)
+                                .kerning(1.2)
+                            Spacer()
+                            Text("Pick up to 3")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(.secondary)
+                        }
+                        OnboardingChipGrid(
+                            values: presetValues,
+                            selected: $selectedValues,
+                            maxSelected: 3
+                        )
+                    }
+
+                    // Continue button
+                    Button {
+                        onContinue(
+                            whyIRun.trimmingCharacters(in: .whitespaces),
+                            selectedValues
+                        )
+                    } label: {
+                        HStack {
+                            if isSaving {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.white)
+                                    .scaleEffect(0.85)
+                            } else {
+                                Text("Continue")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(canContinue ? Color.accentColor : Color.accentColor.opacity(0.3))
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .disabled(!canContinue || isSaving)
+
+                    // Skip link
+                    Button {
+                        onSkip()
+                    } label: {
+                        Text("Skip for now")
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+
+                    Spacer().frame(height: 20)
+                }
+                .padding(.horizontal, 24)
+            }
+        }
+    }
+}
+
+// MARK: - Onboarding Chip Grid
+
+private struct OnboardingChipGrid: View {
+    let values: [String]
+    @Binding var selected: [String]
+    let maxSelected: Int
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(values, id: \.self) { value in
+                let isSelected = selected.contains(value)
+                Button {
+                    toggleValue(value)
+                } label: {
+                    Text(isSelected ? "✓ \(value)" : value)
+                        .font(.system(size: 13, weight: isSelected ? .semibold : .regular, design: .rounded))
+                        .foregroundColor(isSelected ? Color.accentColor : Color(.secondaryLabel))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(isSelected
+                            ? Color.accentColor.opacity(0.12)
+                            : Color(.secondarySystemBackground))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(
+                                isSelected ? Color.accentColor : Color(.separator),
+                                lineWidth: 1
+                            )
+                        )
+                }
+            }
+        }
+    }
+
+    private func toggleValue(_ value: String) {
+        if let index = selected.firstIndex(of: value) {
+            selected.remove(at: index)
+        } else if selected.count < maxSelected {
+            selected.append(value)
+        } else {
+            selected.removeFirst()
+            selected.append(value)
+        }
+    }
+}
+
 // MARK: - Previews
 
 #Preview("Welcome") {

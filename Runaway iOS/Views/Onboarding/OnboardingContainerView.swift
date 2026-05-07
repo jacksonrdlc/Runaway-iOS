@@ -63,6 +63,14 @@ struct OnboardingContainerView: View {
                     )
                     .tag(OnboardingStep.movementTest)
 
+                    RunnerMindsetStepView(
+                        onContinue: { why, values in
+                            viewModel.saveMindsetAndAdvance(whyIRun: why, coreValues: values)
+                        },
+                        onSkip: viewModel.skipStep
+                    )
+                    .tag(OnboardingStep.runnerMindset)
+
                     OnboardingLocationView(
                         onContinue: viewModel.nextStep,
                         onSkip: viewModel.skipStep,
@@ -119,6 +127,10 @@ class OnboardingViewModel: ObservableObject {
     @Published var lastName: String = ""
     @Published var weeklyGoal: Double = 20.0
     @Published var monthlyGoal: Double = 80.0
+
+    // Mindset step fields
+    @Published var mindsetWhyIRun: String = ""
+    @Published var mindsetCoreValues: [String] = []
 
     private var onboardingState: OnboardingState?
     private var hasLoadedInitialState = false
@@ -236,6 +248,28 @@ class OnboardingViewModel: ObservableObject {
 
         Task {
             try? await OnboardingService.updateCoachPersonality(stateId: stateId, personality: coachPersonality)
+        }
+    }
+
+    func saveMindsetAndAdvance(whyIRun: String, coreValues: [String]) {
+        mindsetWhyIRun = whyIRun
+        mindsetCoreValues = coreValues
+
+        guard !whyIRun.isEmpty, !coreValues.isEmpty else {
+            nextStep()
+            return
+        }
+        guard let athleteId = athleteId else {
+            nextStep()
+            return
+        }
+        Task {
+            try? await RunnerMindsetService.saveProfile(
+                athleteId: athleteId,
+                whyIRun: whyIRun,
+                coreValues: coreValues
+            )
+            await MainActor.run { self.nextStep() }
         }
     }
 
