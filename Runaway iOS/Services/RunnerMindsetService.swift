@@ -46,33 +46,45 @@ struct RunnerMindsetService {
         coreValues: [String]
     ) async throws -> MindsetProfile {
         struct Request: Encodable {
-            let athlete_id: Int
-            let why_i_run: String
-            let core_values: [String]
+            let athleteId: Int
+            let whyIRun: String
+            let coreValues: [String]
             let mode: String
+            enum CodingKeys: String, CodingKey {
+                case athleteId  = "athlete_id"
+                case whyIRun    = "why_i_run"
+                case coreValues = "core_values"
+                case mode
+            }
         }
         struct Response: Decodable {
-            let runner_identity: String
-            let identity_summary: String
-            let why_i_run: String
-            let core_values: [String]
+            let runnerIdentity: String
+            let identitySummary: String
+            let whyIRun: String
+            let coreValues: [String]
+            enum CodingKeys: String, CodingKey {
+                case runnerIdentity  = "runner_identity"
+                case identitySummary = "identity_summary"
+                case whyIRun         = "why_i_run"
+                case coreValues      = "core_values"
+            }
         }
 
         let response: Response = try await supabase.functions.invoke(
             "identity-profile",
             options: .init(body: Request(
-                athlete_id: athleteId,
-                why_i_run: whyIRun,
-                core_values: coreValues,
+                athleteId: athleteId,
+                whyIRun: whyIRun,
+                coreValues: coreValues,
                 mode: "update"
             ))
         )
 
         return MindsetProfile(
-            runnerIdentity: response.runner_identity,
-            identitySummary: response.identity_summary,
-            whyIRun: response.why_i_run,
-            coreValues: response.core_values
+            runnerIdentity: response.runnerIdentity,
+            identitySummary: response.identitySummary,
+            whyIRun: response.whyIRun,
+            coreValues: response.coreValues
         )
     }
 

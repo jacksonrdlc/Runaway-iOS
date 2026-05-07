@@ -1,6 +1,6 @@
 import Foundation
 
-struct MindsetProfile {
+struct MindsetProfile: Equatable, Sendable {
     let runnerIdentity: String
     let identitySummary: String
     let whyIRun: String
