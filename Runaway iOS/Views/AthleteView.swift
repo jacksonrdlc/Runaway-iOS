@@ -247,6 +247,12 @@ struct AthleteView: View {
                 )
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: MilestoneService.didUpdateNotification)) { _ in
+            guard let athleteId = athlete.id else { return }
+            Task {
+                milestones = (try? await RunnerMindsetService.fetchMilestones(athleteId: athleteId)) ?? []
+            }
+        }
     }
 
     // MARK: - Computed strings
