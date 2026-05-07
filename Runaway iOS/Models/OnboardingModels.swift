@@ -84,9 +84,10 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
     case goalsSetup = 2
     case experienceAssessment = 3
     case movementTest = 4
-    case locationPermission = 5
-    case coachSelection = 6
-    case completion = 7
+    case runnerMindset = 5
+    case locationPermission = 6
+    case coachSelection = 7
+    case completion = 8
 
     var title: String {
         switch self {
@@ -95,6 +96,7 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
         case .goalsSetup: return "Your Goals"
         case .experienceAssessment: return "Your Experience"
         case .movementTest: return "Movement Test"
+        case .runnerMindset: return "Your Mindset"
         case .locationPermission: return "Location"
         case .coachSelection: return "Your Coach"
         case .completion: return "Ready!"
@@ -108,6 +110,7 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
         case .goalsSetup: return "Set your running targets"
         case .experienceAssessment: return "Tell us about your running"
         case .movementTest: return "Quick 30-second assessment"
+        case .runnerMindset: return "What drives you to run"
         case .locationPermission: return "Track your runs"
         case .coachSelection: return "Choose your style"
         case .completion: return "You're all set"
@@ -121,6 +124,7 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
         case .goalsSetup: return "target"
         case .experienceAssessment: return "figure.run"
         case .movementTest: return "waveform.path.ecg"
+        case .runnerMindset: return "brain.head.profile"
         case .locationPermission: return "location.fill"
         case .coachSelection: return "person.fill.questionmark"
         case .completion: return "checkmark.circle.fill"
@@ -130,7 +134,7 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
     var isSkippable: Bool {
         switch self {
         case .welcome, .profileSetup, .goalsSetup, .completion: return false
-        case .experienceAssessment, .movementTest, .locationPermission, .coachSelection: return true
+        case .experienceAssessment, .movementTest, .runnerMindset, .locationPermission, .coachSelection: return true
         }
     }
 
