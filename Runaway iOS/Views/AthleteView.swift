@@ -14,6 +14,10 @@ struct AthleteView: View {
     @Environment(DataManager.self) private var dataManager
     @State private var personalBests: [PersonalBest] = []
     @State private var isLoadingPRs = false
+    @State private var mindsetProfile: MindsetProfile? = nil
+    @State private var milestones: [RunnerIdentityMilestone] = []
+    @State private var mindsetLoadError = false
+    @State private var showingEditMindset = false
 
     private var lifetimeMiles: Double { (stats.distance ?? 0) * 0.000621371 }
     private var lifetimeRuns: Int { stats.count ?? 0 }
@@ -55,6 +59,92 @@ struct AthleteView: View {
                                 .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                         }
                         Spacer()
+                    }
+
+                    // ── MINDSET ────────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 10) {
+                        EyebrowLabel(text: "MINDSET")
+                        if mindsetLoadError {
+                            Button {
+                                guard let athleteId = athlete.id else { return }
+                                mindsetLoadError = false
+                                Task {
+                                    do {
+                                        mindsetProfile = try await RunnerMindsetService.fetchProfile(athleteId: athleteId)
+                                    } catch {
+                                        mindsetLoadError = true
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text("Couldn't load · tap to retry")
+                                        .font(.system(size: 14, design: .rounded))
+                                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .background(AppTheme.Colors.DarkMode.cardBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                        } else if let profile = mindsetProfile {
+                            Button { showingEditMindset = true } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(profile.runnerIdentity)
+                                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text(profile.identitySummary)
+                                        .font(.system(size: 13, design: .rounded))
+                                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                                        .italic()
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                                .background(AppTheme.Colors.warmAmber.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.Colors.warmAmber.opacity(0.20), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Button { showingEditMindset = true } label: {
+                                HStack {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(AppTheme.Colors.warmAmber)
+                                    Text("Set your running mindset")
+                                        .font(.system(size: 14, design: .rounded))
+                                        .foregroundColor(AppTheme.Colors.warmAmber)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .background(AppTheme.Colors.DarkMode.cardBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    // ── MILESTONES ─────────────────────────────────────────
+                    if !milestones.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            EyebrowLabel(text: "MILESTONES")
+                            VStack(spacing: 0) {
+                                ForEach(Array(milestones.enumerated()), id: \.element.id) { index, milestone in
+                                    if index > 0 {
+                                        Divider().background(Color.white.opacity(0.06))
+                                    }
+                                    MilestoneRow(milestone: milestone)
+                                }
+                            }
+                            .background(AppTheme.Colors.DarkMode.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.07), lineWidth: 1))
+                        }
                     }
 
                     // ── LIFETIME ───────────────────────────────────────────
@@ -101,6 +191,8 @@ struct AthleteView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         EyebrowLabel(text: "ACCOUNT")
                         VStack(spacing: 0) {
+                            AccountRow(icon: "figure.run", title: "Running Mindset", subtitle: mindsetProfile?.runnerIdentity ?? "Not set", action: { showingEditMindset = true })
+                            Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
                             AccountRow(icon: "bolt.fill", title: "Strava", subtitle: stravaSubtitle)
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
                             AccountRow(icon: "applewatch", title: "Devices & sensors", subtitle: "Apple Watch")
@@ -121,12 +213,29 @@ struct AthleteView: View {
         }
         .task {
             guard let athleteId = athlete.id else { return }
+
             isLoadingPRs = true
-            defer { isLoadingPRs = false }
+            personalBests = (try? await PersonalBestService.shared.recomputeAndSave(athleteId: athleteId))
+                ?? (try? await PersonalBestService.shared.fetchPRs(athleteId: athleteId))
+                ?? []
+            isLoadingPRs = false
+
             do {
-                personalBests = try await PersonalBestService.shared.recomputeAndSave(athleteId: athleteId)
+                mindsetProfile = try await RunnerMindsetService.fetchProfile(athleteId: athleteId)
             } catch {
-                personalBests = (try? await PersonalBestService.shared.fetchPRs(athleteId: athleteId)) ?? []
+                mindsetLoadError = true
+            }
+            milestones = (try? await RunnerMindsetService.fetchMilestones(athleteId: athleteId)) ?? []
+        }
+        .sheet(isPresented: $showingEditMindset) {
+            if let athleteId = athlete.id {
+                EditRunnerMindsetView(
+                    athleteId: athleteId,
+                    existing: mindsetProfile,
+                    onSave: { newProfile in
+                        mindsetProfile = newProfile
+                    }
+                )
             }
         }
     }
@@ -197,6 +306,49 @@ private struct PersonalBestRow: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .frame(minHeight: 56)
+    }
+}
+
+// MARK: - Milestone Row
+
+private struct MilestoneRow: View {
+    let milestone: RunnerIdentityMilestone
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(milestone.earned
+                          ? AppTheme.Colors.warmAmber
+                          : Color.white.opacity(0.06))
+                    .frame(width: 32, height: 32)
+                Image(systemName: "medal.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(milestone.earned ? .black : AppTheme.Colors.DarkMode.textTertiary)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(milestone.label)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(milestone.earned ? .white : AppTheme.Colors.DarkMode.textSecondary)
+                Text(milestone.description)
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+            }
+            Spacer()
+            if milestone.earned, let date = milestone.earnedAt {
+                Text(date, format: .dateTime.month(.abbreviated).day())
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.warmAmber)
+            } else {
+                Text("Not yet")
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .frame(minHeight: 56)
+        .opacity(milestone.earned ? 1.0 : 0.55)
     }
 }
 
