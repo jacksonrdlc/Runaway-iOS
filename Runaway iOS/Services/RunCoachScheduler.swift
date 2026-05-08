@@ -46,6 +46,16 @@ final class RunCoachScheduler {
     private var lastAnnouncedUnit: Int = 0
     private var elapsedAtLastUnit: TimeInterval = 0
 
+    // Identity cue state
+    private var identityCues: [String] = []
+    private var nextCueIndex: Int = 0
+    private var lastCueFiredAt: Date? = nil
+
+    // Slump detection
+    private var paceWindow: [(timestamp: Date, paceSecondsPerMeter: Double)] = []
+    private var lastUpdateDistance: Double = 0
+    private var lastUpdateTime: TimeInterval = 0
+
     private var settings: CoachSettings { settingsProvider() }
 
     // MARK: - Initialization
@@ -71,6 +81,11 @@ final class RunCoachScheduler {
         isActive = true
         lastAnnouncedUnit = 0
         elapsedAtLastUnit = 0
+        nextCueIndex = 0
+        lastCueFiredAt = nil
+        paceWindow = []
+        lastUpdateDistance = 0
+        lastUpdateTime = 0
         announcer.prime()
     }
 
@@ -80,7 +95,22 @@ final class RunCoachScheduler {
         isActive = false
         lastAnnouncedUnit = 0
         elapsedAtLastUnit = 0
+        identityCues = []
+        nextCueIndex = 0
+        lastCueFiredAt = nil
+        paceWindow = []
+        lastUpdateDistance = 0
+        lastUpdateTime = 0
         announcer.stop()
+    }
+
+    // MARK: - Identity Cues
+
+    /// Load a pre-generated cue batch before the run starts. Call after `start()`.
+    func loadIdentityCues(_ cues: [String]) {
+        identityCues = cues
+        nextCueIndex = 0
+        lastCueFiredAt = nil
     }
 
     // MARK: - Distance Updates
@@ -93,14 +123,14 @@ final class RunCoachScheduler {
     ///   - elapsedTime: Total elapsed time since the run started, in seconds.
     func update(distance: Double, elapsedTime: TimeInterval) {
         guard isActive, settings.isEnabled else { return }
+
+        updatePaceWindow(distance: distance, elapsedTime: elapsedTime)
+
         guard settings.announceSplits, settings.splitDetail != .off else { return }
 
         let unitMeters = settings.distanceUnit.metersPerUnit
         let currentUnit = Int(distance / unitMeters)
 
-        // Announce any whole units the runner has crossed since the last
-        // update. The while-loop handles the edge case of a sparse GPS
-        // update that skipped across a unit boundary.
         while currentUnit > lastAnnouncedUnit {
             let completedUnit = lastAnnouncedUnit + 1
             let splitDuration = elapsedTime - elapsedAtLastUnit
@@ -130,11 +160,58 @@ final class RunCoachScheduler {
 
         announcer.speakCue(message)
 
+        if settings.enableIdentityVoiceCues {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                self?.fireNextIdentityCue()
+            }
+        }
+
         AnalyticsService.shared.trackSplitAnnounced(
             splitNumber: unit,
             pace: splitDuration,
             distance: Double(unit) * settings.distanceUnit.metersPerUnit
         )
+    }
+
+    private func updatePaceWindow(distance: Double, elapsedTime: TimeInterval) {
+        let deltaDistance = distance - lastUpdateDistance
+        let deltaTime = elapsedTime - lastUpdateTime
+        lastUpdateDistance = distance
+        lastUpdateTime = elapsedTime
+
+        guard deltaDistance > 2.0, deltaTime > 0 else { return }
+
+        let pace = deltaTime / deltaDistance
+        paceWindow.append((timestamp: Date(), paceSecondsPerMeter: pace))
+        let cutoff = Date().addingTimeInterval(-120)
+        paceWindow.removeAll { $0.timestamp < cutoff }
+
+        if settings.enableIdentityVoiceCues {
+            detectSlump()
+        }
+    }
+
+    private func detectSlump() {
+        let recentCutoff = Date().addingTimeInterval(-30)
+        let recent = paceWindow.filter { $0.timestamp >= recentCutoff }
+        let prior  = paceWindow.filter { $0.timestamp <  recentCutoff }
+        guard !recent.isEmpty, !prior.isEmpty else { return }
+
+        let recentAvg = recent.map(\.paceSecondsPerMeter).reduce(0, +) / Double(recent.count)
+        let priorAvg  = prior.map(\.paceSecondsPerMeter).reduce(0,  +) / Double(prior.count)
+
+        if recentAvg > priorAvg * 1.20 {
+            fireNextIdentityCue()
+        }
+    }
+
+    private func fireNextIdentityCue() {
+        guard !identityCues.isEmpty else { return }
+        guard nextCueIndex < identityCues.count else { return }
+        if let last = lastCueFiredAt, Date().timeIntervalSince(last) < 90 { return }
+        announcer.speakCue(identityCues[nextCueIndex])
+        lastCueFiredAt = Date()
+        nextCueIndex += 1
     }
 
     private func formatPace(_ duration: TimeInterval) -> String {
