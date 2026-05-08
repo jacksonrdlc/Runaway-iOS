@@ -70,6 +70,7 @@
 			membershipExceptions = (
 				"Runaway iOSTests/Runaway_iOSTests.swift",
 				"Runaway iOSTests/RunCoachSchedulerTests.swift",
+				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 			);
 			target = 8EEECC412D64CF150053014A /* Runaway iOS */;
 		};
@@ -78,6 +79,7 @@
 			membershipExceptions = (
 				"Runaway iOSTests/Runaway_iOSTests.swift",
 				"Runaway iOSTests/RunCoachSchedulerTests.swift",
+				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 			);
 			target = 8EEECC512D64CF170053014A /* Runaway iOSTests */;
 		};

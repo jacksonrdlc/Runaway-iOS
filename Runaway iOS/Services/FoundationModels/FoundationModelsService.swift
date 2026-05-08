@@ -186,11 +186,13 @@ class FoundationModelsService: ObservableObject {
     func generateCoachResponse(
         message: String,
         athleteContext: AthleteContext? = nil,
-        recentActivities: [ActivitySummary]? = nil
+        recentActivities: [ActivitySummary]? = nil,
+        identityContext: RunnerIdentityContext? = nil
     ) async throws -> String {
         let systemPrompt = buildRunningCoachSystemPrompt(
             athleteContext: athleteContext,
-            recentActivities: recentActivities
+            recentActivities: recentActivities,
+            identityContext: identityContext
         )
 
         return try await generateResponse(
@@ -253,11 +255,12 @@ class FoundationModelsService: ObservableObject {
         )
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Internal Helpers
 
-    private func buildRunningCoachSystemPrompt(
+    func buildRunningCoachSystemPrompt(
         athleteContext: AthleteContext?,
-        recentActivities: [ActivitySummary]?
+        recentActivities: [ActivitySummary]?,
+        identityContext: RunnerIdentityContext? = nil
     ) -> String {
         var prompt = """
         You are Runaway Coach, an expert AI running coach. You provide personalized training advice, motivation, and analysis.
@@ -285,6 +288,23 @@ class FoundationModelsService: ObservableObject {
             for activity in activities.prefix(3) {
                 prompt += "\n- \(activity.distanceMiles) mi @ \(activity.averagePace)"
             }
+        }
+
+        if let identity = identityContext {
+            let valuesString = identity.coreValues.joined(separator: ", ")
+            let milestonesString = identity.earnedMilestoneKeys.isEmpty
+                ? "none yet"
+                : identity.earnedMilestoneKeys.joined(separator: ", ")
+            prompt += """
+
+
+            Runner Identity:
+            - They identify as: \(identity.runnerIdentity)
+            - Why they run: \(identity.whyIRun)
+            - Core values: \(valuesString)
+            - Earned milestones: \(milestonesString)
+            Use this identity when they ask about motivation, struggle, or what kind of runner they are. Do not recite these facts back to them unprompted — let them inform the tone and framing of your responses.
+            """
         }
 
         return prompt
@@ -374,4 +394,11 @@ struct GoalSummary {
     let type: String
     let description: String
     let deadline: Date?
+}
+
+struct RunnerIdentityContext {
+    let runnerIdentity: String
+    let whyIRun: String
+    let coreValues: [String]
+    let earnedMilestoneKeys: [String]
 }
