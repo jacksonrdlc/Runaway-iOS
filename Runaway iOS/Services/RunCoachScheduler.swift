@@ -37,6 +37,17 @@ final class RunCoachScheduler {
 
     static let shared = RunCoachScheduler()
 
+    // MARK: - Constants
+
+    private enum Coaching {
+        static let minPaceSampleDistanceMeters: Double = 2.0
+        static let paceWindowDurationSeconds: TimeInterval = 120
+        static let slumpRecentWindowSeconds: TimeInterval = 30
+        static let slumpThresholdRatio: Double = 1.20
+        static let identityCueCooldownSeconds: TimeInterval = 90
+        static let postSplitCueDelaySeconds: TimeInterval = 3
+    }
+
     // MARK: - Private State
 
     private let announcer: RunCoachAnnouncer
@@ -160,8 +171,10 @@ final class RunCoachScheduler {
 
         announcer.speakCue(message)
 
+        // Identity cue queued after each split; shared cooldown with slump-triggered cues
+        // suppresses this if a slump cue already fired within the cooldown window.
         if settings.enableIdentityVoiceCues {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + Coaching.postSplitCueDelaySeconds) { [weak self] in
                 self?.fireNextIdentityCue()
             }
         }
@@ -179,11 +192,11 @@ final class RunCoachScheduler {
         lastUpdateDistance = distance
         lastUpdateTime = elapsedTime
 
-        guard deltaDistance > 2.0, deltaTime > 0 else { return }
+        guard deltaDistance > Coaching.minPaceSampleDistanceMeters, deltaTime > 0 else { return }
 
         let pace = deltaTime / deltaDistance
         paceWindow.append((timestamp: Date(), paceSecondsPerMeter: pace))
-        let cutoff = Date().addingTimeInterval(-120)
+        let cutoff = Date().addingTimeInterval(-Coaching.paceWindowDurationSeconds)
         paceWindow.removeAll { $0.timestamp < cutoff }
 
         if settings.enableIdentityVoiceCues {
@@ -192,7 +205,7 @@ final class RunCoachScheduler {
     }
 
     private func detectSlump() {
-        let recentCutoff = Date().addingTimeInterval(-30)
+        let recentCutoff = Date().addingTimeInterval(-Coaching.slumpRecentWindowSeconds)
         let recent = paceWindow.filter { $0.timestamp >= recentCutoff }
         let prior  = paceWindow.filter { $0.timestamp <  recentCutoff }
         guard !recent.isEmpty, !prior.isEmpty else { return }
@@ -200,15 +213,16 @@ final class RunCoachScheduler {
         let recentAvg = recent.map(\.paceSecondsPerMeter).reduce(0, +) / Double(recent.count)
         let priorAvg  = prior.map(\.paceSecondsPerMeter).reduce(0,  +) / Double(prior.count)
 
-        if recentAvg > priorAvg * 1.20 {
+        if recentAvg > priorAvg * Coaching.slumpThresholdRatio {
             fireNextIdentityCue()
         }
     }
 
     private func fireNextIdentityCue() {
+        guard isActive else { return }
         guard !identityCues.isEmpty else { return }
         guard nextCueIndex < identityCues.count else { return }
-        if let last = lastCueFiredAt, Date().timeIntervalSince(last) < 90 { return }
+        if let last = lastCueFiredAt, Date().timeIntervalSince(last) < Coaching.identityCueCooldownSeconds { return }
         announcer.speakCue(identityCues[nextCueIndex])
         lastCueFiredAt = Date()
         nextCueIndex += 1
