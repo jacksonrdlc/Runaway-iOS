@@ -88,6 +88,11 @@ struct CoachSettings: Codable {
     /// User's resting heart rate (optional, for Karvonen formula)
     var restingHeartRate: Int? = nil
 
+    // MARK: - Identity Voice Cues
+
+    /// Play personalized identity cues during runs (requires MindsetProfile to be set)
+    var enableIdentityVoiceCues: Bool = true
+
     // MARK: - Voice Settings
 
     /// Speech rate (0.0 - 1.0, default 0.5)

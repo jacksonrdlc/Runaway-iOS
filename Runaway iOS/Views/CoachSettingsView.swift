@@ -13,6 +13,7 @@ struct CoachSettingsView: View {
 
     @StateObject private var store = CoachSettingsStore.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var hasMindsetProfile: Bool = false
 
     var body: some View {
         NavigationView {
@@ -34,6 +35,14 @@ struct CoachSettingsView: View {
                                 Text(detail.displayName).tag(detail)
                             }
                         }
+                    }
+                }
+
+                if hasMindsetProfile {
+                    Section {
+                        Toggle("Runner Identity Cues", isOn: $store.settings.enableIdentityVoiceCues)
+                    } footer: {
+                        Text("Personalized voice cues based on your running mindset, generated before each run.")
                     }
                 }
 
@@ -202,6 +211,11 @@ struct CoachSettingsView: View {
                         Text("Miles").tag(DistanceUnit.miles)
                         Text("Kilometers").tag(DistanceUnit.kilometers)
                     }
+                }
+            }
+            .task {
+                if let athleteId = DataManager.shared.athlete?.id {
+                    hasMindsetProfile = (try? await RunnerMindsetService.fetchProfile(athleteId: athleteId)) != nil
                 }
             }
             .navigationTitle("Audio Coach")
