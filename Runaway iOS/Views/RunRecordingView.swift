@@ -14,6 +14,7 @@ struct RunRecordingView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showingCancelAlert = false
+    @State private var identityCues: [String] = []
 
     private var background: Color {
         AppTheme.Colors.adaptiveBackground
@@ -49,6 +50,22 @@ struct RunRecordingView: View {
             }
         } message: {
             Text("Your progress will be lost.")
+        }
+        .task {
+            guard let athleteId = DataManager.shared.athlete?.id else { return }
+            let settings = CoachSettingsStore.shared.settings
+            guard settings.isEnabled, settings.enableIdentityVoiceCues else { return }
+            async let profileFetch = RunnerMindsetService.fetchProfile(athleteId: athleteId)
+            async let milestonesFetch = RunnerMindsetService.fetchMilestones(athleteId: athleteId)
+            let profile = try? await profileFetch
+            let milestones = (try? await milestonesFetch) ?? []
+            if let profile {
+                identityCues = (try? await RunCueService.fetchCues(
+                    athleteId: athleteId,
+                    profile: profile,
+                    milestones: milestones
+                )) ?? []
+            }
         }
     }
 
@@ -88,7 +105,10 @@ struct RunRecordingView: View {
             Spacer()
 
             Button {
-                Task { await recorder.start() }
+                Task {
+                    await recorder.start()
+                    RunCoachScheduler.shared.loadIdentityCues(identityCues)
+                }
             } label: {
                 Text("Start Run")
                     .font(AppTheme.Typography.headline)
