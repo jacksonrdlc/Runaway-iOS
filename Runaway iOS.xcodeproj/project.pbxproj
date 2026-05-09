@@ -68,18 +68,20 @@
 		8E06B7C62F0434C700A17DDE /* Exceptions for "Runaway iOS" folder in "Runaway iOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Runaway iOSTests/ChatViewModelIdentityTests.swift",
+				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 				"Runaway iOSTests/Runaway_iOSTests.swift",
 				"Runaway iOSTests/RunCoachSchedulerTests.swift",
-				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 			);
 			target = 8EEECC412D64CF150053014A /* Runaway iOS */;
 		};
 		8E6C2E6B2D943666002619A0 /* Exceptions for "Runaway iOS" folder in "Runaway iOSTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Runaway iOSTests/ChatViewModelIdentityTests.swift",
+				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 				"Runaway iOSTests/Runaway_iOSTests.swift",
 				"Runaway iOSTests/RunCoachSchedulerTests.swift",
-				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 			);
 			target = 8EEECC512D64CF170053014A /* Runaway iOSTests */;
 		};

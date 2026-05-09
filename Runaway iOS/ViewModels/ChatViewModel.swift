@@ -20,6 +20,10 @@ class ChatViewModel: ObservableObject {
     @Published var requiresUpgrade = false  // True when iOS 26+ is required
     @Published var isUsingOnDeviceAI = false  // True when using Foundation Models
 
+    // Internal (not private) so tests can inject directly
+    var mindsetProfile: MindsetProfile? = nil
+    var earnedMilestones: [RunnerIdentityMilestone] = []
+
     // MARK: - Dependencies
 
     private let dataManager: DataManager
@@ -66,6 +70,14 @@ class ChatViewModel: ObservableObject {
     func generateProactiveGreeting() async {
         // Don't generate if we already have messages or already generated
         guard messages.isEmpty && !hasGeneratedGreeting && !requiresUpgrade else { return }
+
+        // Load runner identity for this session (try? — failure is silent)
+        if let athleteId = DataManager.shared.athlete?.id {
+            async let profileFetch = RunnerMindsetService.fetchProfile(athleteId: athleteId)
+            async let milestonesFetch = RunnerMindsetService.fetchMilestones(athleteId: athleteId)
+            mindsetProfile = try? await profileFetch
+            earnedMilestones = ((try? await milestonesFetch) ?? []).filter { $0.earned }
+        }
 
         hasGeneratedGreeting = true
 
@@ -149,10 +161,42 @@ class ChatViewModel: ObservableObject {
         return (prompt, athleteContext)
     }
 
-    /// Fallback greeting when API fails
     private func buildFallbackGreeting() -> String {
         let activities = dataManager.activities.prefix(5)
 
+        let thisWeekCount = activities.filter { activity in
+            guard let timestamp = activity.activity_date ?? activity.start_date else { return false }
+            let activityDate = Date(timeIntervalSince1970: timestamp)
+            return Calendar.current.isDate(activityDate, equalTo: Date(), toGranularity: .weekOfYear)
+        }.count
+
+        if let profile = mindsetProfile {
+            if thisWeekCount > 0 {
+                return """
+                You're a \(profile.runnerIdentity) — and the data backs that up.
+
+                \(thisWeekCount) \(thisWeekCount == 1 ? "run" : "runs") this week. You're showing up, which is exactly how that identity gets built.
+
+                What's on your mind?
+                """
+            } else if !activities.isEmpty {
+                return """
+                You're a \(profile.runnerIdentity) — and rest is part of that.
+
+                It's been quiet this week. Sometimes that's intentional, sometimes life just happens. Either way, you're still here.
+
+                What's going on?
+                """
+            } else {
+                return """
+                You're a \(profile.runnerIdentity) — every identity starts somewhere.
+
+                I don't see any runs yet. But you're here, and that matters. What's bringing you to running?
+                """
+            }
+        }
+
+        // Generic fallback (no profile set)
         if activities.isEmpty {
             return """
             Hey. 👋
@@ -161,30 +205,22 @@ class ChatViewModel: ObservableObject {
 
             Whether you're just starting out or finding your way back, every step forward is an act of self-definition. What's on your mind today?
             """
+        } else if thisWeekCount > 0 {
+            return """
+            Hey. 👋
+
+            \(thisWeekCount) \(thisWeekCount == 1 ? "run" : "runs") this week. You're showing up — and that's not nothing. That's exactly how you become someone different than who you thought you were.
+
+            I've been looking at your recent training. What are you feeling? What's working, what's not? I'm curious where your head is at.
+            """
         } else {
-            let thisWeekCount = activities.filter { activity in
-                guard let timestamp = activity.activity_date ?? activity.start_date else { return false }
-                let activityDate = Date(timeIntervalSince1970: timestamp)
-                return Calendar.current.isDate(activityDate, equalTo: Date(), toGranularity: .weekOfYear)
-            }.count
+            return """
+            Hey. 👋
 
-            if thisWeekCount > 0 {
-                return """
-                Hey. 👋
+            It's been a minute since your last run. That's okay — sometimes life gets in the way, sometimes we need the break. What matters is you're here now.
 
-                \(thisWeekCount) \(thisWeekCount == 1 ? "run" : "runs") this week. You're showing up — and that's not nothing. That's exactly how you become someone different than who you thought you were.
-
-                I've been looking at your recent training. What are you feeling? What's working, what's not? I'm curious where your head is at.
-                """
-            } else {
-                return """
-                Hey. 👋
-
-                It's been a minute since your last run. That's okay — sometimes life gets in the way, sometimes we need the break. What matters is you're here now.
-
-                When you're ready, I'm ready. What's going on? Want to ease back in, or talk through what's been holding you back?
-                """
-            }
+            When you're ready, I'm ready. What's going on? Want to ease back in, or talk through what's been holding you back?
+            """
         }
     }
 
@@ -210,83 +246,100 @@ class ChatViewModel: ObservableObject {
         error = nil
 
         do {
-            // Build context from current app state
-            let context = ChatService.buildContext(
-                from: dataManager.activities,
-                goal: dataManager.currentGoal,
-                athlete: dataManager.athlete
-            )
+            let recentActivities = buildRecentActivities()
 
-            // Send message to API
-            let response = try await ChatService.sendMessage(
+            let identityContext: RunnerIdentityContext? = mindsetProfile.map { profile in
+                RunnerIdentityContext(
+                    runnerIdentity: profile.runnerIdentity,
+                    whyIRun: profile.whyIRun,
+                    coreValues: profile.coreValues,
+                    earnedMilestoneKeys: earnedMilestones.map { $0.milestoneKey }
+                )
+            }
+
+            let response = try await FoundationModelsService.shared.generateCoachResponse(
                 message: text,
-                conversationId: conversationId,
-                context: context
+                athleteContext: buildAthleteContext(),
+                recentActivities: recentActivities,
+                identityContext: identityContext
             )
 
             #if DEBUG
             print("💬 Chat Response:")
-            print("   Success: \(response.success)")
-            print("   Message: \(response.message)")
-            print("   Conversation ID: \(response.conversationId)")
-            if let error = response.errorMessage {
-                print("   Error: \(error)")
-            }
+            print("   Message: \(response)")
             #endif
 
-            // Check if API returned an error
-            if !response.success {
-                throw ChatError.serverError(response.errorMessage ?? response.message)
-            }
-
             // Update conversation ID
-            conversationId = response.conversationId
+            conversationId = conversationId ?? UUID().uuidString
 
             // Add assistant response to UI
             let assistantMessage = ChatMessage(
                 role: "assistant",
-                content: response.message
+                content: response
             )
             messages.append(assistantMessage)
 
             // Track analytics
             AnalyticsService.shared.track(.chatResponseReceived, category: .chat, properties: [
-                "response_length": response.message.count,
-                "has_triggered_analysis": response.triggeredAnalysis != nil
+                "response_length": response.count,
+                "has_triggered_analysis": false
             ])
 
-            // Handle triggered analysis
-            if let analysis = response.triggeredAnalysis {
-                triggeredAnalysis = analysis
-            }
-
-        } catch let chatError as ChatError {
-            self.error = chatError
-
-            // Check if this is an iOS 26 requirement error
-            if chatError.requiresUpgrade {
+        } catch let foundationError as FoundationModelsError {
+            if foundationError.requiresUpgrade {
                 requiresUpgrade = true
+                self.error = .requiresiOS26
 
-                // Track analytics
                 AnalyticsService.shared.track(.chatError, category: .chat, properties: [
                     "error_type": "requires_ios26",
-                    "error_message": chatError.localizedDescription
+                    "error_message": foundationError.localizedDescription
                 ])
 
-                // Add upgrade message to chat
                 let upgradeMessage = ChatMessage(
                     role: "assistant",
                     content: "AI Coach requires iOS 26 or later to use on-device intelligence. Please upgrade your device to access personalized coaching features."
                 )
                 messages.append(upgradeMessage)
             } else {
-                // Track analytics
+                self.error = .onDeviceError(foundationError)
+
+                AnalyticsService.shared.track(.chatError, category: .chat, properties: [
+                    "error_type": "on_device_error",
+                    "error_message": foundationError.localizedDescription
+                ])
+
+                let errorMessage = ChatMessage(
+                    role: "assistant",
+                    content: "Sorry, I couldn't process that. Please try again."
+                )
+                messages.append(errorMessage)
+            }
+
+            #if DEBUG
+            print("❌ Foundation Models Error: \(foundationError.localizedDescription)")
+            #endif
+        } catch let chatError as ChatError {
+            self.error = chatError
+
+            if chatError.requiresUpgrade {
+                requiresUpgrade = true
+
+                AnalyticsService.shared.track(.chatError, category: .chat, properties: [
+                    "error_type": "requires_ios26",
+                    "error_message": chatError.localizedDescription
+                ])
+
+                let upgradeMessage = ChatMessage(
+                    role: "assistant",
+                    content: "AI Coach requires iOS 26 or later to use on-device intelligence. Please upgrade your device to access personalized coaching features."
+                )
+                messages.append(upgradeMessage)
+            } else {
                 AnalyticsService.shared.track(.chatError, category: .chat, properties: [
                     "error_type": "chat_error",
                     "error_message": chatError.localizedDescription
                 ])
 
-                // Add error message to chat
                 let errorMessage = ChatMessage(
                     role: "assistant",
                     content: "Sorry, I couldn't process that. Please try again."
@@ -395,12 +448,16 @@ class ChatViewModel: ObservableObject {
 
     var suggestedPrompts: [String] {
         if messages.isEmpty {
-            return [
+            var prompts = [
                 "How am I doing with my training?",
                 "What should my easy run pace be?",
                 "Can you analyze my recent runs?",
                 "Create a training plan for me"
             ]
+            if let profile = mindsetProfile {
+                prompts[3] = "What does being a \(profile.runnerIdentity) actually mean for my training?"
+            }
+            return prompts
         } else {
             return [
                 "Tell me more",
@@ -408,6 +465,42 @@ class ChatViewModel: ObservableObject {
                 "How can I improve?"
             ]
         }
+    }
+
+    // MARK: - Private Context Builders
+
+    private func buildAthleteContext() -> AthleteContext? {
+        let activities = dataManager.activities
+        let weeklyMileage = calculateWeeklyMileage(from: activities)
+        let currentGoal = dataManager.currentGoal?.type.displayName
+        return AthleteContext(
+            weeklyMileage: weeklyMileage,
+            currentGoal: currentGoal,
+            fitnessLevel: nil
+        )
+    }
+
+    private func buildRecentActivities() -> [ActivitySummary]? {
+        let runningActivities = dataManager.activities.filter { activity in
+            guard let distance = activity.distance, distance > 160 else { return false }
+            guard let activityType = activity.type?.lowercased() else { return false }
+            let validTypes = ["run", "running", "walk", "walking", "hike", "hiking", "trail run"]
+            return validTypes.contains { activityType.contains($0) }
+        }
+        guard !runningActivities.isEmpty else { return nil }
+        return runningActivities.prefix(5).map { ActivitySummary(from: $0) }
+    }
+
+    private func calculateWeeklyMileage(from activities: [Activity]) -> Double? {
+        let calendar = Calendar.current
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date()) else { return nil }
+        let weeklyActivities = activities.filter { activity in
+            guard let dateInterval = activity.activity_date ?? activity.start_date else { return false }
+            let activityDate = Date(timeIntervalSince1970: dateInterval)
+            return activityDate >= weekInterval.start && activityDate < weekInterval.end
+        }
+        let totalMeters = weeklyActivities.compactMap { $0.distance }.reduce(0, +)
+        return totalMeters * 0.000621371
     }
 
     // MARK: - Helpers
