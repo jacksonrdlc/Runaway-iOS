@@ -190,7 +190,10 @@ struct Runaway_iOSApp: App {
               let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier),
               let athleteId = userSession.userId else { return }
 
-        guard let pendingStore = try? PendingWidgetCommitmentStore(defaults: defaults),
+        guard let pendingStore = try? PendingWidgetCommitmentStore(
+                  defaults: defaults,
+                  role: .appDrain
+              ),
               let pendingActions = try? pendingStore.pendingActions() else { return }
 
         for pendingAction in pendingActions {

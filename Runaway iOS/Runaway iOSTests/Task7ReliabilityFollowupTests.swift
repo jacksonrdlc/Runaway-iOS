@@ -65,6 +65,27 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
         XCTAssertEqual(restartedRepository.appliedServerIDs, [912])
     }
 
+    func testCreateAcknowledgementReconcilesExactLocalRecord() async throws {
+        let localRecordID = UUID()
+        let repository = ActivitySyncRepositorySpy(activity: Activity(id: 44, name: "Provisional"))
+        let coordinator = ActivityCreateSyncCoordinator(
+            localRepository: repository,
+            acknowledgementStore: ActivitySyncAcknowledgementStore(directoryURL: temporaryDirectory()),
+            remoteUpsert: { _, _ in Activity(id: 8044, name: "Canonical") }
+        )
+
+        try await coordinator.sync(
+            operationID: UUID(),
+            numericEntityID: "44",
+            localRecordID: localRecordID
+        )
+
+        XCTAssertEqual(repository.requestedLocalRecordIDs, [localRecordID])
+        XCTAssertEqual(repository.reconciledLocalRecordIDs, [localRecordID])
+        XCTAssertEqual(repository.appliedServerIDs, [8044])
+        XCTAssertTrue(repository.lookedUpIDs.isEmpty)
+    }
+
     func testReadinessTransitionTriggersOneCoalescedDrain() async {
         let coordinator = WidgetPendingActionDrainCoordinator()
         var drainCount = 0
@@ -148,6 +169,8 @@ private final class ActivitySyncRepositorySpy: ActivitySyncLocalRepository {
     private var applyFailuresRemaining: Int
     private(set) var lookedUpIDs: [Int] = []
     private(set) var appliedServerIDs: [Int] = []
+    private(set) var requestedLocalRecordIDs: [UUID] = []
+    private(set) var reconciledLocalRecordIDs: [UUID] = []
 
     init(activity: Activity, applyFailuresRemaining: Int = 0) {
         self.activity = activity
@@ -159,10 +182,22 @@ private final class ActivitySyncRepositorySpy: ActivitySyncLocalRepository {
         return activity
     }
 
-    func applyServerAcknowledgement(_ activity: Activity) throws {
+    func activity(forLocalRecordID id: UUID) throws -> Activity {
+        requestedLocalRecordIDs.append(id)
+        return activity
+    }
+
+    func reconcileCreateAcknowledgement(
+        _ activity: Activity,
+        localRecordID: UUID?,
+        provisionalNumericID: Int
+    ) throws {
         if applyFailuresRemaining > 0 {
             applyFailuresRemaining -= 1
             throw TestError.simulated
+        }
+        if let localRecordID {
+            reconciledLocalRecordIDs.append(localRecordID)
         }
         appliedServerIDs.append(activity.id)
     }

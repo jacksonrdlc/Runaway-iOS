@@ -105,6 +105,7 @@ struct SyncOperation: Codable, Identifiable {
     let id: UUID
     let entityType: SyncEntityType
     let entityId: String
+    let localRecordID: UUID?
     let operationType: SyncOperationType
     let createdAt: Date
     var retryCount: Int
@@ -115,16 +116,22 @@ struct SyncOperation: Codable, Identifiable {
         id: UUID = UUID(),
         entityType: SyncEntityType,
         entityId: String,
+        localRecordID: UUID? = nil,
         operationType: SyncOperationType
     ) {
         self.id = id
         self.entityType = entityType
         self.entityId = entityId
+        self.localRecordID = localRecordID
         self.operationType = operationType
         self.createdAt = Date()
         self.retryCount = 0
         self.lastAttemptAt = nil
         self.lastError = nil
+    }
+
+    var orderingKey: String {
+        localRecordID?.uuidString ?? "\(entityType.rawValue):\(entityId)"
     }
 }
 

@@ -100,6 +100,7 @@ final class SyncEngine: ObservableObject {
     func queueUpload(
         entityType: SyncEntityType,
         entityId: String,
+        localRecordID: UUID? = nil,
         operationType: SyncOperationType = .create,
         operationID: UUID = UUID()
     ) -> UUID {
@@ -107,11 +108,17 @@ final class SyncEngine: ObservableObject {
             id: operationID,
             entityType: entityType,
             entityId: entityId,
+            localRecordID: localRecordID,
             operationType: operationType
         )
 
-        // Avoid duplicates
-        if let existing = uploadQueue.first(where: { $0.entityType == entityType && $0.entityId == entityId }) {
+        // Coalesce repeated operations of the same kind, but preserve an update
+        // queued behind a create for the same local row.
+        if let existing = uploadQueue.first(where: {
+            $0.entityType == entityType
+                && $0.operationType == operationType
+                && ($0.localRecordID == localRecordID || (localRecordID == nil && $0.entityId == entityId))
+        }) {
             return existing.id
         }
 
@@ -125,6 +132,12 @@ final class SyncEngine: ObservableObject {
             #endif
         }
         return operation.id
+    }
+
+    func hasPendingCreate(localRecordID: UUID) -> Bool {
+        uploadQueue.contains {
+            $0.localRecordID == localRecordID && $0.operationType == .create
+        }
     }
 
     /// Queue an entity for deletion
@@ -230,8 +243,14 @@ final class SyncEngine: ObservableObject {
     /// Process pending uploads
     private func processUploads() async {
         var failedOperations: [SyncOperation] = []
+        var blockedCreateKeys: Set<String> = []
 
         for var operation in uploadQueue {
+            if operation.operationType == .update,
+               blockedCreateKeys.contains(operation.orderingKey) {
+                failedOperations.append(operation)
+                continue
+            }
             do {
                 try await processOperation(operation)
             } catch {
@@ -240,6 +259,9 @@ final class SyncEngine: ObservableObject {
                 operation.lastAttemptAt = Date()
 
                 failedOperations.append(operation)
+                if operation.operationType == .create {
+                    blockedCreateKeys.insert(operation.orderingKey)
+                }
                 lastError = error
                 if FeatureFlags.debugSyncLogging {
                     #if DEBUG
@@ -283,13 +305,23 @@ final class SyncEngine: ObservableObject {
                     )
                 }
             )
-            try await coordinator.sync(operationID: operation.id, numericEntityID: operation.entityId)
+            try await coordinator.sync(
+                operationID: operation.id,
+                numericEntityID: operation.entityId,
+                localRecordID: operation.localRecordID
+            )
 
         case .update:
             guard let serverID = Int(operation.entityId) else {
                 throw SyncEngineError.invalidEntityIdentifier
             }
-            let activity = try await localRepo.getActivity(id: serverID)
+            let activity: Activity
+            if let localRecordID = operation.localRecordID,
+               let localActivity = try localRepo.getActivityByLocalId(localRecordID) {
+                activity = ActivityMapper.toCodable(localActivity)
+            } else {
+                activity = try await localRepo.getActivity(id: serverID)
+            }
             let updated = try await SupabaseActivityRepository.shared.updateActivity(activity)
             try localRepo.upsertFromServer(updated)
 

@@ -89,6 +89,7 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
     func createActivity(_ activity: Activity) async throws -> Activity {
         // Save locally first
         let savedActivity = try await localRepository.createActivity(activity)
+        let localRecordID = try localRepository.localRecordID(forNumericID: savedActivity.id)
         let syncEngine = try Self.requireDurableSyncEngine(syncEngine)
 
         // Queue for sync
@@ -96,12 +97,17 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
         let operationID = syncEngine.queueUpload(
             entityType: .activity,
             entityId: String(savedActivity.id),
+            localRecordID: localRecordID,
             operationID: proposedOperationID
         )
 
         // Try immediate sync if online
         Task {
-            await attemptImmediateSync(activity: savedActivity, operationID: operationID)
+            await attemptImmediateSync(
+                activity: savedActivity,
+                localRecordID: localRecordID,
+                operationID: operationID
+            )
         }
 
         return savedActivity
@@ -111,18 +117,22 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
     func updateActivity(_ activity: Activity) async throws -> Activity {
         // Update locally first
         let updatedActivity = try await localRepository.updateActivity(activity)
+        let localRecordID = try localRepository.localRecordID(forNumericID: updatedActivity.id)
         let syncEngine = try Self.requireDurableSyncEngine(syncEngine)
 
         // Queue for sync
         syncEngine.queueUpload(
             entityType: .activity,
             entityId: String(updatedActivity.id),
+            localRecordID: localRecordID,
             operationType: .update
         )
 
         // Try immediate sync if online
-        Task {
-            await attemptImmediateUpdate(activity: updatedActivity)
+        if !syncEngine.hasPendingCreate(localRecordID: localRecordID) {
+            Task {
+                await attemptImmediateUpdate(activity: updatedActivity)
+            }
         }
 
         return updatedActivity
@@ -228,7 +238,11 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
     }
 
     /// Attempt immediate sync after create
-    private func attemptImmediateSync(activity: Activity, operationID: UUID) async {
+    private func attemptImmediateSync(
+        activity: Activity,
+        localRecordID: UUID,
+        operationID: UUID
+    ) async {
         guard syncEngine?.isOnline ?? true else { return }
 
         do {
@@ -243,7 +257,8 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             )
             try await coordinator.sync(
                 operationID: operationID,
-                numericEntityID: String(activity.id)
+                numericEntityID: String(activity.id),
+                localRecordID: localRecordID
             )
 
             if FeatureFlags.debugSyncLogging {

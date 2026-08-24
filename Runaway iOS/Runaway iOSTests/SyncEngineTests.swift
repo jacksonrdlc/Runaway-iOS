@@ -52,6 +52,47 @@ final class SyncEngineTests: XCTestCase {
         XCTAssertEqual(operations?.first?.retryCount, 5)
     }
 
+    func testCreateFailurePreservesDependentUpdateThenRetriesInOrder() async {
+        let defaults = makeDefaults()
+        let localRecordID = UUID()
+        var failCreate = true
+        var processed: [SyncOperationType] = []
+        let engine = SyncEngine(
+            userDefaults: defaults,
+            startsNetworkMonitor: false,
+            initialOnlineState: true,
+            operationProcessor: { operation in
+                processed.append(operation.operationType)
+                if operation.operationType == .create && failCreate {
+                    throw SyncTestError.rejected
+                }
+            }
+        )
+        engine.queueUpload(
+            entityType: .activity,
+            entityId: "provisional-41",
+            localRecordID: localRecordID,
+            operationType: .create
+        )
+        engine.queueUpload(
+            entityType: .activity,
+            entityId: "provisional-41",
+            localRecordID: localRecordID,
+            operationType: .update
+        )
+
+        XCTAssertEqual(engine.pendingChangesCount, 2)
+        await engine.syncPendingChanges()
+        XCTAssertEqual(processed, [.create])
+        XCTAssertEqual(engine.pendingChangesCount, 2)
+
+        failCreate = false
+        processed.removeAll()
+        await engine.syncPendingChanges()
+        XCTAssertEqual(processed, [.create, .update])
+        XCTAssertEqual(engine.pendingChangesCount, 0)
+    }
+
     private func makeDefaults() -> UserDefaults {
         let name = "SyncEngineTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

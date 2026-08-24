@@ -15,7 +15,11 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
         let outcome = await client.setCommitment(activityType: "Run")
 
         XCTAssertEqual(outcome, .requiresAuthenticatedApp)
-        let store = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        let store = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .appDrain
+        )
         XCTAssertEqual(try! store.pendingActions().map(\.activityType), ["Run"])
         XCTAssertNil(defaults.string(forKey: "todays_commitment_type"))
     }
@@ -38,7 +42,11 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
         }
         XCTAssertEqual(statusCode, 401)
         XCTAssertNil(defaults.string(forKey: "todays_commitment_type"))
-        let store = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        let store = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .appDrain
+        )
         XCTAssertEqual(try! store.pendingActions().map(\.activityType), ["Walk"])
     }
 
@@ -60,20 +68,63 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
 
         XCTAssertEqual(outcome, .saved)
         XCTAssertEqual(defaults.string(forKey: "todays_commitment_type"), "Yoga")
-        let store = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        let store = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .appDrain
+        )
         XCTAssertTrue(try! store.pendingActions().isEmpty)
     }
 
     func testProducerDuringDrainCannotBeClearedByOlderAction() {
         let defaults = makeDefaults()
         let pendingDirectory = makePendingDirectory()
-        let drainStore = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
-        let producerStore = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        let drainStore = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .appDrain
+        )
+        let producerStore = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .producer
+        )
         let drainingAction = try! drainStore.enqueue(activityType: "Run", id: UUID())
         let newerAction = try! producerStore.enqueue(activityType: "Yoga", id: UUID())
 
         XCTAssertTrue(try! drainStore.deleteExact(drainingAction))
         XCTAssertEqual(try! drainStore.pendingActions(), [newerAction])
+    }
+
+    func testLegacyMigrationIsAppOwnedAndConvergesOnOneFile() {
+        let defaults = makeDefaults()
+        let pendingDirectory = makePendingDirectory()
+        defaults.set("Walk", forKey: DailyCommitmentIntentKeys.pendingActivityType)
+        let producer = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .producer
+        )
+        let firstApp = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .appDrain
+        )
+        let secondApp = try! PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectory,
+            role: .appDrain
+        )
+
+        XCTAssertThrowsError(try producer.pendingActions())
+        XCTAssertEqual(defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType), "Walk")
+        let firstRead = try! firstApp.pendingActions()
+        let secondRead = try! secondApp.pendingActions()
+
+        XCTAssertEqual(firstRead, secondRead)
+        XCTAssertEqual(firstRead.count, 1)
+        XCTAssertEqual(firstRead.first?.activityType, "Walk")
+        XCTAssertNil(defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType))
     }
 
     private func makeDefaults() -> UserDefaults {

@@ -3,7 +3,12 @@ import Foundation
 @MainActor
 protocol ActivitySyncLocalRepository: AnyObject {
     func activity(forNumericID id: Int) async throws -> Activity
-    func applyServerAcknowledgement(_ activity: Activity) throws
+    func activity(forLocalRecordID id: UUID) throws -> Activity
+    func reconcileCreateAcknowledgement(
+        _ activity: Activity,
+        localRecordID: UUID?,
+        provisionalNumericID: Int
+    ) throws
 }
 
 extension LocalActivityRepository: ActivitySyncLocalRepository {
@@ -11,8 +16,23 @@ extension LocalActivityRepository: ActivitySyncLocalRepository {
         try await getActivity(id: id)
     }
 
-    func applyServerAcknowledgement(_ activity: Activity) throws {
-        try upsertFromServer(activity)
+    func activity(forLocalRecordID id: UUID) throws -> Activity {
+        guard let activity = try getActivityByLocalId(id) else {
+            throw RepositoryError.notFound
+        }
+        return ActivityMapper.toCodable(activity)
+    }
+
+    func reconcileCreateAcknowledgement(
+        _ activity: Activity,
+        localRecordID: UUID?,
+        provisionalNumericID: Int
+    ) throws {
+        try reconcileCreate(
+            provisionalNumericID: provisionalNumericID,
+            localRecordID: localRecordID,
+            serverActivity: activity
+        )
     }
 }
 
@@ -78,24 +98,41 @@ final class ActivityCreateSyncCoordinator {
         self.remoteUpsert = remoteUpsert
     }
 
-    func sync(operationID: UUID, numericEntityID: String) async throws {
+    func sync(
+        operationID: UUID,
+        numericEntityID: String,
+        localRecordID: UUID? = nil
+    ) async throws {
         guard let activityID = Int(numericEntityID) else {
             throw SyncEngineError.invalidEntityIdentifier
         }
 
         if let acknowledgedActivity = try acknowledgementStore.acknowledgement(for: operationID) {
-            try localRepository.applyServerAcknowledgement(acknowledgedActivity)
+            try localRepository.reconcileCreateAcknowledgement(
+                acknowledgedActivity,
+                localRecordID: localRecordID,
+                provisionalNumericID: activityID
+            )
             try acknowledgementStore.removeAcknowledgement(for: operationID)
             return
         }
 
-        let localActivity = try await localRepository.activity(forNumericID: activityID)
+        let localActivity: Activity
+        if let localRecordID {
+            localActivity = try localRepository.activity(forLocalRecordID: localRecordID)
+        } else {
+            localActivity = try await localRepository.activity(forNumericID: activityID)
+        }
         let acknowledgedActivity = try await remoteUpsert(localActivity, operationID)
 
         // Persist the server response before touching local state. A restart replays
         // this acknowledgement without issuing another remote create.
         try acknowledgementStore.save(acknowledgedActivity, for: operationID)
-        try localRepository.applyServerAcknowledgement(acknowledgedActivity)
+        try localRepository.reconcileCreateAcknowledgement(
+            acknowledgedActivity,
+            localRecordID: localRecordID,
+            provisionalNumericID: activityID
+        )
         try acknowledgementStore.removeAcknowledgement(for: operationID)
     }
 }

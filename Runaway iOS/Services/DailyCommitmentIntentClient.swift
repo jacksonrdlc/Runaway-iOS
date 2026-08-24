@@ -25,14 +25,22 @@ struct PendingWidgetCommitmentStore {
     private let defaults: UserDefaults
     private let directoryURL: URL
     private let fileManager: FileManager
+    private let role: Role
+
+    enum Role {
+        case producer
+        case appDrain
+    }
 
     init(
         defaults: UserDefaults,
         directoryURL: URL? = nil,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        role: Role = .producer
     ) throws {
         self.defaults = defaults
         self.fileManager = fileManager
+        self.role = role
         if let directoryURL {
             self.directoryURL = directoryURL
         } else {
@@ -56,6 +64,9 @@ struct PendingWidgetCommitmentStore {
     }
 
     func pendingActions() throws -> [PendingWidgetCommitmentAction] {
+        guard role == .appDrain else {
+            throw PendingWidgetCommitmentStoreError.enumerationRequiresAppDrain
+        }
         try migrateLegacyState()
         guard fileManager.fileExists(atPath: directoryURL.path) else { return [] }
         return try fileManager.contentsOfDirectory(
@@ -89,7 +100,8 @@ struct PendingWidgetCommitmentStore {
         }
 
         if let legacyType = defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType) {
-            try write(PendingWidgetCommitmentAction(activityType: legacyType))
+            let legacyID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+            try write(PendingWidgetCommitmentAction(id: legacyID, activityType: legacyType))
             defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingActivityType)
         }
     }
@@ -118,6 +130,7 @@ struct PendingWidgetCommitmentStore {
 enum PendingWidgetCommitmentStoreError: Error {
     case appGroupUnavailable
     case actionIDCollision
+    case enumerationRequiresAppDrain
 }
 
 enum DailyCommitmentIntentOutcome: Equatable {

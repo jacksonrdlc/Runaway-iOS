@@ -248,3 +248,37 @@ set -o pipefail; xcrun swiftc -parse 'Runaway iOS/Persistence/Sync/SyncEngine.sw
 ```
 
 Result: exit `0` in 0.84 seconds with no output. All changed Swift files passed parser validation, `git diff --check` passed, and the prohibited stale debug reference, combined create/update branch, numeric-ID create upsert, and old compare/delete patterns were absent. No `xcodebuild` command was run.
+
+## Final local-row reconciliation and ordered-operation closure
+
+Date: 2026-08-24
+
+### Fixes
+
+- `SyncOperation` now carries an optional stable SwiftData `localRecordID` in addition to its compatibility numeric `entityId`. The optional field remains backward-decodable for existing persisted queues.
+- Hybrid create/update resolves and queues the exact `SDActivity.localId`. Immediate create uses the same local UUID.
+- Create acknowledgement no longer calls `upsertFromServer`. `LocalActivityRepository.reconcileCreate` finds the exact provisional row by queued `localRecordID` (with numeric fallback only for legacy queue entries), applies canonical server fields, sets the generated `supabaseId`, marks that row synced, and saves the existing context object. It never inserts a second row by returned server ID.
+- Create acknowledgement replay after restart uses the same exact-row reconciliation path.
+- Queue coalescing now compares operation kind as well as local identity. Repeated creates or repeated updates may coalesce, but an update behind a create is retained as a distinct ordered operation.
+- Upload processing tracks failed create identities. A dependent update is not attempted or dropped when its create fails; both remain in order for the next retry.
+- Update processing reloads the latest local row by stable UUID. After create acknowledgement, the mapped activity therefore contains the newly assigned server ID and the ownership-scoped update targets that canonical row.
+- Hybrid suppresses immediate update while a create for the same local UUID remains pending, preventing a provisional numeric ID from reaching the remote update path.
+- Pending widget store instances now have explicit `.producer` and `.appDrain` roles. Producer instances cannot enumerate or migrate legacy state, and the widget producer uses the default producer role.
+- Only the app constructs an `.appDrain` store. Legacy type-only migration uses a deterministic UUID/file name, so racing app processes converge on one immutable file rather than producing duplicate actions. Legacy keys are still removed only after atomic file persistence.
+
+### Tests added or updated
+
+- Exact-row acknowledgement test verifies local UUID lookup/reconciliation, generated server ID application, and absence of numeric fallback lookup.
+- Sync race regression queues create then update for one local UUID, forces the create to fail, verifies update is neither attempted nor dropped, then verifies retry order is exactly create followed by update.
+- Legacy migration test verifies producer enumeration is rejected, the legacy key remains untouched by the producer, and two app drain instances observe one identical migrated file.
+- Existing reliability repository spy now implements and records exact local-row reconciliation.
+
+### Bounded parser/static validation
+
+Command:
+
+```sh
+set -o pipefail; xcrun swiftc -parse 'Runaway iOS/Persistence/Models/SyncTypes.swift' 'Runaway iOS/Persistence/Sync/SyncEngine.swift' 'Runaway iOS/Persistence/Sync/ActivitySyncReliability.swift' 'Runaway iOS/Repositories/LocalActivityRepository.swift' 'Runaway iOS/Repositories/HybridActivityRepository.swift' 'Runaway iOS/Services/DailyCommitmentIntentClient.swift' 'Runaway iOS/Runaway_iOSApp.swift' 'Runaway iOS/Runaway iOSTests/SyncEngineTests.swift' 'Runaway iOS/Runaway iOSTests/Task7ReliabilityFollowupTests.swift' 'Runaway iOS/Runaway iOSTests/SetDailyCommitmentIntentTests.swift' && git diff --check && if rg -n 'applyServerAcknowledgement|reconcileCreateAcknowledgement[\s\S]{0,200}upsertFromServer|case \.create, \.update|pendingActions\(' 'RunawayWidget/SetDailyCommitmentIntent.swift'; then exit 1; else exit 0; fi
+```
+
+Result: exit `0` in 0.79 seconds with no output. All ten changed Swift files passed parser validation, `git diff --check` passed, and the focused acknowledgement-upsert, combined-operation, and widget migration scans found no prohibited matches. No `xcodebuild` command was run.

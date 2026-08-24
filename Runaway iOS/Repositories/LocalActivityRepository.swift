@@ -204,6 +204,20 @@ final class LocalActivityRepository: ActivityRepositoryProtocol {
         return try context.fetch(descriptor).first
     }
 
+    func localRecordID(forNumericID id: Int) throws -> UUID {
+        let targetID = id
+        var descriptor = FetchDescriptor<SDActivity>(
+            predicate: #Predicate<SDActivity> { activity in
+                activity.supabaseId == targetID
+            }
+        )
+        descriptor.fetchLimit = 1
+        guard let activity = try context.fetch(descriptor).first else {
+            throw RepositoryError.notFound
+        }
+        return activity.localId
+    }
+
     /// Get all activities pending sync
     func getPendingSyncActivities() throws -> [SDActivity] {
         let descriptor = FetchDescriptor<SDActivity>(
@@ -272,6 +286,34 @@ final class LocalActivityRepository: ActivityRepositoryProtocol {
         }
 
         activity.markSynced(serverVersion: serverVersion, supabaseId: supabaseId)
+        try context.save()
+    }
+
+    func reconcileCreate(
+        provisionalNumericID: Int,
+        localRecordID: UUID?,
+        serverActivity: Activity
+    ) throws {
+        let provisionalID = provisionalNumericID
+        let activity: SDActivity?
+        if let localRecordID {
+            activity = try getActivityByLocalId(localRecordID)
+        } else {
+            var descriptor = FetchDescriptor<SDActivity>(
+                predicate: #Predicate<SDActivity> { activity in
+                    activity.supabaseId == provisionalID
+                }
+            )
+            descriptor.fetchLimit = 1
+            activity = try context.fetch(descriptor).first
+        }
+
+        guard let activity else { throw RepositoryError.notFound }
+        ActivityMapper.update(activity, from: serverActivity)
+        activity.markSynced(
+            serverVersion: activity.serverVersion + 1,
+            supabaseId: serverActivity.id
+        )
         try context.save()
     }
 }
