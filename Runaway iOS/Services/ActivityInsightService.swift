@@ -6,8 +6,10 @@ struct ActivityInsightService {
             let insightData: InsightData
             enum CodingKeys: String, CodingKey { case insightData = "insight_data" }
         }
+        // The `feedback-workout` edge function writes the encouragement text into
+        // `insight_data.content` (not `feedback`). Match that exactly.
         struct InsightData: Decodable {
-            let feedback: String
+            let content: String
         }
 
         let rows: [Row] = try await supabase
@@ -19,6 +21,6 @@ struct ActivityInsightService {
             .execute()
             .value
 
-        return rows.first?.insightData.feedback
+        return rows.first?.insightData.content
     }
 }

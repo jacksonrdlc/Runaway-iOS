@@ -132,11 +132,36 @@ The authoritative database schema is documented in:
 - `athletes` - User profiles (id, auth_user_id, email, first_name, last_name, strava/garmin integration, etc.)
 - `daily_commitments` - Daily commitment tracking with micro-commitment support
 - `activity_types` - Activity type reference data
-- `running_goals` - User running goals
+- `running_goals` - User running goals (includes `goal_framing` text for identity-aware framing)
 - `athlete_onboarding` - Onboarding state and preferences
+- `athlete_ai_profiles` - JSONB `core_memory`; runner identity lives at key `adlerian_profile`
+- `runner_identity_milestones` - Six seed milestones per athlete (first_run, streak_7, distance_5k, distance_half, consistency_4weeks, comeback)
+- `activity_insights` - Per-activity AI outputs; `insight_type = 'adlerian_feedback'` for post-workout encouragement
 - `gear` - User equipment (shoes, bikes)
 - `training_zones` - Heart rate/power zones
 - `weekly_training_plans` - AI-generated training plans
+
+## Runner Mindset System
+
+The app has an Adlerian-psychology coaching layer ("Runner Mindset" in user-facing language). It spans onboarding, Profile, run recording, Activity Detail, and chat. Identity context is fetched from Supabase and injected into local prompts (chat) and remote prompts (edge functions).
+
+**Naming firewall:** "Adlerian" never appears in iOS file names, type names, or user-facing strings. The DB columns and edge function comments use it; iOS uses "Running Mindset" / "Runner Identity" / `MindsetProfile`.
+
+**Key services:**
+- `RunnerMindsetService.swift` - fetch/save MindsetProfile, fetch milestones
+- `RunCueService.swift` - fetch 12 in-run voice cues from `generate-run-cues`
+- `RunCoachScheduler.swift` - schedules audio cues (split announcements, identity cues 3s after split, slump-triggered cues at ≥20% pace drop, 90s shared cooldown)
+- `MilestoneService.swift` - fires `check-milestones` after activity save; posts `didUpdateNotification` when milestones flip
+- `FeedbackWorkoutService.swift` - fires `feedback-workout` after activity save (fire-and-forget)
+- `ActivityInsightService.swift` - reads stored Adlerian feedback for Activity Detail's AI COACH card
+
+**Models:** `MindsetProfile`, `RunnerIdentityMilestone` (in `Models/MindsetModels.swift`); `RunnerIdentityContext` (in `Services/FoundationModels/FoundationModelsService.swift`).
+
+**Settings:** `CoachSettings.enableIdentityVoiceCues` (default `true`, only relevant when a `MindsetProfile` is set).
+
+**Specs and plans:** `docs/superpowers/specs/2026-05-{06,07}-*.md` and `docs/superpowers/plans/2026-05-{06,07}-*.md` cover phases 1–5. Read the relevant phase spec before modifying any mindset surface — the prompt rules and naming conventions are tightly enforced.
+
+**Memory bank:** see `agent/memory/runner_mindset_{architecture,business_requirements,tech_requirements}.md` for the full system docs.
 
 ### Activity Recording Fields
 When saving manual activities, reference the "Manual Activity Recording - Fields to Save" section in the ERD for the complete list of fields that should be populated.
