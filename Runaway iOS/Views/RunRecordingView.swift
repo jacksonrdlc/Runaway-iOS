@@ -13,6 +13,7 @@ struct RunRecordingView: View {
     @ObservedObject private var coachSettings = CoachSettingsStore.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .largeTitle) private var runnerIconSize = 72.0
     @ScaledMetric(relativeTo: .largeTitle) private var statValueSize = 48.0
 
@@ -150,48 +151,21 @@ struct RunRecordingView: View {
     // MARK: - Active Run
 
     private var activeRunView: some View {
-        VStack(spacing: AppTheme.Spacing.xl) {
-            Spacer()
-
+        ScrollView {
             VStack(spacing: AppTheme.Spacing.lg) {
                 statCard(label: "Distance", value: formatDistance(recorder.distanceMeters))
                 statCard(label: "Time", value: formatDuration(recorder.elapsedSeconds))
                 statCard(label: "Pace", value: formatPace(recorder.currentPaceSecondsPerMeter))
             }
-
-            Spacer()
-
-            HStack(spacing: AppTheme.Spacing.md) {
-                Button {
-                    showingCancelAlert = true
-                } label: {
-                    Text("Cancel")
-                        .font(AppTheme.Typography.headline)
-                        .foregroundColor(AppTheme.Colors.error)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 64)
-                        .background(AppTheme.Colors.error.opacity(0.1))
-                        .cornerRadius(AppTheme.CornerRadius.large)
-                }
-                .accessibilityLabel("Cancel run")
-                .accessibilityHint("Asks before discarding this workout")
-
-                Button {
-                    showingFinishAlert = true
-                } label: {
-                    Text("Finish")
-                        .font(AppTheme.Typography.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 64)
-                        .background(AppTheme.Colors.accent)
-                        .cornerRadius(AppTheme.CornerRadius.large)
-                }
-                .accessibilityLabel("Finish run")
-                .accessibilityHint("Asks before saving and ending this workout")
-            }
             .padding(.horizontal, AppTheme.Spacing.xl)
-            .padding(.bottom, AppTheme.Spacing.xl)
+            .padding(.vertical, AppTheme.Spacing.xl)
+            .frame(maxWidth: .infinity)
+        }
+        .safeAreaInset(edge: .bottom) {
+            runControls
+                .padding(.horizontal, AppTheme.Spacing.xl)
+                .padding(.vertical, AppTheme.Spacing.md)
+                .background(background)
         }
     }
 
@@ -208,11 +182,67 @@ struct RunRecordingView: View {
                 .font(.system(size: statValueSize, weight: .bold, design: .rounded))
                 .foregroundColor(textPrimary)
                 .monospacedDigit()
-                .lineLimit(1)
+                .lineLimit(RunRecordingLayoutPolicy.statLineLimit(for: dynamicTypeSize))
+                .minimumScaleFactor(0.6)
+                .multilineTextAlignment(.center)
+                .allowsTightening(true)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue(value)
+    }
+
+    @ViewBuilder
+    private var runControls: some View {
+        if RunRecordingLayoutPolicy.usesVerticalControls(for: dynamicTypeSize) {
+            VStack(spacing: AppTheme.Spacing.md) {
+                cancelRunButton
+                finishRunButton
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    cancelRunButton
+                    finishRunButton
+                }
+                VStack(spacing: AppTheme.Spacing.md) {
+                    cancelRunButton
+                    finishRunButton
+                }
+            }
+        }
+    }
+
+    private var cancelRunButton: some View {
+        Button {
+            showingCancelAlert = true
+        } label: {
+            Text("Cancel")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.error)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 64)
+                .background(AppTheme.Colors.error.opacity(0.1))
+                .cornerRadius(AppTheme.CornerRadius.large)
+        }
+        .accessibilityLabel("Cancel run")
+        .accessibilityHint("Asks before discarding this workout")
+    }
+
+    private var finishRunButton: some View {
+        Button {
+            showingFinishAlert = true
+        } label: {
+            Text("Finish")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 64)
+                .background(AppTheme.Colors.accent)
+                .cornerRadius(AppTheme.CornerRadius.large)
+        }
+        .accessibilityLabel("Finish run")
+        .accessibilityHint("Asks before saving and ending this workout")
     }
 
     // MARK: - Formatters

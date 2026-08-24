@@ -9,6 +9,11 @@ import Foundation
 import Observation
 import WidgetKit
 
+enum CommitmentLoadResult {
+    case success(DailyCommitment?)
+    case failure(Error)
+}
+
 // MARK: - Commitment Manager Protocol
 
 @MainActor protocol CommitmentManagerProtocol: AnyObject {
@@ -18,7 +23,7 @@ import WidgetKit
     var shouldOfferMicroCommitment: Bool { get }
     var commitmentLevelCounts: (micro: Int, mini: Int, standard: Int) { get }
 
-    func loadTodaysCommitment(for userId: Int) async
+    func loadTodaysCommitment(for userId: Int) async -> CommitmentLoadResult
     func createCommitment(_ activityType: CommitmentActivityType) async throws
     func createMicroCommitment(_ type: MicroCommitmentType) async throws
     func updateCommitment(to activityType: CommitmentActivityType) async throws
@@ -59,7 +64,7 @@ final class CommitmentManager: CommitmentManagerProtocol {
 
     // MARK: - Data Loading
 
-    func loadTodaysCommitment(for userId: Int) async {
+    func loadTodaysCommitment(for userId: Int) async -> CommitmentLoadResult {
         isLoading = true
         defer { isLoading = false }
 
@@ -69,10 +74,12 @@ final class CommitmentManager: CommitmentManagerProtocol {
 
             // Load micro-commitment suggestions
             await loadMicroCommitmentSuggestions(for: userId)
+            return .success(todaysCommitment)
         } catch {
             #if DEBUG
             print("❌ CommitmentManager: Failed to load commitment: \(error)")
             #endif
+            return .failure(error)
         }
     }
 

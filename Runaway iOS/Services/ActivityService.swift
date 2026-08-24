@@ -128,7 +128,7 @@ class ActivityService {
     // Function to create an activity
     static func createActivity(activity: Activity) async throws -> Activity {
         let createdActivity: Activity = try await supabase.from("activities")
-            .insert(activity)
+            .upsert(activity, onConflict: "id")
             .select(
                 """
                 id,

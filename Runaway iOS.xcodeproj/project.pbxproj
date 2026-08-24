@@ -78,6 +78,7 @@
 				"Runaway iOSTests/SetDailyCommitmentIntentTests.swift",
 				"Runaway iOSTests/SyncEngineTests.swift",
 				"Runaway iOSTests/UserSessionTests.swift",
+				"Runaway iOSTests/Task7ReliabilityFollowupTests.swift",
 			);
 			target = 8EEECC412D64CF150053014A /* Runaway iOS */;
 		};
@@ -94,6 +95,7 @@
 				"Runaway iOSTests/SetDailyCommitmentIntentTests.swift",
 				"Runaway iOSTests/SyncEngineTests.swift",
 				"Runaway iOSTests/UserSessionTests.swift",
+				"Runaway iOSTests/Task7ReliabilityFollowupTests.swift",
 			);
 			target = 8EEECC512D64CF170053014A /* Runaway iOSTests */;
 		};

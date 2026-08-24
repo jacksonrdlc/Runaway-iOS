@@ -91,7 +91,7 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
         let savedActivity = try await localRepository.createActivity(activity)
 
         // Queue for sync
-        syncEngine?.queueUpload(entityType: .activity, entityId: String(activity.id))
+        syncEngine?.queueUpload(entityType: .activity, entityId: String(savedActivity.id))
 
         // Try immediate sync if online
         Task {
@@ -220,10 +220,7 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
         do {
             let created = try await remoteRepository.createActivity(activity)
 
-            // Find local activity by matching data since we don't have local ID here
-            if let localActivity = try? localRepository.getActivityByLocalId(UUID()) {
-                try localRepository.markSynced(localId: localActivity.localId, supabaseId: created.id, serverVersion: 1)
-            }
+            try localRepository.upsertFromServer(created)
 
             if FeatureFlags.debugSyncLogging {
                 #if DEBUG

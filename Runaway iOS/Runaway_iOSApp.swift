@@ -81,7 +81,15 @@ struct Runaway_iOSApp: App {
                 }
                 .onAppear {
                     LocationManager.shared.requestLocationPermission()
-                    Task { await applyPendingWidgetCommitment() }
+                    requestPendingWidgetCommitmentDrain()
+                }
+                .onChange(of: userSession.isReady) { previousReady, newReady in
+                    if WidgetPendingActionDrainCoordinator.shouldDrain(
+                        previousReady: previousReady,
+                        newReady: newReady
+                    ) {
+                        requestPendingWidgetCommitmentDrain()
+                    }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     handleAppBecameActive()
@@ -137,7 +145,7 @@ struct Runaway_iOSApp: App {
 
     private func handleAppBecameActive() {
         Task { await CommitmentManager.shared.refresh() }
-        Task { await applyPendingWidgetCommitment() }
+        requestPendingWidgetCommitmentDrain()
         realtimeService.startRealtimeSubscription()
         realtimeService.resumeFromBackground()
         syncEngine.startBackgroundSync()
@@ -170,6 +178,13 @@ struct Runaway_iOSApp: App {
     }
 
     @MainActor
+    private func requestPendingWidgetCommitmentDrain() {
+        WidgetPendingActionDrainCoordinator.shared.requestDrain {
+            await applyPendingWidgetCommitment()
+        }
+    }
+
+    @MainActor
     private func applyPendingWidgetCommitment() async {
         guard userSession.isReady,
               let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier),
@@ -178,9 +193,12 @@ struct Runaway_iOSApp: App {
               let athleteId = userSession.userId else { return }
 
         let manager = CommitmentManager.shared
-        await manager.loadTodaysCommitment(for: athleteId)
+        let loadResult = await manager.loadTodaysCommitment(for: athleteId)
+        let decision = WidgetCommitmentPendingDecision.decide(from: loadResult)
+        guard decision != .retainPending else { return }
+
         do {
-            if manager.todaysCommitment == nil {
+            if decision == .create {
                 try await manager.createCommitment(activityType)
             } else {
                 try await manager.updateCommitment(to: activityType)

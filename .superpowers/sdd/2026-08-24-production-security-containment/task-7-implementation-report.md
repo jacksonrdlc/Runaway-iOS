@@ -119,3 +119,54 @@ Result: bounded completion in 1.4 seconds, exit `74`; SwiftPM dependency resolut
 ## Preserved unrelated worktree changes
 
 The pre-existing changes to `.claude/scheduled_tasks.lock`, `CLAUDE.md`, `Runaway iOS/Services/ActivityInsightService.swift`, older Phase 2/3 plan files, and unrelated `.superpowers` contents were not modified for, staged with, or included in Task 7.
+
+## Findings follow-up: numeric IDs, idempotency, widget draining, and accessibility
+
+Date: 2026-08-24
+
+### Additional implementation
+
+- `SyncEngine` now parses the numeric queue identifiers emitted by `HybridActivityRepository` and resolves activities through `LocalActivityRepository.getActivity(id:)` instead of treating queue IDs as `SDActivity.localId` UUIDs.
+- Added `ActivityCreateSyncCoordinator` and an atomic file-backed acknowledgement store. The server response is persisted before local reconciliation. After a local-save failure or restart, the acknowledgement is replayed without another remote request.
+- Activity create retries now use the existing numeric activity primary key as the PostgREST upsert conflict key. This makes the remaining server-success/acknowledgement-write interruption retry idempotent and also prevents overlap between Hybrid immediate sync and queued sync from inserting duplicate rows.
+- `HybridActivityRepository` queues the saved activity's numeric ID and reconciles immediate-sync responses through the real local repository path instead of attempting a random UUID lookup.
+- Widget pending-action drains now run through a main-actor serialized/coalescing coordinator. App appearance/activation requests are coalesced, and a false-to-true `UserSession.isReady` transition triggers a drain immediately.
+- `CommitmentManager.loadTodaysCommitment` now returns an explicit success/failure result. Pending widget work is retained without choosing create/update when the load is unconfirmed; successful nil/non-nil results choose create/update respectively.
+- Run controls move to a scroll-safe bottom inset. `ViewThatFits` provides horizontal-to-vertical control fallback, accessibility Dynamic Type sizes force vertical controls, and stat values allow adaptive scaling/multiline presentation.
+
+### Additional changed paths
+
+- `Runaway iOS.xcodeproj/project.pbxproj`
+- `Runaway iOS/Managers/CommitmentManager.swift`
+- `Runaway iOS/Persistence/Sync/ActivitySyncReliability.swift`
+- `Runaway iOS/Persistence/Sync/SyncEngine.swift`
+- `Runaway iOS/Repositories/HybridActivityRepository.swift`
+- `Runaway iOS/Runaway_iOSApp.swift`
+- `Runaway iOS/Runaway iOSTests/Task7ReliabilityFollowupTests.swift`
+- `Runaway iOS/Services/ActivityService.swift`
+- `Runaway iOS/Services/WidgetPendingActionDrainCoordinator.swift`
+- `Runaway iOS/Views/RunRecordingLayoutPolicy.swift`
+- `Runaway iOS/Views/RunRecordingView.swift`
+- `.superpowers/sdd/2026-08-24-production-security-containment/task-7-implementation-report.md`
+
+### Additional tests authored
+
+- Numeric queue ID parsing and lookup through the activity repository seam using the same coordinator invoked by `SyncEngine`.
+- Insert acknowledgement persistence across two coordinator/store instances, simulating local-save failure and process restart while asserting only one remote create.
+- Readiness false-to-true transition triggering exactly one drain.
+- Commitment load failure mapping to retain-pending/no mutation.
+- Standard versus accessibility Dynamic Type layout policy.
+
+### Bounded validation command and result
+
+Command:
+
+```sh
+env CLANG_MODULE_CACHE_PATH=/private/tmp/runaway-task7-clang-cache SWIFTPM_MODULECACHE_OVERRIDE=/private/tmp/runaway-task7-swiftpm-cache XDG_CACHE_HOME=/private/tmp/runaway-task7-xdg-cache xcodebuild -project 'Runaway iOS.xcodeproj' -target 'Runaway iOSTests' -configuration Debug -sdk iphoneos26.5 CODE_SIGNING_ALLOWED=NO ARCHS=arm64 ONLY_ACTIVE_ARCH=YES 'EXCLUDED_SOURCE_FILE_NAMES=*.xcassets LaunchScreen.storyboard' ASSETCATALOG_COMPILER_APPICON_NAME= GENERATE_INFOPLIST_FILE=YES INFOPLIST_FILE= SYMROOT=/private/tmp/runaway-task7-followup-tests-build OBJROOT=/private/tmp/runaway-task7-followup-tests-obj build
+```
+
+Result: completed in 5.4 seconds with exit `74` before source compilation. The redirected Clang/SwiftPM module caches were writable, but Xcode's SwiftPM manifest loader still attempted to emit `supabase-swift.dia` under `~/Library/Caches/org.swift.swiftpm`, which the managed sandbox denied. CoreSimulatorService was also unavailable inside the sandbox. No test executed and no source compiler result was produced by this attempt. No further build/test command was run, per the one-bounded-attempt checkpoint.
+
+### Hard Task 8 dependency
+
+The client now prevents duplicate rows for the current contract by using the real numeric activity ID as the upsert conflict key and durably replaying server acknowledgements. The complete cross-installation design still requires Task 8 backend schema support for a user-scoped unique `client_operation_id` (for example, unique on `athlete_id, client_operation_id`) accepted and returned by activity create/upsert. Without that server-owned uniqueness constraint, independently generated client numeric IDs can theoretically collide even though retries of one queued operation are idempotent. No backend file or production system was changed for this follow-up.

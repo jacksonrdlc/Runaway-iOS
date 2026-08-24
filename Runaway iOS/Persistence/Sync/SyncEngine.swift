@@ -264,20 +264,13 @@ final class SyncEngine: ObservableObject {
 
         switch operation.operationType {
         case .create, .update:
-            guard let localId = UUID(uuidString: operation.entityId),
-                  let sdActivity = try localRepo.getActivityByLocalId(localId) else {
-                throw SyncEngineError.localRecordMissing
-            }
-            let activity = ActivityMapper.toCodable(sdActivity)
-
-            if sdActivity.supabaseId == nil {
-                let created = try await SupabaseActivityRepository.shared.createActivity(activity)
-                try localRepo.markSynced(localId: localId, supabaseId: created.id, serverVersion: 1)
-            } else {
-                _ = try await SupabaseActivityRepository.shared.updateActivity(activity)
-                sdActivity.markSynced(serverVersion: sdActivity.serverVersion + 1)
-                try PersistenceController.shared.save()
-            }
+            let coordinator = ActivityCreateSyncCoordinator(
+                localRepository: localRepo,
+                remoteUpsert: { activity in
+                    try await SupabaseActivityRepository.shared.createActivity(activity)
+                }
+            )
+            try await coordinator.sync(operationID: operation.id, numericEntityID: operation.entityId)
 
         case .delete:
             guard let id = Int(operation.entityId) else {
