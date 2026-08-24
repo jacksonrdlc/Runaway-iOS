@@ -42,10 +42,10 @@ final class ActivitySyncAcknowledgementStore {
     private let fileManager: FileManager
 
     init(
-        directoryURL: URL = ActivitySyncAcknowledgementStore.defaultDirectoryURL,
+        directoryURL: URL? = nil,
         fileManager: FileManager = .default
     ) {
-        self.directoryURL = directoryURL
+        self.directoryURL = directoryURL ?? Self.defaultDirectoryURL
         self.fileManager = fileManager
     }
 
@@ -90,11 +90,11 @@ final class ActivityCreateSyncCoordinator {
 
     init(
         localRepository: any ActivitySyncLocalRepository,
-        acknowledgementStore: ActivitySyncAcknowledgementStore = ActivitySyncAcknowledgementStore(),
+        acknowledgementStore: ActivitySyncAcknowledgementStore? = nil,
         remoteUpsert: @escaping RemoteUpsert
     ) {
         self.localRepository = localRepository
-        self.acknowledgementStore = acknowledgementStore
+        self.acknowledgementStore = acknowledgementStore ?? ActivitySyncAcknowledgementStore()
         self.remoteUpsert = remoteUpsert
     }
 

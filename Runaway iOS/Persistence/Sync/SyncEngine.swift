@@ -117,7 +117,10 @@ final class SyncEngine: ObservableObject {
         if let existing = uploadQueue.first(where: {
             $0.entityType == entityType
                 && $0.operationType == operationType
-                && ($0.localRecordID == localRecordID || (localRecordID == nil && $0.entityId == entityId))
+                && (
+                    (localRecordID != nil && $0.localRecordID == localRecordID)
+                        || (localRecordID == nil && $0.localRecordID == nil && $0.entityId == entityId)
+                )
         }) {
             return existing.id
         }
