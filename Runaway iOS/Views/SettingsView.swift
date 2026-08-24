@@ -678,7 +678,7 @@ struct StravaConnectSheet: View {
             return
         }
 
-        guard let stravaURL = stravaService.getStravaConnectURL(authUserId: authUserId) else {
+        guard let stravaURL = await stravaService.getStravaConnectURL(authUserId: authUserId) else {
             #if DEBUG
             print("❌ Unable to generate Strava OAuth URL")
             #endif

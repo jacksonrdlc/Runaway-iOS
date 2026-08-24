@@ -32,7 +32,7 @@ class PersonalBestService {
 
             let (activity, split) = try await (activityPR, splitPR)
 
-            let best: PersonalBest?
+            let best: PersonalBestCandidate?
             switch (activity, split) {
             case (nil, nil):       continue
             case (let a?, nil):    best = a
@@ -62,7 +62,7 @@ class PersonalBestService {
         }
     }
 
-    private func bestActivity(athleteId: Int, distance: PRDistance) async throws -> PersonalBest? {
+    private func bestActivity(athleteId: Int, distance: PRDistance) async throws -> PersonalBestCandidate? {
         let range = distance.metersRange
         // Require at least 3:00/km pace — filters GPS-corrupted or mis-categorized activities
         let minElapsedTime = Int(range.lowerBound * 0.18)
@@ -84,9 +84,7 @@ class PersonalBestService {
               let elapsed = best.elapsedTime,
               elapsed > 0 else { return nil }
 
-        return PersonalBest(
-            id: 0,
-            athleteId: athleteId,
+        return PersonalBestCandidate(
             distanceLabel: distance.label,
             distanceMeters: distance.nominalMeters,
             timeSeconds: elapsed,
@@ -114,7 +112,7 @@ class PersonalBestService {
         let p_max_dist: Double
     }
 
-    private func bestSplitTime(athleteId: Int, distance: PRDistance) async throws -> PersonalBest? {
+    private func bestSplitTime(athleteId: Int, distance: PRDistance) async throws -> PersonalBestCandidate? {
         if distance == .mile {
             return try await bestMileFromSplits(athleteId: athleteId)
         }
@@ -133,9 +131,7 @@ class PersonalBestService {
 
         guard let best = rows.first else { return nil }
 
-        return PersonalBest(
-            id: 0,
-            athleteId: athleteId,
+        return PersonalBestCandidate(
             distanceLabel: distance.label,
             distanceMeters: distance.nominalMeters,
             timeSeconds: best.elapsedSeconds,
@@ -146,7 +142,7 @@ class PersonalBestService {
 
     // Finds the fastest 1km split and scales to mile (1609m).
     // 1km splits don't align to exactly 1 mile, so we use pace from the best km.
-    private func bestMileFromSplits(athleteId: Int) async throws -> PersonalBest? {
+    private func bestMileFromSplits(athleteId: Int) async throws -> PersonalBestCandidate? {
         let rows: [SplitPRRow] = try await supabase
             .rpc("best_split_pr", params: SplitPRParams(
                 p_athlete_id: athleteId,
@@ -160,9 +156,7 @@ class PersonalBestService {
         guard let best = rows.first else { return nil }
 
         let mileSeconds = Int(Double(best.elapsedSeconds) * 1609.34 / 1000.0)
-        return PersonalBest(
-            id: 0,
-            athleteId: athleteId,
+        return PersonalBestCandidate(
             distanceLabel: PRDistance.mile.label,
             distanceMeters: PRDistance.mile.nominalMeters,
             timeSeconds: mileSeconds,
@@ -171,26 +165,8 @@ class PersonalBestService {
         )
     }
 
-    private struct UpsertPayload: Encodable {
-        let athlete_id: Int
-        let distance_label: String
-        let distance_meters: Double
-        let time_seconds: Int
-        let activity_id: Int?
-        let achieved_at: Date
-        let updated_at: Date
-    }
-
-    private func upsert(_ pr: PersonalBest, athleteId: Int) async throws -> PersonalBest {
-        let payload = UpsertPayload(
-            athlete_id: athleteId,
-            distance_label: pr.distanceLabel,
-            distance_meters: pr.distanceMeters,
-            time_seconds: pr.timeSeconds,
-            activity_id: pr.activityId,
-            achieved_at: pr.achievedAt,
-            updated_at: Date()
-        )
+    private func upsert(_ candidate: PersonalBestCandidate, athleteId: Int) async throws -> PersonalBest {
+        let payload = PersonalBestUpsertPayload(candidate: candidate, athleteId: athleteId)
 
         let result: [PersonalBest] = try await supabase
             .from("athlete_personal_bests")
@@ -199,6 +175,41 @@ class PersonalBestService {
             .execute()
             .value
 
-        return result.first ?? pr
+        guard let saved = result.first else {
+            throw PersonalBestServiceError.missingServerGeneratedRecord
+        }
+        return saved
     }
+}
+
+struct PersonalBestCandidate {
+    let distanceLabel: String
+    let distanceMeters: Double
+    let timeSeconds: Int
+    let activityId: Int?
+    let achievedAt: Date
+}
+
+struct PersonalBestUpsertPayload: Encodable {
+    let athlete_id: Int
+    let distance_label: String
+    let distance_meters: Double
+    let time_seconds: Int
+    let activity_id: Int?
+    let achieved_at: Date
+    let updated_at: Date
+
+    init(candidate: PersonalBestCandidate, athleteId: Int, updatedAt: Date = Date()) {
+        self.athlete_id = athleteId
+        self.distance_label = candidate.distanceLabel
+        self.distance_meters = candidate.distanceMeters
+        self.time_seconds = candidate.timeSeconds
+        self.activity_id = candidate.activityId
+        self.achieved_at = candidate.achievedAt
+        self.updated_at = updatedAt
+    }
+}
+
+private enum PersonalBestServiceError: Error {
+    case missingServerGeneratedRecord
 }

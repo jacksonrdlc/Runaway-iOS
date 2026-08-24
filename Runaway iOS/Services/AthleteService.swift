@@ -216,25 +216,24 @@ class AthleteService {
             let p_email: String?
         }
 
-        struct AthleteIdResult: Decodable {
-            let ensure_athlete_exists: Int
-        }
-
         let params = EnsureAthleteParams(
             p_auth_user_id: authId.uuidString,
             p_email: email
         )
 
-        let result: AthleteIdResult = try await supabase
+        let response = try await supabase
             .rpc("ensure_athlete_exists", params: params)
-            .single()
             .execute()
-            .value
+        let athleteId = try decodeEnsureAthleteId(from: response.data)
 
         #if DEBUG
-        print("✅ AthleteService: Created athlete with ID \(result.ensure_athlete_exists)")
+        print("✅ AthleteService: Created athlete with ID \(athleteId)")
         #endif
-        return result.ensure_athlete_exists
+        return athleteId
+    }
+
+    static func decodeEnsureAthleteId(from data: Data) throws -> Int {
+        try JSONDecoder().decode(Int.self, from: data)
     }
 }
 

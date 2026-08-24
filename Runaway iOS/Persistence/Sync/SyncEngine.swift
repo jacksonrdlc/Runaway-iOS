@@ -38,8 +38,8 @@ final class SyncEngine: ObservableObject {
     private var uploadQueue: [SyncOperation] = []
     private var deletionQueue: [SyncOperation] = []
 
-    private let maxRetryCount = 3
-    private let retryDelay: TimeInterval = 5.0
+    private let userDefaults: UserDefaults
+    private let operationProcessor: ((SyncOperation) async throws -> Void)?
 
     private var syncTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -50,8 +50,18 @@ final class SyncEngine: ObservableObject {
 
     // MARK: - Initialization
 
-    private init() {
-        setupNetworkMonitor()
+    init(
+        userDefaults: UserDefaults = .standard,
+        startsNetworkMonitor: Bool = true,
+        initialOnlineState: Bool = true,
+        operationProcessor: ((SyncOperation) async throws -> Void)? = nil
+    ) {
+        self.userDefaults = userDefaults
+        self.operationProcessor = operationProcessor
+        self.isOnline = initialOnlineState
+        if startsNetworkMonitor {
+            setupNetworkMonitor()
+        }
         loadPendingOperations()
     }
 
@@ -163,16 +173,14 @@ final class SyncEngine: ObservableObject {
             #endif
         }
 
-        do {
-            // Process deletions first
-            await processDeletions()
+        // Process deletions first, then uploads. Each queue removes only
+        // operations whose remote side effect completed successfully.
+        await processDeletions()
+        await processUploads()
+        updatePendingCount()
 
-            // Then process uploads
-            await processUploads()
-
+        if pendingChangesCount == 0 {
             lastSyncDate = Date()
-            updatePendingCount()
-
             if FeatureFlags.debugSyncLogging {
                 #if DEBUG
                 print("[SyncEngine] Sync complete")
@@ -195,14 +203,12 @@ final class SyncEngine: ObservableObject {
                 operation.lastError = error.localizedDescription
                 operation.lastAttemptAt = Date()
 
-                if operation.retryCount < maxRetryCount {
-                    failedOperations.append(operation)
-                } else {
-                    if FeatureFlags.debugSyncLogging {
-                        #if DEBUG
-                        print("[SyncEngine] Deletion failed after \(maxRetryCount) retries: \(operation.entityType) \(operation.entityId)")
-                        #endif
-                    }
+                failedOperations.append(operation)
+                lastError = error
+                if FeatureFlags.debugSyncLogging {
+                    #if DEBUG
+                    print("[SyncEngine] Deletion retained after retry \(operation.retryCount): \(operation.entityType) \(operation.entityId)")
+                    #endif
                 }
             }
         }
@@ -223,14 +229,12 @@ final class SyncEngine: ObservableObject {
                 operation.lastError = error.localizedDescription
                 operation.lastAttemptAt = Date()
 
-                if operation.retryCount < maxRetryCount {
-                    failedOperations.append(operation)
-                } else {
-                    if FeatureFlags.debugSyncLogging {
-                        #if DEBUG
-                        print("[SyncEngine] Upload failed after \(maxRetryCount) retries: \(operation.entityType) \(operation.entityId)")
-                        #endif
-                    }
+                failedOperations.append(operation)
+                lastError = error
+                if FeatureFlags.debugSyncLogging {
+                    #if DEBUG
+                    print("[SyncEngine] Upload retained after retry \(operation.retryCount): \(operation.entityType) \(operation.entityId)")
+                    #endif
                 }
             }
         }
@@ -241,6 +245,10 @@ final class SyncEngine: ObservableObject {
 
     /// Process a single sync operation
     private func processOperation(_ operation: SyncOperation) async throws {
+        if let operationProcessor {
+            try await operationProcessor(operation)
+            return
+        }
         switch operation.entityType {
         case .activity:
             try await processActivityOperation(operation)
@@ -256,38 +264,35 @@ final class SyncEngine: ObservableObject {
 
         switch operation.operationType {
         case .create, .update:
-            if let localId = UUID(uuidString: operation.entityId),
-               let sdActivity = try localRepo.getActivityByLocalId(localId) {
-                let activity = ActivityMapper.toCodable(sdActivity)
+            guard let localId = UUID(uuidString: operation.entityId),
+                  let sdActivity = try localRepo.getActivityByLocalId(localId) else {
+                throw SyncEngineError.localRecordMissing
+            }
+            let activity = ActivityMapper.toCodable(sdActivity)
 
-                if sdActivity.supabaseId == nil {
-                    // Create on server
-                    let created = try await SupabaseActivityRepository.shared.createActivity(activity)
-                    try localRepo.markSynced(localId: localId, supabaseId: created.id, serverVersion: 1)
-                } else {
-                    // Update on server
-                    _ = try await SupabaseActivityRepository.shared.updateActivity(activity)
-                    sdActivity.markSynced(serverVersion: sdActivity.serverVersion + 1)
-                    try PersistenceController.shared.save()
-                }
+            if sdActivity.supabaseId == nil {
+                let created = try await SupabaseActivityRepository.shared.createActivity(activity)
+                try localRepo.markSynced(localId: localId, supabaseId: created.id, serverVersion: 1)
+            } else {
+                _ = try await SupabaseActivityRepository.shared.updateActivity(activity)
+                sdActivity.markSynced(serverVersion: sdActivity.serverVersion + 1)
+                try PersistenceController.shared.save()
             }
 
         case .delete:
-            if let id = Int(operation.entityId) {
-                try await SupabaseActivityRepository.shared.deleteActivity(id: id)
-                try localRepo.purgeDeletedActivities()
+            guard let id = Int(operation.entityId) else {
+                throw SyncEngineError.invalidEntityIdentifier
             }
+            try await SupabaseActivityRepository.shared.deleteActivity(id: id)
         }
     }
 
     private func processAthleteOperation(_ operation: SyncOperation) async throws {
-        // Athlete sync implementation
-        // Similar pattern to activity
+        throw SyncEngineError.unsupportedOperation(operation.entityType)
     }
 
     private func processCommitmentOperation(_ operation: SyncOperation) async throws {
-        // Commitment sync implementation
-        // Similar pattern to activity
+        throw SyncEngineError.unsupportedOperation(operation.entityType)
     }
 
     // MARK: - Persistence
@@ -298,12 +303,12 @@ final class SyncEngine: ObservableObject {
         let allOperations = uploadQueue + deletionQueue
 
         if let data = try? JSONEncoder().encode(allOperations) {
-            UserDefaults.standard.set(data, forKey: pendingOperationsKey)
+            userDefaults.set(data, forKey: pendingOperationsKey)
         }
     }
 
     private func loadPendingOperations() {
-        guard let data = UserDefaults.standard.data(forKey: pendingOperationsKey),
+        guard let data = userDefaults.data(forKey: pendingOperationsKey),
               let operations = try? JSONDecoder().decode([SyncOperation].self, from: data) else {
             return
         }
@@ -361,19 +366,12 @@ final class SyncEngine: ObservableObject {
         await syncPendingChanges()
     }
 
-    /// Clear all pending operations (use with caution)
-    func clearPendingOperations() {
-        uploadQueue.removeAll()
-        deletionQueue.removeAll()
-        updatePendingCount()
-        savePendingOperations()
+}
 
-        if FeatureFlags.debugSyncLogging {
-            #if DEBUG
-            print("[SyncEngine] Cleared all pending operations")
-            #endif
-        }
-    }
+private enum SyncEngineError: Error {
+    case invalidEntityIdentifier
+    case localRecordMissing
+    case unsupportedOperation(SyncEntityType)
 }
 
 // MARK: - Sync Status View Model

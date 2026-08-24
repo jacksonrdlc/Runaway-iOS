@@ -28,6 +28,9 @@ public final class UserSession {
     /// Loading onboarding state
     public var isCheckingOnboarding = false
 
+    /// A user-safe error when authenticated account setup could not finish.
+    public private(set) var setupError: String?
+
     /// Flag to prevent re-checking onboarding after user completes it in this session
     private var onboardingCompletedInSession = false
 
@@ -36,7 +39,7 @@ public final class UserSession {
 
     // MARK: - Singleton
 
-    public static let shared = UserSession()
+    public static let shared = UserSession(startAutomatically: true)
 
     // MARK: - Computed Properties
 
@@ -50,15 +53,22 @@ public final class UserSession {
         return currentUser?.email
     }
 
+    /// Authentication alone is not enough to enter the app's data surfaces.
+    public var isReady: Bool {
+        isAuthenticated && userId != nil && setupError == nil
+    }
+
     // MARK: - Initialization
 
-    private init() {
+    init(startAutomatically: Bool) {
         #if DEBUG
         print("UserSession initialized")
         #endif
-        Task {
-            await checkAuthState()
-            await listenForAuthChanges()
+        if startAutomatically {
+            Task {
+                await checkAuthState()
+                await listenForAuthChanges()
+            }
         }
     }
 
@@ -119,6 +129,8 @@ public final class UserSession {
         await MainActor.run {
             self.currentUser = user
             self.isAuthenticated = true
+            self.setupError = nil
+            self.storedAthleteId = nil
             self.isCheckingOnboarding = true // Start checking onboarding
         }
 
@@ -129,44 +141,14 @@ public final class UserSession {
         // Refresh widgets after authentication state update
         WidgetSyncService.refreshForAuthUpdate()
 
-        // Ensure athlete record exists and get the athlete ID
-        let athleteId = await ensureAthleteRecordExists(for: user)
-        #if DEBUG
-        print("🔐 UserSession: Got athlete ID: \(athleteId?.description ?? "nil")")
-        #endif
-
-        // Store the athlete ID so it's available before profile is loaded
-        await MainActor.run {
-            self.storedAthleteId = athleteId
-        }
-
-        // Write credentials to App Group so widget can make direct Supabase calls
-        if let athleteId = athleteId {
-            writeWidgetCredentials(athleteId: athleteId)
-        }
-
-        // Check onboarding status using the athlete ID
-        if let athleteId = athleteId {
-            await checkOnboardingStatusForAthlete(athleteId: athleteId)
-        } else {
-            // No athlete ID - default to showing onboarding for new users
-            #if DEBUG
-            print("🔐 UserSession: No athlete ID, defaulting to onboarding not completed")
-            #endif
-            await MainActor.run {
-                self.hasCompletedOnboarding = false
-                self.isCheckingOnboarding = false
-            }
-        }
+        await prepareAthleteSession(for: user)
 
         #if DEBUG
         print("🔐 UserSession: Final state - hasCompletedOnboarding=\(hasCompletedOnboarding), isCheckingOnboarding=\(isCheckingOnboarding)")
         #endif
     }
 
-    /// Ensures athlete record exists for the authenticated user
-    /// Returns the athlete ID if successful
-    private func ensureAthleteRecordExists(for user: Supabase.User) async -> Int? {
+    private func prepareAthleteSession(for user: Supabase.User) async {
         do {
             let athleteId = try await AthleteService.ensureAthleteExists(
                 authId: user.id,
@@ -175,13 +157,35 @@ public final class UserSession {
             #if DEBUG
             print("✅ UserSession: Athlete record confirmed with ID \(athleteId)")
             #endif
-            return athleteId
+            completeAthleteSetup(with: .success(athleteId))
+            writeWidgetConfiguration(athleteId: athleteId)
+            await checkOnboardingStatusForAthlete(athleteId: athleteId)
         } catch {
             #if DEBUG
             print("⚠️ UserSession: Failed to ensure athlete exists: \(error)")
             #endif
-            return nil
+            completeAthleteSetup(with: .failure(error))
         }
+    }
+
+    func completeAthleteSetup(with result: Result<Int, Error>) {
+        switch result {
+        case .success(let athleteId) where athleteId > 0:
+            storedAthleteId = athleteId
+            setupError = nil
+        case .success, .failure:
+            storedAthleteId = nil
+            hasCompletedOnboarding = false
+            isCheckingOnboarding = false
+            setupError = "We couldn't finish setting up your account. Please try again."
+        }
+    }
+
+    public func retrySetup() async {
+        guard let currentUser else { return }
+        setupError = nil
+        isCheckingOnboarding = true
+        await prepareAthleteSession(for: currentUser)
     }
 
     /// Check onboarding status for a specific athlete ID
@@ -294,9 +298,9 @@ public final class UserSession {
 
     // MARK: - Widget Credential Sharing
 
-    /// Write Supabase credentials and athlete ID to the App Group so the widget
-    /// can make direct REST calls (e.g. SetDailyCommitmentIntent).
-    private func writeWidgetCredentials(athleteId: Int) {
+    /// Share non-secret configuration with the widget. User access tokens are
+    /// deliberately not persisted in App Group UserDefaults.
+    private func writeWidgetConfiguration(athleteId: Int) {
         guard let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier) else { return }
         defaults.set(athleteId, forKey: AppConstants.WidgetKeys.athleteId)
         if let url = SupabaseConfiguration.supabaseURL {
@@ -314,6 +318,7 @@ public final class UserSession {
             self.isAuthenticated = false
             self.profileUser = nil
             self.storedAthleteId = nil // Clear stored athlete ID
+            self.setupError = nil
             self.hasCompletedOnboarding = true // Reset to default
             self.isCheckingOnboarding = false
             self.hasCheckedOnboarding = false // Reset so next login checks fresh

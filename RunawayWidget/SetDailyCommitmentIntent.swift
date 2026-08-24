@@ -7,6 +7,7 @@
 //
 
 import AppIntents
+import Foundation
 import WidgetKit
 
 // MARK: - Activity Type Enum
@@ -49,7 +50,7 @@ enum CommitmentActivityAppEnum: String, AppEnum {
 
 struct SetDailyCommitmentIntent: AppIntent {
     static var title: LocalizedStringResource = "Set Daily Commitment"
-    static var openAppWhenRun: Bool = false
+    static var openAppWhenRun: Bool = true
 
     @Parameter(title: "Activity Type") var activityType: CommitmentActivityAppEnum
 
@@ -59,47 +60,27 @@ struct SetDailyCommitmentIntent: AppIntent {
         self.activityType = activityType
     }
 
-    func perform() async throws -> some IntentResult {
-        let defaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios")
-        guard
-            let supabaseURL = defaults?.string(forKey: "widget_supabase_url"),
-            let supabaseKey = defaults?.string(forKey: "widget_supabase_key"),
-            let athleteId = defaults?.value(forKey: "widget_athlete_id") as? Int,
-            athleteId > 0,
-            !supabaseURL.isEmpty,
-            !supabaseKey.isEmpty
-        else { return .result() }
-
-        // Optimistic UI update — show commitment immediately
-        defaults?.set(activityType.rawValue, forKey: "todays_commitment_type")
-        defaults?.set(false, forKey: "todays_commitment_fulfilled")
-        WidgetCenter.shared.reloadAllTimelines()
-
-        // REST upsert to Supabase daily_commitments table
-        let today = Calendar.current.startOfDay(for: Date())
-        let dateString = ISO8601DateFormatter().string(from: today).prefix(10)
-        let body: [String: Any] = [
-            "athlete_id": athleteId,
-            "activity_type": activityType.rawValue,
-            "commitment_date": String(dateString),
-            "is_fulfilled": false,
-            "commitment_level": "standard"
-        ]
-
-        guard let url = URL(string: "\(supabaseURL)/rest/v1/daily_commitments") else {
-            return .result()
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let defaults = UserDefaults(suiteName: "group.com.jackrudelic.runawayios") else {
+            return .result(dialog: "Open Runaway to save your commitment.")
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("return=minimal,resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
-        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
-        request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        // The extension has no secure shared user-token store. Queue the request
+        // for the authenticated app instead of using the publishable key as JWT.
+        let client = DailyCommitmentIntentClient(
+            defaults: defaults,
+            accessToken: { nil }
+        )
+        let outcome = await client.setCommitment(activityType: activityType.rawValue)
 
-        _ = try? await URLSession.shared.data(for: request)
-        WidgetCenter.shared.reloadAllTimelines()
-        return .result()
+        switch outcome {
+        case .saved:
+            WidgetCenter.shared.reloadAllTimelines()
+            return .result(dialog: "Commitment saved.")
+        case .requiresAuthenticatedApp:
+            return .result(dialog: "Open Runaway to save your commitment.")
+        case .failed:
+            return .result(dialog: "Runaway couldn't save that commitment. Open the app to try again.")
+        }
     }
 }

@@ -81,6 +81,7 @@ struct Runaway_iOSApp: App {
                 }
                 .onAppear {
                     LocationManager.shared.requestLocationPermission()
+                    Task { await applyPendingWidgetCommitment() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     handleAppBecameActive()
@@ -136,6 +137,7 @@ struct Runaway_iOSApp: App {
 
     private func handleAppBecameActive() {
         Task { await CommitmentManager.shared.refresh() }
+        Task { await applyPendingWidgetCommitment() }
         realtimeService.startRealtimeSubscription()
         realtimeService.resumeFromBackground()
         syncEngine.startBackgroundSync()
@@ -165,5 +167,27 @@ struct Runaway_iOSApp: App {
         AnalyticsService.shared.pauseForBackground()
         AnalyticsService.shared.track(.appBackgrounded, category: .engagement)
         AnalyticsService.shared.endSession()
+    }
+
+    @MainActor
+    private func applyPendingWidgetCommitment() async {
+        guard userSession.isReady,
+              let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier),
+              let rawType = defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType),
+              let activityType = CommitmentActivityType(rawValue: rawType),
+              let athleteId = userSession.userId else { return }
+
+        let manager = CommitmentManager.shared
+        await manager.loadTodaysCommitment(for: athleteId)
+        do {
+            if manager.todaysCommitment == nil {
+                try await manager.createCommitment(activityType)
+            } else {
+                try await manager.updateCommitment(to: activityType)
+            }
+            defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingActivityType)
+        } catch {
+            // Retain the request for the next authenticated retry.
+        }
     }
 }

@@ -20,12 +20,16 @@ class GarminService: ObservableObject {
 
     // MARK: - Private Properties
     private let supabaseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co"
+    private let edgeClient: AuthenticatedEdgeFunctionClient
 
     // MARK: - Initialization
-    init() {
+    init(edgeClient: AuthenticatedEdgeFunctionClient = .live, checksConnectionOnInit: Bool = true) {
+        self.edgeClient = edgeClient
         // Check connection status on init
-        Task {
-            await checkConnectionStatus()
+        if checksConnectionOnInit {
+            Task {
+                await checkConnectionStatus()
+            }
         }
     }
 
@@ -59,7 +63,7 @@ class GarminService: ObservableObject {
     }
 
     /// Get the Garmin OAuth authorization URL
-    func getGarminConnectURL(authUserId: String) async -> URL? {
+    func getGarminConnectURL(authUserId _: String) async -> URL? {
         isConnecting = true
         connectionError = nil
 
@@ -67,20 +71,19 @@ class GarminService: ObservableObject {
 
         do {
             // Call our edge function to initiate OAuth
-            let response: GarminAuthResponse = try await supabase.functions.invoke(
+            let response: OAuthInitiationResponse = try await edgeClient.invoke(
                 "garmin-auth",
-                options: .init(body: ["auth_user_id": authUserId])
+                body: OAuthInitiationRequest()
             )
 
             guard response.success,
-                  let urlString = response.authorization_url,
-                  let url = URL(string: urlString) else {
+                  let url = response.authorizationURL else {
                 connectionError = response.error ?? "Failed to get authorization URL"
                 return nil
             }
 
             #if DEBUG
-            print("✅ GarminService: Got authorization URL: \(urlString)")
+            print("✅ GarminService: Got authorization URL")
             #endif
 
             return url
@@ -142,13 +145,6 @@ class GarminService: ObservableObject {
 private struct GarminConnectionStatus: Decodable {
     let garmin_connected: Bool?
     let garmin_connected_at: String?
-}
-
-private struct GarminAuthResponse: Decodable {
-    let success: Bool
-    let authorization_url: String?
-    let oauth_token: String?
-    let error: String?
 }
 
 private struct GarminDisconnectUpdate: Encodable {

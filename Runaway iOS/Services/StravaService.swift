@@ -9,9 +9,7 @@ import Foundation
 
 class StravaService: ObservableObject {
     private let session = URLSession.shared
-
-    // Strava OAuth configuration — read from STRAVA_CLIENT_ID env var or Info.plist
-    private var clientID: String { SupabaseConfiguration.stravaClientID ?? "" }
+    private let edgeClient: AuthenticatedEdgeFunctionClient
 
     // Supabase Edge Functions base URL — read from SupabaseConfiguration
     private var dataSyncServiceBaseURL: String { SupabaseConfiguration.supabaseURL ?? "" }
@@ -23,36 +21,38 @@ class StravaService: ObservableObject {
     @Published var syncProgress: String?
     @Published var error: StravaError?
 
+    init(edgeClient: AuthenticatedEdgeFunctionClient = .live) {
+        self.edgeClient = edgeClient
+    }
+
     // MARK: - Connection Management
 
-    /// Generate Strava OAuth URL with auth_user_id in state parameter
-    func getStravaConnectURL(authUserId: String) -> URL? {
+    /// Request a provider URL containing server-generated, single-use OAuth state.
+    @MainActor
+    func getStravaConnectURL(authUserId _: String) async -> URL? {
         // Track analytics
         Task { @MainActor in
             AnalyticsService.shared.track(.stravaConnectStarted, category: .strava)
         }
 
-        // Build URL components for proper encoding
-        var components = URLComponents(string: "https://www.strava.com/oauth/authorize")!
-
-        let redirectUri = "\(dataSyncServiceBaseURL)/functions/v1/oauth-callback"
-
-        components.queryItems = [
-            URLQueryItem(name: "client_id", value: clientID),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "redirect_uri", value: redirectUri),
-            URLQueryItem(name: "approval_prompt", value: "force"),
-            URLQueryItem(name: "scope", value: "activity:read_all,profile:read_all"),
-            URLQueryItem(name: "state", value: authUserId)
-        ]
-
-        #if DEBUG
-        print("🔗 Generated Strava OAuth URL:")
-        print("   Redirect URI: \(redirectUri)")
-        print("   Full URL: \(components.url?.absoluteString ?? "nil")")
-        #endif
-
-        return components.url
+        do {
+            let response: OAuthInitiationResponse = try await edgeClient.invoke(
+                "strava-auth",
+                body: OAuthInitiationRequest()
+            )
+            guard response.success, let url = response.authorizationURL else {
+                let serverError = StravaError.serverError(response.error ?? "Unable to start Strava connection")
+                error = serverError
+                return nil
+            }
+            return url
+        } catch let edgeError as EdgeFunctionError {
+            error = .serverError(edgeError.message)
+            return nil
+        } catch {
+            self.error = .networkError(error)
+            return nil
+        }
     }
 
     /// Disconnect from Strava by revoking access tokens
@@ -102,10 +102,8 @@ class StravaService: ObservableObject {
             #endif
 
             guard 200...299 ~= httpResponse.statusCode else {
-                if let errorResponse = try? JSONDecoder().decode(StravaErrorResponse.self, from: data) {
-                    throw StravaError.serverError(errorResponse.error)
-                }
-                throw StravaError.httpError(httpResponse.statusCode)
+                let edgeError = EdgeFunctionError.decode(statusCode: httpResponse.statusCode, data: data)
+                throw StravaError.serverError(edgeError.message)
             }
 
             // Parse success response
@@ -272,10 +270,8 @@ class StravaService: ObservableObject {
             #endif
 
             guard 200...299 ~= httpResponse.statusCode else {
-                if let errorResponse = try? JSONDecoder().decode(StravaErrorResponse.self, from: data) {
-                    throw StravaError.serverError(errorResponse.error)
-                }
-                throw StravaError.httpError(httpResponse.statusCode)
+                let edgeError = EdgeFunctionError.decode(statusCode: httpResponse.statusCode, data: data)
+                throw StravaError.serverError(edgeError.message)
             }
 
             // Parse job response
@@ -450,11 +446,6 @@ private struct StravaDisconnectResponse: Codable {
     let success: Bool
     let message: String
     let athlete_id: Int?
-}
-
-private struct StravaErrorResponse: Codable {
-    let error: String
-    let details: String?
 }
 
 struct StravaSyncResponse: Codable {
