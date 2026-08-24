@@ -112,11 +112,12 @@ struct SyncOperation: Codable, Identifiable {
     var lastError: String?
 
     init(
+        id: UUID = UUID(),
         entityType: SyncEntityType,
         entityId: String,
         operationType: SyncOperationType
     ) {
-        self.id = UUID()
+        self.id = id
         self.entityType = entityType
         self.entityId = entityId
         self.operationType = operationType

@@ -62,7 +62,7 @@ final class ActivitySyncAcknowledgementStore {
 
 @MainActor
 final class ActivityCreateSyncCoordinator {
-    typealias RemoteUpsert = @MainActor (Activity) async throws -> Activity
+    typealias RemoteUpsert = @MainActor (Activity, UUID) async throws -> Activity
 
     private let localRepository: any ActivitySyncLocalRepository
     private let acknowledgementStore: ActivitySyncAcknowledgementStore
@@ -90,7 +90,7 @@ final class ActivityCreateSyncCoordinator {
         }
 
         let localActivity = try await localRepository.activity(forNumericID: activityID)
-        let acknowledgedActivity = try await remoteUpsert(localActivity)
+        let acknowledgedActivity = try await remoteUpsert(localActivity, operationID)
 
         // Persist the server response before touching local state. A restart replays
         // this acknowledgement without issuing another remote create.

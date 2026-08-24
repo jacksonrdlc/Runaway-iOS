@@ -2,6 +2,58 @@ import Foundation
 
 enum DailyCommitmentIntentKeys {
     static let pendingActivityType = "pending_widget_commitment_type"
+    static let pendingAction = "pending_widget_commitment_action"
+}
+
+struct PendingWidgetCommitmentAction: Codable, Equatable {
+    static let currentVersion = 1
+
+    let id: UUID
+    let version: Int
+    let activityType: String
+
+    init(id: UUID = UUID(), version: Int = currentVersion, activityType: String) {
+        self.id = id
+        self.version = version
+        self.activityType = activityType
+    }
+}
+
+struct PendingWidgetCommitmentStore {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    @discardableResult
+    func enqueue(activityType: String, id: UUID = UUID()) -> PendingWidgetCommitmentAction {
+        let action = PendingWidgetCommitmentAction(id: id, activityType: activityType)
+        if let data = try? JSONEncoder().encode(action) {
+            defaults.set(data, forKey: DailyCommitmentIntentKeys.pendingAction)
+            defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingActivityType)
+        }
+        return action
+    }
+
+    func pendingAction() -> PendingWidgetCommitmentAction? {
+        if let data = defaults.data(forKey: DailyCommitmentIntentKeys.pendingAction),
+           let action = try? JSONDecoder().decode(PendingWidgetCommitmentAction.self, from: data) {
+            return action
+        }
+
+        guard let legacyType = defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType) else {
+            return nil
+        }
+        return enqueue(activityType: legacyType)
+    }
+
+    @discardableResult
+    func compareAndDelete(_ processedAction: PendingWidgetCommitmentAction) -> Bool {
+        guard pendingAction() == processedAction else { return false }
+        defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingAction)
+        return true
+    }
 }
 
 enum DailyCommitmentIntentOutcome: Equatable {
@@ -29,7 +81,8 @@ struct DailyCommitmentIntentClient {
     }
 
     func setCommitment(activityType: String) async -> DailyCommitmentIntentOutcome {
-        defaults.set(activityType, forKey: DailyCommitmentIntentKeys.pendingActivityType)
+        let pendingStore = PendingWidgetCommitmentStore(defaults: defaults)
+        let pendingAction = pendingStore.enqueue(activityType: activityType)
 
         guard let token = await accessToken(), !token.isEmpty else {
             return .requiresAuthenticatedApp
@@ -75,7 +128,7 @@ struct DailyCommitmentIntentClient {
 
             defaults.set(activityType, forKey: "todays_commitment_type")
             defaults.set(false, forKey: "todays_commitment_fulfilled")
-            defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingActivityType)
+            _ = pendingStore.compareAndDelete(pendingAction)
             return .saved
         } catch {
             return .failed(nil)

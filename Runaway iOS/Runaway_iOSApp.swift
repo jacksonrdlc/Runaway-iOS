@@ -188,9 +188,11 @@ struct Runaway_iOSApp: App {
     private func applyPendingWidgetCommitment() async {
         guard userSession.isReady,
               let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier),
-              let rawType = defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType),
-              let activityType = CommitmentActivityType(rawValue: rawType),
               let athleteId = userSession.userId else { return }
+
+        let pendingStore = PendingWidgetCommitmentStore(defaults: defaults)
+        guard let pendingAction = pendingStore.pendingAction(),
+              let activityType = CommitmentActivityType(rawValue: pendingAction.activityType) else { return }
 
         let manager = CommitmentManager.shared
         let loadResult = await manager.loadTodaysCommitment(for: athleteId)
@@ -203,7 +205,9 @@ struct Runaway_iOSApp: App {
             } else {
                 try await manager.updateCommitment(to: activityType)
             }
-            defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingActivityType)
+            if !pendingStore.compareAndDelete(pendingAction) {
+                requestPendingWidgetCommitmentDrain()
+            }
         } catch {
             // Retain the request for the next authenticated retry.
         }

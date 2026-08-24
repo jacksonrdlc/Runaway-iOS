@@ -39,6 +39,10 @@ struct PaginatedResult<T> {
 
 // MARK: - Supabase Activity Repository
 
+enum ActivityIdempotencyError: Error {
+    case missingClientOperationID
+}
+
 /// Concrete implementation using Supabase
 final class SupabaseActivityRepository: ActivityRepositoryProtocol {
 
@@ -72,7 +76,14 @@ final class SupabaseActivityRepository: ActivityRepositoryProtocol {
     }
 
     func createActivity(_ activity: Activity) async throws -> Activity {
-        return try await ActivityService.createActivity(activity: activity)
+        throw ActivityIdempotencyError.missingClientOperationID
+    }
+
+    func createActivity(_ activity: Activity, clientOperationID: UUID) async throws -> Activity {
+        try await ActivityService.createActivity(
+            activity: activity,
+            clientOperationID: clientOperationID
+        )
     }
 
     func updateActivity(_ activity: Activity) async throws -> Activity {

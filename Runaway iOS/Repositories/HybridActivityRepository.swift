@@ -91,11 +91,16 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
         let savedActivity = try await localRepository.createActivity(activity)
 
         // Queue for sync
-        syncEngine?.queueUpload(entityType: .activity, entityId: String(savedActivity.id))
+        let proposedOperationID = UUID()
+        let operationID = syncEngine?.queueUpload(
+            entityType: .activity,
+            entityId: String(savedActivity.id),
+            operationID: proposedOperationID
+        ) ?? proposedOperationID
 
         // Try immediate sync if online
         Task {
-            await attemptImmediateSync(activity: savedActivity)
+            await attemptImmediateSync(activity: savedActivity, operationID: operationID)
         }
 
         return savedActivity
@@ -176,9 +181,12 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
                 if activity.syncStatus == .pendingUpload {
                     let codableActivity = ActivityMapper.toCodable(activity)
                     if activity.supabaseId == nil {
-                        // Create on server
-                        let created = try await remoteRepository.createActivity(codableActivity)
-                        try localRepository.markSynced(localId: activity.localId, supabaseId: created.id, serverVersion: 1)
+                        // Never create outside the durable queue/idempotency contract.
+                        syncEngine?.queueUpload(
+                            entityType: .activity,
+                            entityId: String(codableActivity.id),
+                            operationID: activity.localId
+                        )
                     } else {
                         // Update on server
                         _ = try await remoteRepository.updateActivity(codableActivity)
@@ -214,13 +222,23 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
     }
 
     /// Attempt immediate sync after create
-    private func attemptImmediateSync(activity: Activity) async {
+    private func attemptImmediateSync(activity: Activity, operationID: UUID) async {
         guard syncEngine?.isOnline ?? true else { return }
 
         do {
-            let created = try await remoteRepository.createActivity(activity)
-
-            try localRepository.upsertFromServer(created)
+            let coordinator = ActivityCreateSyncCoordinator(
+                localRepository: localRepository,
+                remoteUpsert: { activity, operationID in
+                    try await self.remoteRepository.createActivity(
+                        activity,
+                        clientOperationID: operationID
+                    )
+                }
+            )
+            try await coordinator.sync(
+                operationID: operationID,
+                numericEntityID: String(activity.id)
+            )
 
             if FeatureFlags.debugSyncLogging {
                 #if DEBUG

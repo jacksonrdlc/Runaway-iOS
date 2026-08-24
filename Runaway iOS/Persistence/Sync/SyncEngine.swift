@@ -96,25 +96,34 @@ final class SyncEngine: ObservableObject {
     // MARK: - Queue Management
 
     /// Queue an entity for upload
-    func queueUpload(entityType: SyncEntityType, entityId: String) {
+    @discardableResult
+    func queueUpload(
+        entityType: SyncEntityType,
+        entityId: String,
+        operationID: UUID = UUID()
+    ) -> UUID {
         let operation = SyncOperation(
+            id: operationID,
             entityType: entityType,
             entityId: entityId,
             operationType: .create
         )
 
         // Avoid duplicates
-        if !uploadQueue.contains(where: { $0.entityType == entityType && $0.entityId == entityId }) {
-            uploadQueue.append(operation)
-            updatePendingCount()
-            savePendingOperations()
-
-            if FeatureFlags.debugSyncLogging {
-                #if DEBUG
-                print("[SyncEngine] Queued upload: \(entityType) \(entityId)")
-                #endif
-            }
+        if let existing = uploadQueue.first(where: { $0.entityType == entityType && $0.entityId == entityId }) {
+            return existing.id
         }
+
+        uploadQueue.append(operation)
+        updatePendingCount()
+        savePendingOperations()
+
+        if FeatureFlags.debugSyncLogging {
+            #if DEBUG
+            print("[SyncEngine] Queued upload: \(entityType) \(entityId)")
+            #endif
+        }
+        return operation.id
     }
 
     /// Queue an entity for deletion
@@ -266,8 +275,11 @@ final class SyncEngine: ObservableObject {
         case .create, .update:
             let coordinator = ActivityCreateSyncCoordinator(
                 localRepository: localRepo,
-                remoteUpsert: { activity in
-                    try await SupabaseActivityRepository.shared.createActivity(activity)
+                remoteUpsert: { activity, operationID in
+                    try await SupabaseActivityRepository.shared.createActivity(
+                        activity,
+                        clientOperationID: operationID
+                    )
                 }
             )
             try await coordinator.sync(operationID: operation.id, numericEntityID: operation.entityId)
@@ -361,7 +373,7 @@ final class SyncEngine: ObservableObject {
 
 }
 
-private enum SyncEngineError: Error {
+enum SyncEngineError: Error {
     case invalidEntityIdentifier
     case localRecordMissing
     case unsupportedOperation(SyncEntityType)

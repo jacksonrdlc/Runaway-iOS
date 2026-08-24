@@ -170,3 +170,48 @@ Result: completed in 5.4 seconds with exit `74` before source compilation. The r
 ### Hard Task 8 dependency
 
 The client now prevents duplicate rows for the current contract by using the real numeric activity ID as the upsert conflict key and durably replaying server acknowledgements. The complete cross-installation design still requires Task 8 backend schema support for a user-scoped unique `client_operation_id` (for example, unique on `athlete_id, client_operation_id`) accepted and returned by activity create/upsert. Without that server-owned uniqueness constraint, independently generated client numeric IDs can theoretically collide even though retries of one queued operation are idempotent. No backend file or production system was changed for this follow-up.
+
+## Final findings follow-up: fail-closed idempotency and widget action identity
+
+Date: 2026-08-24
+
+### Implementation corrections
+
+- Changed `SyncEngineError` from file-private to module-internal so the reliability coordinator and compile-focused tests can reference the shared error type cleanly.
+- `SyncOperation` now accepts an explicit UUID, and `SyncEngine.queueUpload` persists/returns that UUID. Duplicate queue requests return the already-durable operation ID.
+- Queued and immediate Hybrid activity creates share the exact same operation UUID and `ActivityCreateSyncCoordinator` path. Coordinator remote closures now require `(Activity, UUID)` and pass the UUID through the repository and service APIs.
+- The legacy remote `createActivity(_:)` implementation now throws `missingClientOperationID`; it cannot silently perform a non-idempotent insert.
+- The idempotent payload removes the numeric local `id`, includes `client_operation_id`, and uses PostgREST conflict target `athlete_id,client_operation_id`. The backend therefore generates the activity ID. Missing column/index support causes the request to fail, leaving the acknowledgement absent and queued operation retained.
+- Hybrid full-sync discovery no longer inserts pending creates directly. It only queues them with a durable operation ID, preserving the same fail-closed contract.
+- Widget pending work is now one encoded immutable `PendingWidgetCommitmentAction` containing `id`, `version`, and `activityType`. Legacy type-only state is migrated on read.
+- Successful widget/app processing clears pending data only through `compareAndDelete`, after re-reading and matching the exact action. If a producer replaces the action during a drain, the new action remains and the app coalesces another drain.
+
+### Exact Task 8 migration dependency
+
+The iOS contract now intentionally requires all of the following backend support; it does not fall back when any item is absent:
+
+- Add nullable UUID column `activities.client_operation_id` so existing rows can migrate safely while every new iOS queued/immediate create supplies a value.
+- Add a user-scoped unique constraint or partial unique index on `(athlete_id, client_operation_id)`, with the partial predicate `client_operation_id IS NOT NULL` if the column remains nullable for legacy/imported rows.
+- Permit PostgREST upsert conflict resolution on the exact target `athlete_id,client_operation_id`.
+- Preserve server generation of `activities.id`; the iOS idempotent-create payload deliberately omits `id`.
+- Enforce ownership through RLS/server policy: the JWT-authenticated user must own the referenced athlete, inserts must not target another user's `athlete_id`, and conflict updates must not transfer or mutate row ownership. The conflict path must return only the caller-owned existing row.
+- Return the canonical activity row after both insert and conflict-update so the client can atomically persist and replay the server acknowledgement.
+
+Until Task 8 applies this migration and ownership policy, queued and immediate activity creates fail safely and remain retryable. No backend file or production system was modified here.
+
+### Tests added or updated
+
+- Coordinator tests now assert the exact operation UUID reaches the remote closure and remains stable across restart acknowledgement replay.
+- Added compile-focused signature coverage for explicit `SyncOperation.id`, `ActivityService.createActivity(activity:clientOperationID:)`, and module-visible `SyncEngineError`.
+- Existing widget intent tests now assert encoded pending actions instead of the legacy type key.
+- Added producer-during-drain coverage proving compare-and-delete cannot remove a newer action.
+
+### Bounded static validation
+
+Command:
+
+```sh
+set -o pipefail; xcrun swiftc -parse 'Runaway iOS/Persistence/Models/SyncTypes.swift' 'Runaway iOS/Persistence/Sync/SyncEngine.swift' 'Runaway iOS/Persistence/Sync/ActivitySyncReliability.swift' 'Runaway iOS/Repositories/ActivityRepository.swift' 'Runaway iOS/Repositories/HybridActivityRepository.swift' 'Runaway iOS/Services/ActivityService.swift' 'Runaway iOS/Services/DailyCommitmentIntentClient.swift' 'Runaway iOS/Runaway_iOSApp.swift' 'Runaway iOS/Runaway iOSTests/Task7ReliabilityFollowupTests.swift' 'Runaway iOS/Runaway iOSTests/SetDailyCommitmentIntentTests.swift' && git diff --check && if rg -n 'remoteUpsert: \{ activity in|createActivity\(codableActivity\)|\.upsert\(activity, onConflict: "id"\)' 'Runaway iOS' --glob '*.swift'; then exit 1; else exit 0; fi
+```
+
+Result: exit `0` in 3.5 seconds. All changed Swift files passed parser validation, the diff whitespace check passed, and the prohibited non-idempotent call-shape scan returned no matches. No sandbox-blocked `xcodebuild` command was repeated.

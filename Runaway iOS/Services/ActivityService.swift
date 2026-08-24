@@ -21,6 +21,47 @@ struct AnyEncodable: Encodable {
     }
 }
 
+private struct IdempotentActivityCreatePayload: Encodable {
+    let activity: Activity
+    let clientOperationID: UUID
+
+    func encode(to encoder: Encoder) throws {
+        let encodedActivity = try JSONEncoder().encode(activity)
+        var fields = try JSONDecoder().decode([String: ActivityPayloadValue].self, from: encodedActivity)
+        fields.removeValue(forKey: "id")
+        fields["client_operation_id"] = .string(clientOperationID.uuidString.lowercased())
+        try fields.encode(to: encoder)
+    }
+}
+
+private enum ActivityPayloadValue: Codable {
+    case string(String)
+    case integer(Int)
+    case number(Double)
+    case boolean(Bool)
+    case null
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { self = .null }
+        else if let value = try? container.decode(Bool.self) { self = .boolean(value) }
+        else if let value = try? container.decode(Int.self) { self = .integer(value) }
+        else if let value = try? container.decode(Double.self) { self = .number(value) }
+        else { self = .string(try container.decode(String.self)) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let value): try container.encode(value)
+        case .integer(let value): try container.encode(value)
+        case .number(let value): try container.encode(value)
+        case .boolean(let value): try container.encode(value)
+        case .null: try container.encodeNil()
+        }
+    }
+}
+
 class ActivityService {
     
     // MARK: - Pagination Support
@@ -126,9 +167,16 @@ class ActivityService {
     }
     
     // Function to create an activity
-    static func createActivity(activity: Activity) async throws -> Activity {
+    static func createActivity(
+        activity: Activity,
+        clientOperationID: UUID
+    ) async throws -> Activity {
+        let payload = IdempotentActivityCreatePayload(
+            activity: activity,
+            clientOperationID: clientOperationID
+        )
         let createdActivity: Activity = try await supabase.from("activities")
-            .upsert(activity, onConflict: "id")
+            .upsert(payload, onConflict: "athlete_id,client_operation_id")
             .select(
                 """
                 id,

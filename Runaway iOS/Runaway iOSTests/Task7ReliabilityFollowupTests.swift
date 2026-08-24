@@ -5,16 +5,22 @@ import XCTest
 final class Task7ReliabilityFollowupTests: XCTestCase {
     func testNumericQueueIdentifierUsesRepositoryLookupPath() async throws {
         let repository = ActivitySyncRepositorySpy(activity: Activity(id: 417, name: "Queued run"))
+        let operationID = UUID()
+        var receivedOperationID: UUID?
         let coordinator = ActivityCreateSyncCoordinator(
             localRepository: repository,
             acknowledgementStore: ActivitySyncAcknowledgementStore(directoryURL: temporaryDirectory()),
-            remoteUpsert: { $0 }
+            remoteUpsert: { activity, operationID in
+                receivedOperationID = operationID
+                return activity
+            }
         )
 
-        try await coordinator.sync(operationID: UUID(), numericEntityID: "417")
+        try await coordinator.sync(operationID: operationID, numericEntityID: "417")
 
         XCTAssertEqual(repository.lookedUpIDs, [417])
         XCTAssertEqual(repository.appliedServerIDs, [417])
+        XCTAssertEqual(receivedOperationID, operationID)
     }
 
     func testRestartReplaysDurableAcknowledgementWithoutSecondRemoteCreate() async throws {
@@ -25,11 +31,13 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
             applyFailuresRemaining: 1
         )
         var remoteCreateCount = 0
+        var receivedOperationIDs: [UUID] = []
         let firstCoordinator = ActivityCreateSyncCoordinator(
             localRepository: firstRepository,
             acknowledgementStore: ActivitySyncAcknowledgementStore(directoryURL: directory),
-            remoteUpsert: { activity in
+            remoteUpsert: { activity, receivedOperationID in
                 remoteCreateCount += 1
+                receivedOperationIDs.append(receivedOperationID)
                 return activity
             }
         )
@@ -43,14 +51,16 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
         let restartedCoordinator = ActivityCreateSyncCoordinator(
             localRepository: restartedRepository,
             acknowledgementStore: ActivitySyncAcknowledgementStore(directoryURL: directory),
-            remoteUpsert: { activity in
+            remoteUpsert: { activity, receivedOperationID in
                 remoteCreateCount += 1
+                receivedOperationIDs.append(receivedOperationID)
                 return activity
             }
         )
         try await restartedCoordinator.sync(operationID: operationID, numericEntityID: "912")
 
         XCTAssertEqual(remoteCreateCount, 1)
+        XCTAssertEqual(receivedOperationIDs, [operationID])
         XCTAssertEqual(restartedRepository.lookedUpIDs, [])
         XCTAssertEqual(restartedRepository.appliedServerIDs, [912])
     }
@@ -73,6 +83,27 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
     func testCommitmentLoadFailureRetainsPendingWithoutChoosingMutation() {
         let result = CommitmentLoadResult.failure(TestError.simulated)
         XCTAssertEqual(WidgetCommitmentPendingDecision.decide(from: result), .retainPending)
+    }
+
+    func testCompileFocusedIdempotentSignaturesCarryOperationID() {
+        let expectedID = UUID()
+        let operation = SyncOperation(
+            id: expectedID,
+            entityType: .activity,
+            entityId: "55",
+            operationType: .create
+        )
+        let serviceCall: (Activity, UUID) async throws -> Activity = { activity, operationID in
+            try await ActivityService.createActivity(
+                activity: activity,
+                clientOperationID: operationID
+            )
+        }
+        let visibleError: Error = SyncEngineError.invalidEntityIdentifier
+
+        XCTAssertEqual(operation.id, expectedID)
+        _ = serviceCall
+        _ = visibleError
     }
 
     func testAccessibilityLayoutUsesVerticalControlsAndAllowsMultilineStats() {

@@ -13,7 +13,7 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
         let outcome = await client.setCommitment(activityType: "Run")
 
         XCTAssertEqual(outcome, .requiresAuthenticatedApp)
-        XCTAssertEqual(defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType), "Run")
+        XCTAssertEqual(PendingWidgetCommitmentStore(defaults: defaults).pendingAction()?.activityType, "Run")
         XCTAssertNil(defaults.string(forKey: "todays_commitment_type"))
     }
 
@@ -33,7 +33,7 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
         }
         XCTAssertEqual(statusCode, 401)
         XCTAssertNil(defaults.string(forKey: "todays_commitment_type"))
-        XCTAssertEqual(defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType), "Walk")
+        XCTAssertEqual(PendingWidgetCommitmentStore(defaults: defaults).pendingAction()?.activityType, "Walk")
     }
 
     func testSuccessfulAuthenticatedMutationPublishesCommitment() async {
@@ -52,7 +52,17 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
 
         XCTAssertEqual(outcome, .saved)
         XCTAssertEqual(defaults.string(forKey: "todays_commitment_type"), "Yoga")
-        XCTAssertNil(defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType))
+        XCTAssertNil(PendingWidgetCommitmentStore(defaults: defaults).pendingAction())
+    }
+
+    func testProducerDuringDrainCannotBeClearedByOlderAction() {
+        let defaults = makeDefaults()
+        let store = PendingWidgetCommitmentStore(defaults: defaults)
+        let drainingAction = store.enqueue(activityType: "Run", id: UUID())
+        let newerAction = store.enqueue(activityType: "Yoga", id: UUID())
+
+        XCTAssertFalse(store.compareAndDelete(drainingAction))
+        XCTAssertEqual(store.pendingAction(), newerAction)
     }
 
     private func makeDefaults() -> UserDefaults {
