@@ -20,40 +20,104 @@ struct PendingWidgetCommitmentAction: Codable, Equatable {
 }
 
 struct PendingWidgetCommitmentStore {
-    private let defaults: UserDefaults
+    static let appGroupIdentifier = "group.com.jackrudelic.runawayios"
 
-    init(defaults: UserDefaults) {
+    private let defaults: UserDefaults
+    private let directoryURL: URL
+    private let fileManager: FileManager
+
+    init(
+        defaults: UserDefaults,
+        directoryURL: URL? = nil,
+        fileManager: FileManager = .default
+    ) throws {
         self.defaults = defaults
+        self.fileManager = fileManager
+        if let directoryURL {
+            self.directoryURL = directoryURL
+        } else {
+            guard let containerURL = fileManager.containerURL(
+                forSecurityApplicationGroupIdentifier: Self.appGroupIdentifier
+            ) else {
+                throw PendingWidgetCommitmentStoreError.appGroupUnavailable
+            }
+            self.directoryURL = containerURL.appendingPathComponent(
+                "PendingWidgetCommitments",
+                isDirectory: true
+            )
+        }
     }
 
     @discardableResult
-    func enqueue(activityType: String, id: UUID = UUID()) -> PendingWidgetCommitmentAction {
+    func enqueue(activityType: String, id: UUID = UUID()) throws -> PendingWidgetCommitmentAction {
         let action = PendingWidgetCommitmentAction(id: id, activityType: activityType)
-        if let data = try? JSONEncoder().encode(action) {
-            defaults.set(data, forKey: DailyCommitmentIntentKeys.pendingAction)
-            defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingActivityType)
-        }
+        try write(action)
         return action
     }
 
-    func pendingAction() -> PendingWidgetCommitmentAction? {
-        if let data = defaults.data(forKey: DailyCommitmentIntentKeys.pendingAction),
-           let action = try? JSONDecoder().decode(PendingWidgetCommitmentAction.self, from: data) {
-            return action
-        }
-
-        guard let legacyType = defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType) else {
-            return nil
-        }
-        return enqueue(activityType: legacyType)
+    func pendingActions() throws -> [PendingWidgetCommitmentAction] {
+        try migrateLegacyState()
+        guard fileManager.fileExists(atPath: directoryURL.path) else { return [] }
+        return try fileManager.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )
+        .filter { $0.pathExtension == "json" }
+        .map { try JSONDecoder().decode(PendingWidgetCommitmentAction.self, from: Data(contentsOf: $0)) }
+        .sorted { $0.id.uuidString < $1.id.uuidString }
     }
 
     @discardableResult
-    func compareAndDelete(_ processedAction: PendingWidgetCommitmentAction) -> Bool {
-        guard pendingAction() == processedAction else { return false }
-        defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingAction)
+    func deleteExact(_ processedAction: PendingWidgetCommitmentAction) throws -> Bool {
+        let url = actionURL(processedAction.id)
+        guard fileManager.fileExists(atPath: url.path) else { return false }
+        let current = try JSONDecoder().decode(
+            PendingWidgetCommitmentAction.self,
+            from: Data(contentsOf: url)
+        )
+        guard current == processedAction else { return false }
+        try fileManager.removeItem(at: url)
         return true
     }
+
+    private func migrateLegacyState() throws {
+        if let data = defaults.data(forKey: DailyCommitmentIntentKeys.pendingAction),
+           let action = try? JSONDecoder().decode(PendingWidgetCommitmentAction.self, from: data) {
+            try write(action)
+            defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingAction)
+        }
+
+        if let legacyType = defaults.string(forKey: DailyCommitmentIntentKeys.pendingActivityType) {
+            try write(PendingWidgetCommitmentAction(activityType: legacyType))
+            defaults.removeObject(forKey: DailyCommitmentIntentKeys.pendingActivityType)
+        }
+    }
+
+    private func write(_ action: PendingWidgetCommitmentAction) throws {
+        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        let url = actionURL(action.id)
+        if fileManager.fileExists(atPath: url.path) {
+            let existing = try JSONDecoder().decode(
+                PendingWidgetCommitmentAction.self,
+                from: Data(contentsOf: url)
+            )
+            guard existing == action else {
+                throw PendingWidgetCommitmentStoreError.actionIDCollision
+            }
+            return
+        }
+        try JSONEncoder().encode(action).write(to: url, options: .atomic)
+    }
+
+    private func actionURL(_ id: UUID) -> URL {
+        directoryURL.appendingPathComponent(id.uuidString).appendingPathExtension("json")
+    }
+}
+
+enum PendingWidgetCommitmentStoreError: Error {
+    case appGroupUnavailable
+    case actionIDCollision
 }
 
 enum DailyCommitmentIntentOutcome: Equatable {
@@ -67,22 +131,30 @@ struct DailyCommitmentIntentClient {
     private let session: URLSession
     private let accessToken: () async -> String?
     private let now: () -> Date
+    private let pendingStore: PendingWidgetCommitmentStore?
 
     init(
         defaults: UserDefaults,
         session: URLSession = .shared,
         accessToken: @escaping () async -> String?,
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        pendingDirectoryURL: URL? = nil
     ) {
         self.defaults = defaults
         self.session = session
         self.accessToken = accessToken
         self.now = now
+        self.pendingStore = try? PendingWidgetCommitmentStore(
+            defaults: defaults,
+            directoryURL: pendingDirectoryURL
+        )
     }
 
     func setCommitment(activityType: String) async -> DailyCommitmentIntentOutcome {
-        let pendingStore = PendingWidgetCommitmentStore(defaults: defaults)
-        let pendingAction = pendingStore.enqueue(activityType: activityType)
+        guard let pendingStore,
+              let pendingAction = try? pendingStore.enqueue(activityType: activityType) else {
+            return .failed(nil)
+        }
 
         guard let token = await accessToken(), !token.isEmpty else {
             return .requiresAuthenticatedApp
@@ -128,7 +200,7 @@ struct DailyCommitmentIntentClient {
 
             defaults.set(activityType, forKey: "todays_commitment_type")
             defaults.set(false, forKey: "todays_commitment_fulfilled")
-            _ = pendingStore.compareAndDelete(pendingAction)
+            _ = try? pendingStore.deleteExact(pendingAction)
             return .saved
         } catch {
             return .failed(nil)

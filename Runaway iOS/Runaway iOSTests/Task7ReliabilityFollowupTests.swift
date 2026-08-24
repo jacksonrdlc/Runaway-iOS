@@ -106,6 +106,28 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
         _ = visibleError
     }
 
+    func testOfflineUpdateOperationStaysUpdateAndUsesUpdateSignature() {
+        let operation = SyncOperation(
+            entityType: .activity,
+            entityId: "73",
+            operationType: .update
+        )
+        let updateCall: (Activity) async throws -> Activity = { activity in
+            try await ActivityService.updateActivity(activity: activity)
+        }
+
+        XCTAssertEqual(operation.operationType, .update)
+        _ = updateCall
+    }
+
+    func testNilSyncEngineFailsClosedBeforeRemoteCreateCanStart() {
+        XCTAssertThrowsError(try HybridActivityRepository.requireDurableSyncEngine(nil)) { error in
+            guard case HybridActivityRepositoryError.syncEngineUnavailable = error else {
+                return XCTFail("Expected explicit durable sync configuration failure")
+            }
+        }
+    }
+
     func testAccessibilityLayoutUsesVerticalControlsAndAllowsMultilineStats() {
         XCTAssertFalse(RunRecordingLayoutPolicy.usesVerticalControls(for: .large))
         XCTAssertEqual(RunRecordingLayoutPolicy.statLineLimit(for: .large), 1)

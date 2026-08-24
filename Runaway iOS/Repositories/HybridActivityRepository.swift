@@ -89,14 +89,15 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
     func createActivity(_ activity: Activity) async throws -> Activity {
         // Save locally first
         let savedActivity = try await localRepository.createActivity(activity)
+        let syncEngine = try Self.requireDurableSyncEngine(syncEngine)
 
         // Queue for sync
         let proposedOperationID = UUID()
-        let operationID = syncEngine?.queueUpload(
+        let operationID = syncEngine.queueUpload(
             entityType: .activity,
             entityId: String(savedActivity.id),
             operationID: proposedOperationID
-        ) ?? proposedOperationID
+        )
 
         // Try immediate sync if online
         Task {
@@ -110,9 +111,14 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
     func updateActivity(_ activity: Activity) async throws -> Activity {
         // Update locally first
         let updatedActivity = try await localRepository.updateActivity(activity)
+        let syncEngine = try Self.requireDurableSyncEngine(syncEngine)
 
         // Queue for sync
-        syncEngine?.queueUpload(entityType: .activity, entityId: String(activity.id))
+        syncEngine.queueUpload(
+            entityType: .activity,
+            entityId: String(updatedActivity.id),
+            operationType: .update
+        )
 
         // Try immediate sync if online
         Task {
@@ -242,7 +248,7 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
 
             if FeatureFlags.debugSyncLogging {
                 #if DEBUG
-                print("[HybridActivityRepository] Immediate sync successful for activity \(created.id)")
+                print("[HybridActivityRepository] Immediate sync successful for local activity \(activity.id)")
                 #endif
             }
         } catch {
@@ -253,6 +259,13 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             }
             // Activity remains in pending state, will be synced later
         }
+    }
+
+    static func requireDurableSyncEngine(_ syncEngine: SyncEngine?) throws -> SyncEngine {
+        guard let syncEngine else {
+            throw HybridActivityRepositoryError.syncEngineUnavailable
+        }
+        return syncEngine
     }
 
     /// Attempt immediate update sync
@@ -299,4 +312,8 @@ final class HybridActivityRepository: ActivityRepositoryProtocol {
             }
         }
     }
+}
+
+enum HybridActivityRepositoryError: Error {
+    case syncEngineUnavailable
 }

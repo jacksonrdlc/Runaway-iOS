@@ -34,6 +34,18 @@ private struct IdempotentActivityCreatePayload: Encodable {
     }
 }
 
+private struct ActivityUpdatePayload: Encodable {
+    let activity: Activity
+
+    func encode(to encoder: Encoder) throws {
+        let encodedActivity = try JSONEncoder().encode(activity)
+        var fields = try JSONDecoder().decode([String: ActivityPayloadValue].self, from: encodedActivity)
+        fields.removeValue(forKey: "id")
+        fields.removeValue(forKey: "athlete_id")
+        try fields.encode(to: encoder)
+    }
+}
+
 private enum ActivityPayloadValue: Codable {
     case string(String)
     case integer(Int)
@@ -216,6 +228,22 @@ class ActivityService {
         }
 
         return createdActivity
+    }
+
+    static func updateActivity(activity: Activity) async throws -> Activity {
+        guard let athleteID = activity.athlete_id else {
+            throw RepositoryError.invalidData("Activity update requires athlete ownership")
+        }
+
+        let updatedActivity: Activity = try await supabase.from("activities")
+            .update(ActivityUpdatePayload(activity: activity))
+            .eq("id", value: activity.id)
+            .eq("athlete_id", value: athleteID)
+            .select()
+            .single()
+            .execute()
+            .value
+        return updatedActivity
     }
 
     // Function to create an activity with custom data (for recording)

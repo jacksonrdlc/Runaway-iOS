@@ -100,13 +100,14 @@ final class SyncEngine: ObservableObject {
     func queueUpload(
         entityType: SyncEntityType,
         entityId: String,
+        operationType: SyncOperationType = .create,
         operationID: UUID = UUID()
     ) -> UUID {
         let operation = SyncOperation(
             id: operationID,
             entityType: entityType,
             entityId: entityId,
-            operationType: .create
+            operationType: operationType
         )
 
         // Avoid duplicates
@@ -272,7 +273,7 @@ final class SyncEngine: ObservableObject {
         let localRepo = LocalActivityRepository()
 
         switch operation.operationType {
-        case .create, .update:
+        case .create:
             let coordinator = ActivityCreateSyncCoordinator(
                 localRepository: localRepo,
                 remoteUpsert: { activity, operationID in
@@ -283,6 +284,14 @@ final class SyncEngine: ObservableObject {
                 }
             )
             try await coordinator.sync(operationID: operation.id, numericEntityID: operation.entityId)
+
+        case .update:
+            guard let serverID = Int(operation.entityId) else {
+                throw SyncEngineError.invalidEntityIdentifier
+            }
+            let activity = try await localRepo.getActivity(id: serverID)
+            let updated = try await SupabaseActivityRepository.shared.updateActivity(activity)
+            try localRepo.upsertFromServer(updated)
 
         case .delete:
             guard let id = Int(operation.entityId) else {

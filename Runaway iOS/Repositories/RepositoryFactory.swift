@@ -20,12 +20,12 @@ enum RepositoryFactory {
     // MARK: - Activity Repository
 
     /// Get the activity repository (hybrid local + remote)
-    static func activityRepository(syncEngine: SyncEngine? = nil) -> any ActivityRepositoryProtocol {
+    static func activityRepository(syncEngine: SyncEngine = .shared) -> any ActivityRepositoryProtocol {
         return hybridActivityRepository(syncEngine: syncEngine)
     }
 
     /// Get hybrid activity repository (local + remote)
-    static func hybridActivityRepository(syncEngine: SyncEngine? = nil) -> HybridActivityRepository {
+    static func hybridActivityRepository(syncEngine: SyncEngine = .shared) -> HybridActivityRepository {
         if let existing = _hybridActivityRepository {
             return existing
         }
@@ -84,9 +84,9 @@ enum RepositoryFactory {
 final class DefaultRepositoryProvider: RepositoryProvider {
     static let shared = DefaultRepositoryProvider()
 
-    private let syncEngine: SyncEngine?
+    private let syncEngine: SyncEngine
 
-    init(syncEngine: SyncEngine? = nil) {
+    init(syncEngine: SyncEngine = .shared) {
         self.syncEngine = syncEngine
     }
 

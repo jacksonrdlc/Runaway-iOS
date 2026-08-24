@@ -4,26 +4,31 @@ import XCTest
 final class SetDailyCommitmentIntentTests: XCTestCase {
     func testMissingSessionQueuesAuthenticatedAppHandoffWithoutClaimingSuccess() async {
         let defaults = makeDefaults()
+        let pendingDirectory = makePendingDirectory()
         let client = DailyCommitmentIntentClient(
             defaults: defaults,
             session: .shared,
-            accessToken: { nil }
+            accessToken: { nil },
+            pendingDirectoryURL: pendingDirectory
         )
 
         let outcome = await client.setCommitment(activityType: "Run")
 
         XCTAssertEqual(outcome, .requiresAuthenticatedApp)
-        XCTAssertEqual(PendingWidgetCommitmentStore(defaults: defaults).pendingAction()?.activityType, "Run")
+        let store = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        XCTAssertEqual(try! store.pendingActions().map(\.activityType), ["Run"])
         XCTAssertNil(defaults.string(forKey: "todays_commitment_type"))
     }
 
     func testRejectedServerResponseDoesNotPublishOptimisticCommitment() async {
         let defaults = configuredDefaults()
+        let pendingDirectory = makePendingDirectory()
         let session = makeCommitmentSession(statusCode: 401)
         let client = DailyCommitmentIntentClient(
             defaults: defaults,
             session: session,
-            accessToken: { "expired-jwt" }
+            accessToken: { "expired-jwt" },
+            pendingDirectoryURL: pendingDirectory
         )
 
         let outcome = await client.setCommitment(activityType: "Walk")
@@ -33,11 +38,13 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
         }
         XCTAssertEqual(statusCode, 401)
         XCTAssertNil(defaults.string(forKey: "todays_commitment_type"))
-        XCTAssertEqual(PendingWidgetCommitmentStore(defaults: defaults).pendingAction()?.activityType, "Walk")
+        let store = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        XCTAssertEqual(try! store.pendingActions().map(\.activityType), ["Walk"])
     }
 
     func testSuccessfulAuthenticatedMutationPublishesCommitment() async {
         let defaults = configuredDefaults()
+        let pendingDirectory = makePendingDirectory()
         let session = makeCommitmentSession(statusCode: 201) { request in
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer valid-jwt")
             XCTAssertEqual(request.value(forHTTPHeaderField: "apikey"), "publishable-key")
@@ -45,24 +52,28 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
         let client = DailyCommitmentIntentClient(
             defaults: defaults,
             session: session,
-            accessToken: { "valid-jwt" }
+            accessToken: { "valid-jwt" },
+            pendingDirectoryURL: pendingDirectory
         )
 
         let outcome = await client.setCommitment(activityType: "Yoga")
 
         XCTAssertEqual(outcome, .saved)
         XCTAssertEqual(defaults.string(forKey: "todays_commitment_type"), "Yoga")
-        XCTAssertNil(PendingWidgetCommitmentStore(defaults: defaults).pendingAction())
+        let store = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        XCTAssertTrue(try! store.pendingActions().isEmpty)
     }
 
     func testProducerDuringDrainCannotBeClearedByOlderAction() {
         let defaults = makeDefaults()
-        let store = PendingWidgetCommitmentStore(defaults: defaults)
-        let drainingAction = store.enqueue(activityType: "Run", id: UUID())
-        let newerAction = store.enqueue(activityType: "Yoga", id: UUID())
+        let pendingDirectory = makePendingDirectory()
+        let drainStore = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        let producerStore = try! PendingWidgetCommitmentStore(defaults: defaults, directoryURL: pendingDirectory)
+        let drainingAction = try! drainStore.enqueue(activityType: "Run", id: UUID())
+        let newerAction = try! producerStore.enqueue(activityType: "Yoga", id: UUID())
 
-        XCTAssertFalse(store.compareAndDelete(drainingAction))
-        XCTAssertEqual(store.pendingAction(), newerAction)
+        XCTAssertTrue(try! drainStore.deleteExact(drainingAction))
+        XCTAssertEqual(try! drainStore.pendingActions(), [newerAction])
     }
 
     private func makeDefaults() -> UserDefaults {
@@ -70,6 +81,12 @@ final class SetDailyCommitmentIntentTests: XCTestCase {
         let defaults = UserDefaults(suiteName: name)!
         defaults.removePersistentDomain(forName: name)
         return defaults
+    }
+
+    private func makePendingDirectory() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("SetDailyCommitmentIntentTests")
+            .appendingPathComponent(UUID().uuidString)
     }
 
     private func configuredDefaults() -> UserDefaults {

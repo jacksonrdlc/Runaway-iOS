@@ -87,9 +87,7 @@ final class SupabaseActivityRepository: ActivityRepositoryProtocol {
     }
 
     func updateActivity(_ activity: Activity) async throws -> Activity {
-        // Note: ActivityService doesn't have a full update method
-        // Return the activity as-is since ActivityService.updateActivity is limited
-        return activity
+        try await ActivityService.updateActivity(activity: activity)
     }
 
     func deleteActivity(id: Int) async throws {

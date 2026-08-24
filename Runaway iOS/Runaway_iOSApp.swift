@@ -190,26 +190,30 @@ struct Runaway_iOSApp: App {
               let defaults = UserDefaults(suiteName: AppConstants.AppGroup.identifier),
               let athleteId = userSession.userId else { return }
 
-        let pendingStore = PendingWidgetCommitmentStore(defaults: defaults)
-        guard let pendingAction = pendingStore.pendingAction(),
-              let activityType = CommitmentActivityType(rawValue: pendingAction.activityType) else { return }
+        guard let pendingStore = try? PendingWidgetCommitmentStore(defaults: defaults),
+              let pendingActions = try? pendingStore.pendingActions() else { return }
 
-        let manager = CommitmentManager.shared
-        let loadResult = await manager.loadTodaysCommitment(for: athleteId)
-        let decision = WidgetCommitmentPendingDecision.decide(from: loadResult)
-        guard decision != .retainPending else { return }
+        for pendingAction in pendingActions {
+            guard let activityType = CommitmentActivityType(rawValue: pendingAction.activityType) else {
+                continue
+            }
 
-        do {
-            if decision == .create {
-                try await manager.createCommitment(activityType)
-            } else {
-                try await manager.updateCommitment(to: activityType)
+            let manager = CommitmentManager.shared
+            let loadResult = await manager.loadTodaysCommitment(for: athleteId)
+            let decision = WidgetCommitmentPendingDecision.decide(from: loadResult)
+            guard decision != .retainPending else { return }
+
+            do {
+                if decision == .create {
+                    try await manager.createCommitment(activityType)
+                } else {
+                    try await manager.updateCommitment(to: activityType)
+                }
+                _ = try pendingStore.deleteExact(pendingAction)
+            } catch {
+                // Retain this exact file and all remaining actions for retry.
+                return
             }
-            if !pendingStore.compareAndDelete(pendingAction) {
-                requestPendingWidgetCommitmentDrain()
-            }
-        } catch {
-            // Retain the request for the next authenticated retry.
         }
     }
 }

@@ -215,3 +215,36 @@ set -o pipefail; xcrun swiftc -parse 'Runaway iOS/Persistence/Models/SyncTypes.s
 ```
 
 Result: exit `0` in 3.5 seconds. All changed Swift files passed parser validation, the diff whitespace check passed, and the prohibited non-idempotent call-shape scan returned no matches. No sandbox-blocked `xcodebuild` command was repeated.
+
+## Final P1 closure: update semantics, durable enqueue gate, and file queue
+
+Date: 2026-08-24
+
+### Fixes
+
+- Removed the undefined `created.id` debug reference from Hybrid immediate-create logging.
+- `SyncEngine.queueUpload` now accepts and persists the operation type. Hybrid offline updates explicitly enqueue `.update`.
+- `SyncEngine` separates create and update execution. Creates continue through the operation-ID idempotent coordinator. Updates resolve the existing local activity by numeric server/Supabase ID, call the remote update API, and reconcile the returned canonical row.
+- `ActivityService.updateActivity(activity:)` issues an ownership-scoped update constrained by both `activities.id` and `activities.athlete_id`. Its payload omits `id` and `athlete_id`, preventing primary-key or ownership mutation. It does not use `client_operation_id` create semantics.
+- `SupabaseActivityRepository.updateActivity` now calls the real update service instead of returning the input unchanged.
+- Hybrid create and update save local data first, then require a durable `SyncEngine` before queueing or launching any immediate network work. Missing sync configuration throws `HybridActivityRepositoryError.syncEngineUnavailable`; no remote create occurs and the local pending record remains.
+- `RepositoryFactory` and `DefaultRepositoryProvider` now inject nonoptional `SyncEngine.shared` by default. Optional construction remains only as an explicit test/custom configuration path guarded by the fail-closed check.
+- Replaced the cross-process UserDefaults single slot with per-action immutable JSON files at `<app-group>/PendingWidgetCommitments/<action UUID>.json`. Writes are atomic, enumeration drains every file, and deletion verifies and removes only the exact processed file.
+- Legacy encoded-action and type-only UserDefaults keys migrate by atomically writing a unique action file before removing the legacy key. Migration failure leaves the legacy value intact.
+
+### Tests added or updated
+
+- Update operation test asserts `.update` is retained and compile-checks the ownership-scoped update service signature.
+- Nil SyncEngine test asserts the explicit fail-closed configuration error.
+- Widget producer-during-drain test uses two store instances sharing one directory and proves deleting the processed file leaves the newer producer file intact.
+- Existing widget success/failure tests now use isolated immutable file queues.
+
+### Bounded parser/static validation
+
+Command:
+
+```sh
+set -o pipefail; xcrun swiftc -parse 'Runaway iOS/Persistence/Sync/SyncEngine.swift' 'Runaway iOS/Repositories/ActivityRepository.swift' 'Runaway iOS/Repositories/HybridActivityRepository.swift' 'Runaway iOS/Repositories/RepositoryFactory.swift' 'Runaway iOS/Services/ActivityService.swift' 'Runaway iOS/Services/DailyCommitmentIntentClient.swift' 'Runaway iOS/Runaway_iOSApp.swift' 'Runaway iOS/Runaway iOSTests/SetDailyCommitmentIntentTests.swift' 'Runaway iOS/Runaway iOSTests/Task7ReliabilityFollowupTests.swift' && git diff --check && if rg -n 'created\.id|compareAndDelete|removeObject\(forKey: DailyCommitmentIntentKeys\.pendingActivityType\).*return|\.upsert\([^\n]*onConflict: "id"|case \.create, \.update' 'Runaway iOS/Repositories/HybridActivityRepository.swift' 'Runaway iOS/Persistence/Sync/SyncEngine.swift' 'Runaway iOS/Services/ActivityService.swift' 'Runaway iOS/Services/DailyCommitmentIntentClient.swift' 'Runaway iOS/Runaway_iOSApp.swift'; then exit 1; else exit 0; fi
+```
+
+Result: exit `0` in 0.84 seconds with no output. All changed Swift files passed parser validation, `git diff --check` passed, and the prohibited stale debug reference, combined create/update branch, numeric-ID create upsert, and old compare/delete patterns were absent. No `xcodebuild` command was run.
