@@ -12,21 +12,32 @@ import Supabase
 
 #if targetEnvironment(simulator)
 
-/// Forces HTTP/2 by routing all requests through a local TCP CONNECT proxy.
-/// QUIC (HTTP/3) fails in the iOS Simulator — iOS 18.4 ignores assumesHTTP3Capable=false
-/// when HTTPS DNS SVCB records advertise h3. A TCP-only proxy physically prevents UDP/QUIC.
-/// Registered only in Simulator builds; production uses the default URLSession stack.
+/// Disables HTTP/3 for simulator requests. Developers can opt into a local TCP
+/// CONNECT proxy by setting RUNAWAY_SIMULATOR_HTTPS_PROXY_PORT. Device and
+/// TestFlight builds always use the default URLSession stack.
+func simulatorHTTPSProxyDictionary(
+    environment: [String: String] = ProcessInfo.processInfo.environment
+) -> [AnyHashable: Any]? {
+    guard let rawPort = environment["RUNAWAY_SIMULATOR_HTTPS_PROXY_PORT"],
+          let port = Int(rawPort),
+          (1...65_535).contains(port) else {
+        return nil
+    }
+
+    return [
+        "HTTPSEnable": true,
+        "HTTPSProxy": environment["RUNAWAY_SIMULATOR_HTTPS_PROXY_HOST"] ?? "127.0.0.1",
+        "HTTPSPort": port,
+    ]
+}
+
 private final class HTTP2ForcedURLProtocol: URLProtocol {
 
     private static let handledKey = "HTTP2ForcedURLProtocol.handled"
 
     private static let innerSession: URLSession = {
         let config = URLSessionConfiguration.ephemeral
-        config.connectionProxyDictionary = [
-            "HTTPSEnable": true,
-            "HTTPSProxy": "127.0.0.1",
-            "HTTPSPort": 18888,
-        ]
+        config.connectionProxyDictionary = simulatorHTTPSProxyDictionary()
         return URLSession(configuration: config)
     }()
 

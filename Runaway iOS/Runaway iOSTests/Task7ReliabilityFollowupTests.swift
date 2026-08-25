@@ -156,6 +156,19 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
         XCTAssertEqual(RunRecordingLayoutPolicy.statLineLimit(for: .accessibility3), 2)
     }
 
+    func testSimulatorHTTPSProxyRequiresExplicitConfiguration() {
+        XCTAssertNil(simulatorHTTPSProxyDictionary(environment: [:]))
+
+        let proxy = simulatorHTTPSProxyDictionary(environment: [
+            "RUNAWAY_SIMULATOR_HTTPS_PROXY_HOST": "localhost",
+            "RUNAWAY_SIMULATOR_HTTPS_PROXY_PORT": "18888",
+        ])
+
+        XCTAssertEqual(proxy?["HTTPSEnable"] as? Bool, true)
+        XCTAssertEqual(proxy?["HTTPSProxy"] as? String, "localhost")
+        XCTAssertEqual(proxy?["HTTPSPort"] as? Int, 18_888)
+    }
+
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent("Task7ReliabilityFollowupTests")
