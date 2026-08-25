@@ -189,6 +189,7 @@ class ForgotPasswordViewModel: ObservableObject {
                 email.trimmed,
                 redirectTo: SupabaseConfiguration.authRedirectURL
             )
+            PasswordRecoveryRequest.markRequested()
         } catch {
             let authError = AuthError.from(error)
             errorMessage = authError.localizedDescription

@@ -2,6 +2,10 @@ import SwiftUI
 import Supabase
 
 enum PasswordRecoveryLink {
+    static func shouldPresentReset(for url: URL, hasPendingRequest: Bool) -> Bool {
+        isRecoveryCallback(url) || hasPendingRequest
+    }
+
     static func isRecoveryCallback(_ url: URL) -> Bool {
         callbackType(in: url) == "recovery"
     }
@@ -24,6 +28,37 @@ enum PasswordRecoveryLink {
         return fragmentComponents.queryItems?
             .first(where: { $0.name == "type" })?
             .value
+    }
+}
+
+enum PasswordRecoveryRequest {
+    private static let requestedAtKey = "passwordRecoveryRequestedAt"
+    private static let validityDuration: TimeInterval = 60 * 60
+
+    static func markRequested(
+        at date: Date = Date(),
+        defaults: UserDefaults = .standard
+    ) {
+        defaults.set(date.timeIntervalSince1970, forKey: requestedAtKey)
+    }
+
+    static func hasRecentRequest(
+        now: Date = Date(),
+        defaults: UserDefaults = .standard
+    ) -> Bool {
+        let timestamp = defaults.double(forKey: requestedAtKey)
+        guard timestamp > 0 else { return false }
+        return isRecent(requestedAt: Date(timeIntervalSince1970: timestamp), now: now)
+    }
+
+    static func isRecent(requestedAt: Date?, now: Date = Date()) -> Bool {
+        guard let requestedAt else { return false }
+        let age = now.timeIntervalSince(requestedAt)
+        return age >= 0 && age <= validityDuration
+    }
+
+    static func clear(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: requestedAtKey)
     }
 }
 

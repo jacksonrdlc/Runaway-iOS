@@ -177,6 +177,30 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
 }
 
 final class PasswordRecoveryFlowTests: XCTestCase {
+    func testPendingRecoveryRequestClassifiesPKCECodeCallback() throws {
+        let url = try XCTUnwrap(URL(string: "runaway://auth/callback?code=secret"))
+
+        XCTAssertTrue(PasswordRecoveryLink.shouldPresentReset(for: url, hasPendingRequest: true))
+        XCTAssertFalse(PasswordRecoveryLink.shouldPresentReset(for: url, hasPendingRequest: false))
+    }
+
+    func testRecoveryRequestExpiresAfterOneHour() {
+        let now = Date(timeIntervalSince1970: 10_000)
+
+        XCTAssertTrue(
+            PasswordRecoveryRequest.isRecent(
+                requestedAt: now.addingTimeInterval(-(60 * 60)),
+                now: now
+            )
+        )
+        XCTAssertFalse(
+            PasswordRecoveryRequest.isRecent(
+                requestedAt: now.addingTimeInterval(-(60 * 60 + 1)),
+                now: now
+            )
+        )
+    }
+
     func testRecoveryCallbackIsDetectedInFragment() throws {
         let url = try XCTUnwrap(URL(string: "runaway://auth/callback#access_token=secret&type=recovery"))
 

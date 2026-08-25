@@ -115,12 +115,16 @@ struct Runaway_iOSApp: App {
     private func handleDeepLink(_ url: URL) {
         // Supabase auth callback
         if url.scheme == "runaway" && url.host == "auth" {
-            let isPasswordRecovery = PasswordRecoveryLink.isRecoveryCallback(url)
+            let isPasswordRecovery = PasswordRecoveryLink.shouldPresentReset(
+                for: url,
+                hasPendingRequest: PasswordRecoveryRequest.hasRecentRequest()
+            )
             Task {
                 do {
                     _ = try await supabase.auth.session(from: url)
                     await MainActor.run {
                         if isPasswordRecovery {
+                            PasswordRecoveryRequest.clear()
                             isPresentingPasswordRecovery = true
                         } else {
                             NotificationCenter.default.post(name: NSNotification.Name("EmailVerificationCompleted"), object: nil)
