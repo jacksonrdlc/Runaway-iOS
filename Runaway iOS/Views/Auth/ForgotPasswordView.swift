@@ -185,7 +185,10 @@ class ForgotPasswordViewModel: ObservableObject {
         errorMessage = nil
 
         do {
-            try await supabase.auth.resetPasswordForEmail(email.trimmed)
+            try await supabase.auth.resetPasswordForEmail(
+                email.trimmed,
+                redirectTo: SupabaseConfiguration.authRedirectURL
+            )
         } catch {
             let authError = AuthError.from(error)
             errorMessage = authError.localizedDescription

@@ -176,6 +176,26 @@ final class Task7ReliabilityFollowupTests: XCTestCase {
     }
 }
 
+final class PasswordRecoveryFlowTests: XCTestCase {
+    func testRecoveryCallbackIsDetectedInFragment() throws {
+        let url = try XCTUnwrap(URL(string: "runaway://auth/callback#access_token=secret&type=recovery"))
+
+        XCTAssertTrue(PasswordRecoveryLink.isRecoveryCallback(url))
+    }
+
+    func testRecoveryCallbackIsDetectedInQuery() throws {
+        let url = try XCTUnwrap(URL(string: "runaway://auth/callback?code=secret&type=recovery"))
+
+        XCTAssertTrue(PasswordRecoveryLink.isRecoveryCallback(url))
+    }
+
+    func testVerificationCallbackDoesNotPresentPasswordReset() throws {
+        let url = try XCTUnwrap(URL(string: "runaway://auth/callback#access_token=secret&type=signup"))
+
+        XCTAssertFalse(PasswordRecoveryLink.isRecoveryCallback(url))
+    }
+}
+
 @MainActor
 private final class ActivitySyncRepositorySpy: ActivitySyncLocalRepository {
     private let activity: Activity

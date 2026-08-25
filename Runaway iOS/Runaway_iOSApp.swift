@@ -11,6 +11,7 @@ import HealthKit
 
 @main
 struct Runaway_iOSApp: App {
+    @State private var isPresentingPasswordRecovery = false
     @State private var userSession = UserSession.shared
     @State private var realtimeService = RealtimeService.shared
     @State private var dataManager = DataManager.shared
@@ -101,6 +102,11 @@ struct Runaway_iOSApp: App {
                     handleDeepLink(url)
                     router.handleDeepLink(url)
                 }
+                .fullScreenCover(isPresented: $isPresentingPasswordRecovery) {
+                    ResetPasswordView {
+                        isPresentingPasswordRecovery = false
+                    }
+                }
         }
     }
 
@@ -109,19 +115,32 @@ struct Runaway_iOSApp: App {
     private func handleDeepLink(_ url: URL) {
         // Supabase auth callback
         if url.scheme == "runaway" && url.host == "auth" {
+            let isPasswordRecovery = PasswordRecoveryLink.isRecoveryCallback(url)
             Task {
                 do {
                     _ = try await supabase.auth.session(from: url)
                     await MainActor.run {
-                        NotificationCenter.default.post(name: NSNotification.Name("EmailVerificationCompleted"), object: nil)
+                        if isPasswordRecovery {
+                            isPresentingPasswordRecovery = true
+                        } else {
+                            NotificationCenter.default.post(name: NSNotification.Name("EmailVerificationCompleted"), object: nil)
+                        }
                     }
                 } catch {
                     await MainActor.run {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("EmailVerificationFailed"),
-                            object: nil,
-                            userInfo: ["error": error.localizedDescription]
-                        )
+                        if isPasswordRecovery {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("PasswordRecoveryFailed"),
+                                object: nil,
+                                userInfo: ["error": error.localizedDescription]
+                            )
+                        } else {
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("EmailVerificationFailed"),
+                                object: nil,
+                                userInfo: ["error": error.localizedDescription]
+                            )
+                        }
                     }
                 }
             }
