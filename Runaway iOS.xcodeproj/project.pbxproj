@@ -68,34 +68,50 @@
 		8E06B7C62F0434C700A17DDE /* Exceptions for "Runaway iOS" folder in "Runaway iOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Runaway iOSTests/ActivityObservationGeneratorTests.swift",
 				"Runaway iOSTests/AthleteServiceTests.swift",
-				"Runaway iOSTests/ChatViewModelIdentityTests.swift",
 				"Runaway iOSTests/EdgeFunctionClientTests.swift",
 				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 				"Runaway iOSTests/PersonalBestServiceTests.swift",
 				"Runaway iOSTests/Runaway_iOSTests.swift",
 				"Runaway iOSTests/RunCoachSchedulerTests.swift",
+				"Runaway iOSTests/RunCueGeneratorTests.swift",
 				"Runaway iOSTests/SetDailyCommitmentIntentTests.swift",
 				"Runaway iOSTests/SyncEngineTests.swift",
-				"Runaway iOSTests/UserSessionTests.swift",
 				"Runaway iOSTests/Task7ReliabilityFollowupTests.swift",
+				"Runaway iOSTests/TodayRecommendationPolicyTests.swift",
+				"Runaway iOSTests/UserSessionTests.swift",
+				"Runaway iOSTests/WorkoutDebriefGeneratorTests.swift",
+				"Runaway iOSTests/WorkoutDebriefPolicyTests.swift",
+				"Runaway iOSTests/WorkoutReflectionRemoteServiceTests.swift",
+				"Runaway iOSTests/WorkoutReflectionRepositoryTests.swift",
+				"Runaway iOSTests/WorkoutReflectionTests.swift",
+				"Runaway iOSTests/WorkoutReflectionViewModelTests.swift",
 			);
 			target = 8EEECC412D64CF150053014A /* Runaway iOS */;
 		};
 		8E6C2E6B2D943666002619A0 /* Exceptions for "Runaway iOS" folder in "Runaway iOSTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Runaway iOSTests/ActivityObservationGeneratorTests.swift",
 				"Runaway iOSTests/AthleteServiceTests.swift",
-				"Runaway iOSTests/ChatViewModelIdentityTests.swift",
 				"Runaway iOSTests/EdgeFunctionClientTests.swift",
 				"Runaway iOSTests/FoundationModelsIdentityTests.swift",
 				"Runaway iOSTests/PersonalBestServiceTests.swift",
 				"Runaway iOSTests/Runaway_iOSTests.swift",
 				"Runaway iOSTests/RunCoachSchedulerTests.swift",
+				"Runaway iOSTests/RunCueGeneratorTests.swift",
 				"Runaway iOSTests/SetDailyCommitmentIntentTests.swift",
 				"Runaway iOSTests/SyncEngineTests.swift",
-				"Runaway iOSTests/UserSessionTests.swift",
 				"Runaway iOSTests/Task7ReliabilityFollowupTests.swift",
+				"Runaway iOSTests/TodayRecommendationPolicyTests.swift",
+				"Runaway iOSTests/UserSessionTests.swift",
+				"Runaway iOSTests/WorkoutDebriefGeneratorTests.swift",
+				"Runaway iOSTests/WorkoutDebriefPolicyTests.swift",
+				"Runaway iOSTests/WorkoutReflectionRemoteServiceTests.swift",
+				"Runaway iOSTests/WorkoutReflectionRepositoryTests.swift",
+				"Runaway iOSTests/WorkoutReflectionTests.swift",
+				"Runaway iOSTests/WorkoutReflectionViewModelTests.swift",
 			);
 			target = 8EEECC512D64CF170053014A /* Runaway iOSTests */;
 		};
@@ -466,7 +482,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -525,7 +541,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -635,7 +651,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOSTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -653,7 +669,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.jackrudelic.labs.Runaway-iOSTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";

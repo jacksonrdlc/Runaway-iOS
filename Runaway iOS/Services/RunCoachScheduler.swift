@@ -76,11 +76,11 @@ final class RunCoachScheduler {
     /// Tests pass in a spy announcer and a fixed-settings closure so they
     /// don't touch the audio stack or the user's real preferences.
     init(
-        announcer: RunCoachAnnouncer = AudioCueService.shared,
-        settingsProvider: @escaping () -> CoachSettings = { CoachSettingsStore.shared.settings }
+        announcer: RunCoachAnnouncer? = nil,
+        settingsProvider: (() -> CoachSettings)? = nil
     ) {
-        self.announcer = announcer
-        self.settingsProvider = settingsProvider
+        self.announcer = announcer ?? AudioCueService.shared
+        self.settingsProvider = settingsProvider ?? { CoachSettingsStore.shared.settings }
     }
 
     // MARK: - Lifecycle

@@ -25,11 +25,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            if let token = self?.pendingAPNsToken {
-                Task {
-                    await self?.saveAPNsToken(token)
-                    await MainActor.run { self?.pendingAPNsToken = nil }
-                }
+            Task { @MainActor [weak self] in
+                guard let self, let token = self.pendingAPNsToken else { return }
+                await self.saveAPNsToken(token)
+                self.pendingAPNsToken = nil
             }
         }
 

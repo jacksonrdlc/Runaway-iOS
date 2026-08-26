@@ -61,7 +61,7 @@ class TrainingPhaseService {
             }
         }
 
-        let activityCount = activities.count
+        let activityCount = activities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.count
 
         // New user check (< 5 activities)
         if activityCount < 5 {
@@ -220,7 +220,7 @@ class TrainingPhaseService {
         return TrainingPhaseContext(
             phase: phase,
             confidence: confidence,
-            activityCount: activities.count,
+            activityCount: activities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.count,
             weeklyVolumeKm: weeklyVolumeKm,
             volumeChange: volumeChange,
             streakDays: streakDays,
@@ -356,11 +356,12 @@ class TrainingPhaseService {
     static func generateProgressionMetrics(activities: [Activity]) -> ProgressionMetrics {
         let sortedActivities = activities.sorted { ($0.date ?? Date.distantPast) < ($1.date ?? Date.distantPast) }
 
-        let totalDistanceKm = activities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
+        let runningActivities = activities.filter { AppConstants.ActivityTypes.isRunning($0.type) }
+        let totalDistanceKm = runningActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
         let longestRunKm = activities.map { ($0.distance ?? 0) / 1000 }.max() ?? 0
 
         let avgPace: Double
-        let totalTime = activities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
+        let totalTime = runningActivities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
         if totalDistanceKm > 0 {
             avgPace = (totalTime / 60) / totalDistanceKm // min per km
         } else {
@@ -368,13 +369,13 @@ class TrainingPhaseService {
         }
 
         let milestones = generateMilestones(
-            activityCount: activities.count,
+            activityCount: runningActivities.count,
             totalDistanceKm: totalDistanceKm,
             longestRunKm: longestRunKm
         )
 
         return ProgressionMetrics(
-            totalActivities: activities.count,
+            totalActivities: runningActivities.count,
             totalDistanceKm: totalDistanceKm,
             averagePaceMinPerKm: avgPace,
             longestRunKm: longestRunKm,
@@ -398,7 +399,7 @@ class TrainingPhaseService {
                 return date >= weekStart && date < weekEnd
             }
 
-            let volumeKm = weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
+            let volumeKm = weekActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
             weeklyVolumes.append(volumeKm)
         }
 
@@ -411,7 +412,7 @@ class TrainingPhaseService {
             guard let date = activity.date else { return false }
             return date >= weekStart
         }
-        return weekActivities.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
+        return weekActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.reduce(0) { $0 + (($1.distance ?? 0) / 1000) }
     }
 
     private static func calculatePeakWeeklyVolume(from activities: [Activity]) -> Double {

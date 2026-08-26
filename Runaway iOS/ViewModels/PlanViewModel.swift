@@ -67,7 +67,8 @@ class PlanViewModel: ObservableObject {
 
     // MARK: - Initialization
 
-    init(dataManager: DataManager = .shared) {
+    init(dataManager: DataManager? = nil) {
+        let dataManager = dataManager ?? .shared
         self.dataManager = dataManager
         self.algorithmService = AdaptiveTrainingAlgorithm(dataManager: dataManager)
     }

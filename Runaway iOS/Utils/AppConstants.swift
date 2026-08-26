@@ -68,6 +68,13 @@ enum AppConstants {
             default: return raw
             }
         }
+
+        static func isRunning(_ raw: String?) -> Bool {
+            guard let raw else { return false }
+            return raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+                .contains("run")
+        }
     }
 
     enum RealtimeMonitoring {

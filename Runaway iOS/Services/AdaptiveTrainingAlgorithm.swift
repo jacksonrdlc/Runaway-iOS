@@ -67,8 +67,8 @@ class AdaptiveTrainingAlgorithm {
 
     // MARK: - Initialization
 
-    init(dataManager: DataManager = .shared) {
-        self.dataManager = dataManager
+    init(dataManager: DataManager? = nil) {
+        self.dataManager = dataManager ?? .shared
     }
 
     // MARK: - Plan Generation
@@ -384,7 +384,7 @@ class AdaptiveTrainingAlgorithm {
         }
 
         // Calculate actual vs planned
-        let actualMileage = weekActivities.compactMap { $0.distance }.reduce(0, +) * 0.000621371
+        let actualMileage = weekActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.compactMap { $0.distance }.reduce(0, +) * 0.000621371
         let adherenceRate = plan.totalMileage > 0 ? min(actualMileage / plan.totalMileage, 1.5) : 0
 
         // Check for spikes
@@ -501,7 +501,7 @@ class AdaptiveTrainingAlgorithm {
                 return date >= weekStart && date < weekEnd
             }
 
-            let mileage = weekActivities.compactMap { $0.distance }.reduce(0, +) * 0.000621371
+            let mileage = weekActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.compactMap { $0.distance }.reduce(0, +) * 0.000621371
             weeklyMileages.append(mileage)
         }
 

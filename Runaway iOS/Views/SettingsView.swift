@@ -13,11 +13,10 @@ class GarminAuthPresentationContext: NSObject, ASWebAuthenticationPresentationCo
     static let shared = GarminAuthPresentationContext()
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = scene.windows.first else {
-            return ASPresentationAnchor()
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            preconditionFailure("Garmin authentication requires an active window scene")
         }
-        return window
+        return scene.windows.first ?? ASPresentationAnchor(windowScene: scene)
     }
 }
 
@@ -59,36 +58,30 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationView {
-            ZStack {
-                colors.background.ignoresSafeArea()
+        ZStack {
+            colors.background.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: AppTheme.Spacing.lg) {
-                        profileSection
-                        appSettingsSection
-                        goalsSection
-                        integrationsSection
-                        supportSection
-                        debugSection
-                        accountSection
-                        appInfoSection
-                    }
-                    .padding(AppTheme.Spacing.md)
+            ScrollView {
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    profileSection
+                    appSettingsSection
+                    goalsSection
+                    integrationsSection
+                    supportSection
+                    #if DEBUG
+                    debugSection
+                    #endif
+                    accountSection
+                    appInfoSection
                 }
+                .padding(AppTheme.Spacing.md)
             }
+        }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
             .toolbarColorScheme(themeManager.isDarkMode ? .dark : .light, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(AppTheme.Colors.accent)
-                }
-            }
+            .toolbar(.hidden, for: .tabBar)
             .sheet(isPresented: $showingStravaSheet) {
                 StravaConnectSheet(stravaService: stravaService)
             }
@@ -126,10 +119,6 @@ struct SettingsView: View {
                     await stravaService.checkConnectionStatus()
                 }
             }
-            .task {
-                await stravaService.checkConnectionStatus()
-            }
-        }
     }
 
     // MARK: - View Components

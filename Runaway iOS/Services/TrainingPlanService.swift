@@ -10,9 +10,6 @@ import Foundation
 
 class TrainingPlanService {
 
-    // MARK: - Supabase Edge Function URL
-    private static let baseURL = "https://nkxvjcdxiyjbndjvfmqy.supabase.co"
-
     // MARK: - Rest Day Integration
 
     /// Check if today should be a rest day based on recovery status
@@ -160,89 +157,11 @@ class TrainingPlanService {
         goal: RunningGoal?,
         weekStartDate: Date? = nil
     ) async throws -> WeeklyTrainingPlan {
-
-        // Calculate week start (Sunday) if not provided
         let startDate = weekStartDate ?? currentWeekSunday()
-
-        #if DEBUG
-        print("📋 TrainingPlan Generation Request:")
-        print("   Athlete ID: \(athleteId)")
-        print("   Week Start: \(startDate)")
-        if let goal = goal {
-            print("   Goal: \(goal.title) - \(goal.formattedTarget())")
-        }
-        #endif
-
-        let url = URL(string: "\(baseURL)/functions/v1/generate-training-plan")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 60.0
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Add JWT authentication
-        if let session = try? await supabase.auth.session {
-            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-        }
-
-        // Build request body
-        var requestBody: [String: Any] = [
-            "athlete_id": athleteId,
-            "week_start_date": ISO8601DateFormatter().string(from: startDate)
-        ]
-
-        if let goal = goal {
-            requestBody["goal"] = [
-                "id": goal.id as Any,
-                "type": goal.type.rawValue,
-                "target_value": goal.targetValue,
-                "deadline": ISO8601DateFormatter().string(from: goal.deadline),
-                "title": goal.title,
-                "weeks_remaining": goal.weeksRemaining
-            ]
-        }
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw TrainingPlanError.invalidResponse
-            }
-
-            #if DEBUG
-            print("   Response Code: \(httpResponse.statusCode)")
-            #endif
-
-            if httpResponse.statusCode == 200 {
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                let apiResponse = try decoder.decode(TrainingPlanAPIResponse.self, from: data)
-
-                if let plan = apiResponse.plan {
-                    #if DEBUG
-                    print("   ✅ Plan generated with \(plan.workouts.count) workouts")
-                    #endif
-                    return plan
-                } else {
-                    throw TrainingPlanError.generationFailed(apiResponse.error ?? "Unknown error")
-                }
-            } else {
-                // Fall back to local generation
-                #if DEBUG
-                print("   ⚠️ API unavailable, using local generation")
-                #endif
-                return generateLocalPlan(athleteId: athleteId, weekStartDate: startDate, goal: goal)
-            }
-        } catch let error as TrainingPlanError {
-            throw error
-        } catch {
-            // Fall back to local generation on network errors
-            #if DEBUG
-            print("   ⚠️ Network error, using local generation: \(error)")
-            #endif
-            return generateLocalPlan(athleteId: athleteId, weekStartDate: startDate, goal: goal)
-        }
+        let safePlan = generateLocalPlan(athleteId: athleteId, weekStartDate: startDate, goal: goal)
+        let personalizedPlan = await personalizePlanLocally(safePlan)
+        cachePlan(personalizedPlan)
+        return personalizedPlan
     }
 
     // MARK: - Adaptive Plan Regeneration
@@ -255,170 +174,14 @@ class TrainingPlanService {
         completedActivities: [Activity],
         goal: RunningGoal?
     ) async throws -> WeeklyTrainingPlan {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-
-        // Build activity summaries for completed days
-        var completedDays: [[String: Any]] = []
-        for activity in completedActivities {
-            guard let activityTimestamp = activity.activity_date ?? activity.start_date else { continue }
-            let activityDate = Date(timeIntervalSince1970: activityTimestamp)
-
-            // Only include activities from this week
-            guard activityDate >= currentPlan.weekStartDate && activityDate <= currentPlan.weekEndDate else { continue }
-
-            let dayOfWeek = DayOfWeek.from(date: activityDate)
-            let distanceMiles = (activity.distance ?? 0) * 0.000621371
-            let durationMinutes = Int((activity.elapsed_time ?? 0) / 60)
-
-            // Calculate pace
-            var paceString = "N/A"
-            if let speed = activity.average_speed, speed > 0 {
-                let minutesPerMile = (1609.34 / speed) / 60.0
-                let minutes = Int(minutesPerMile)
-                let seconds = Int((minutesPerMile - Double(minutes)) * 60)
-                paceString = String(format: "%d:%02d/mi", minutes, seconds)
-            }
-
-            // Find what was originally planned for this day
-            let plannedWorkout = currentPlan.workout(for: dayOfWeek)
-
-            completedDays.append([
-                "day": dayOfWeek.rawValue,
-                "date": ISO8601DateFormatter().string(from: activityDate),
-                "actual": [
-                    "name": activity.name ?? "Run",
-                    "type": activity.type ?? "Run",
-                    "distance_miles": distanceMiles,
-                    "duration_minutes": durationMinutes,
-                    "pace": paceString,
-                    "elevation_gain_ft": (activity.elevation_gain ?? 0) * 3.28084,
-                    "average_hr": activity.average_heart_rate as Any
-                ],
-                "planned": plannedWorkout.map { [
-                    "type": $0.workoutType.rawValue,
-                    "title": $0.title,
-                    "distance_miles": $0.distance as Any,
-                    "duration_minutes": $0.duration as Any
-                ] } as Any
-            ])
-        }
-
-        // Determine which days still need planning (today and future)
-        var remainingDays: [String] = []
-        for day in DayOfWeek.allCases {
-            guard let dayDate = calendar.date(
-                byAdding: .day,
-                value: day.calendarWeekday - 1,
-                to: currentPlan.weekStartDate
-            ) else { continue }
-
-            // Include today and future days that don't have a completed activity
-            if dayDate >= today {
-                let hasActivity = completedActivities.contains { activity in
-                    guard let ts = activity.activity_date ?? activity.start_date else { return false }
-                    return calendar.isDate(Date(timeIntervalSince1970: ts), inSameDayAs: dayDate)
-                }
-                if !hasActivity {
-                    remainingDays.append(day.rawValue)
-                }
-            }
-        }
-
-        // If no remaining days need planning, return current plan
-        if remainingDays.isEmpty {
-            #if DEBUG
-            print("📋 TrainingPlan: No remaining days to regenerate")
-            #endif
-            return currentPlan
-        }
-
-        #if DEBUG
-        print("📋 TrainingPlan Regeneration Request:")
-        print("   Athlete ID: \(athleteId)")
-        print("   Completed days: \(completedDays.count)")
-        print("   Remaining days: \(remainingDays)")
-        #endif
-
-        let url = URL(string: "\(baseURL)/functions/v1/regenerate-training-plan")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 60.0
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let session = try? await supabase.auth.session {
-            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-        }
-
-        // Build request body with activity context
-        var requestBody: [String: Any] = [
-            "athlete_id": athleteId,
-            "week_start_date": ISO8601DateFormatter().string(from: currentPlan.weekStartDate),
-            "completed_days": completedDays,
-            "remaining_days": remainingDays,
-            "original_plan": [
-                "total_mileage": currentPlan.totalMileage,
-                "focus_area": currentPlan.focusArea as Any,
-                "notes": currentPlan.notes as Any
-            ]
-        ]
-
-        if let goal = goal {
-            requestBody["goal"] = [
-                "id": goal.id as Any,
-                "type": goal.type.rawValue,
-                "target_value": goal.targetValue,
-                "deadline": ISO8601DateFormatter().string(from: goal.deadline),
-                "title": goal.title,
-                "weeks_remaining": goal.weeksRemaining
-            ]
-        }
-
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw TrainingPlanError.invalidResponse
-            }
-
-            #if DEBUG
-            print("   Response Code: \(httpResponse.statusCode)")
-            #endif
-
-            if httpResponse.statusCode == 200 {
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                let apiResponse = try decoder.decode(TrainingPlanAPIResponse.self, from: data)
-
-                if let newPlan = apiResponse.plan {
-                    #if DEBUG
-                    print("   ✅ Plan regenerated with \(newPlan.workouts.count) workouts")
-                    #endif
-
-                    // Merge: keep completed days from current plan, use new workouts for remaining days
-                    let mergedPlan = mergePlans(original: currentPlan, regenerated: newPlan, completedActivities: completedActivities)
-                    cachePlan(mergedPlan)
-                    return mergedPlan
-                } else {
-                    throw TrainingPlanError.generationFailed(apiResponse.error ?? "Unknown error")
-                }
-            } else {
-                // Fall back to local adjustment
-                #if DEBUG
-                print("   ⚠️ API unavailable, using local adjustment")
-                #endif
-                return adjustPlanLocally(currentPlan: currentPlan, completedActivities: completedActivities)
-            }
-        } catch let error as TrainingPlanError {
-            throw error
-        } catch {
-            #if DEBUG
-            print("   ⚠️ Network error, using local adjustment: \(error)")
-            #endif
-            return adjustPlanLocally(currentPlan: currentPlan, completedActivities: completedActivities)
-        }
+        _ = athleteId
+        _ = goal
+        let adjusted = adjustPlanLocally(
+            currentPlan: currentPlan,
+            completedActivities: completedActivities
+        )
+        cachePlan(adjusted)
+        return adjusted
     }
 
     /// Check if plan regeneration is needed based on activity differences
@@ -706,32 +469,40 @@ class TrainingPlanService {
 
     /// Fetch existing plan for a specific week
     static func getWeeklyPlan(athleteId: Int, weekStartDate: Date) async throws -> WeeklyTrainingPlan? {
-        let dateString = ISO8601DateFormatter().string(from: weekStartDate)
-        let url = URL(string: "\(baseURL)/functions/v1/training-plan?athlete_id=\(athleteId)&week_start_date=\(dateString)")!
+        guard let plan = getCachedPlan(), plan.athleteId == athleteId else { return nil }
+        return Calendar.current.isDate(plan.weekStartDate, inSameDayAs: weekStartDate) ? plan : nil
+    }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    private static func personalizePlanLocally(_ plan: WeeklyTrainingPlan) async -> WeeklyTrainingPlan {
+        let model = await FoundationModelsService.shared
+        guard await model.isAvailable else { return plan }
 
-        if let session = try? await supabase.auth.session {
-            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-        }
+        let schedule = plan.workouts.map { workout in
+            let distance = workout.distance.map { String(format: "%.1f miles", $0) } ?? "no running distance"
+            return "\(workout.dayOfWeek.rawValue): \(workout.title), \(distance)"
+        }.joined(separator: "\n")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw TrainingPlanError.invalidResponse
-        }
-
-        if httpResponse.statusCode == 200 {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            let apiResponse = try decoder.decode(TrainingPlanAPIResponse.self, from: data)
-            return apiResponse.plan
-        } else if httpResponse.statusCode == 404 {
-            return nil
-        } else {
-            throw TrainingPlanError.httpError(httpResponse.statusCode)
+        do {
+            let notes = try await model.generateResponse(
+                prompt: "Write a concise weekly coaching note for this fixed, safety-checked schedule:\n\(schedule)",
+                systemPrompt: "You are a grounded running coach. Explain the week's rhythm in 2-3 short sentences. Do not alter mileage, prescribe medical care, or invent athlete facts.",
+                maxTokens: 256
+            )
+            return WeeklyTrainingPlan(
+                id: plan.id,
+                athleteId: plan.athleteId,
+                weekStartDate: plan.weekStartDate,
+                weekEndDate: plan.weekEndDate,
+                workouts: plan.workouts,
+                weekNumber: plan.weekNumber,
+                totalMileage: plan.totalMileage,
+                focusArea: plan.focusArea,
+                notes: notes,
+                generatedAt: plan.generatedAt,
+                goalId: plan.goalId
+            )
+        } catch {
+            return plan
         }
     }
 

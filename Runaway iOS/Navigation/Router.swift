@@ -14,33 +14,12 @@ class AppRouter {
     // MARK: - Route Definitions
 
     enum Route: Hashable {
-        // Activity Routes
         case activityDetail(Int)
         case activityList
-
-        // Profile & Settings Routes
         case settings
         case accountInfo
-        case profile(Int)
-
-        // Commitment & Goals Routes
         case commitmentSetup
-        case commitmentHistory
         case goalManagement
-        case goalDetail(Int)
-
-        // Journal Routes
-        case journalEntry(Int?)
-        case journalList
-
-        // Strava Routes
-        case stravaConnect
-        case stravaSettings
-
-        // Analysis Routes
-        case activityInsights(Int)
-
-        // Awards Routes
         case awards
     }
 
@@ -57,26 +36,34 @@ class AppRouter {
 
     // MARK: - Deep Linking
 
-    func handleDeepLink(_ url: URL) {
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
+    static func deepLinkRoute(for url: URL) -> Route? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else {
+            return nil
+        }
 
         switch components.path {
         case "/activity":
             if let id = components.queryItems?.first(where: { $0.name == "id" })?.value,
                let activityId = Int(id) {
-                navigate(to: .activityDetail(activityId))
+                return .activityDetail(activityId)
             }
+            return .activityList
         case "/settings":
-            navigate(to: .settings)
+            return .settings
         case "/commitment":
-            navigate(to: .commitmentSetup)
+            return .commitmentSetup
         case "/goals":
-            navigate(to: .goalManagement)
+            return .goalManagement
         case "/awards", "/achievements":
-            navigate(to: .awards)
+            return .awards
         default:
-            break
+            return nil
         }
+    }
+
+    func handleDeepLink(_ url: URL) {
+        guard let route = Self.deepLinkRoute(for: url) else { return }
+        navigate(to: route)
     }
 }
 
@@ -86,8 +73,8 @@ extension AppRouter {
     @ViewBuilder
     func destination(for route: Route) -> some View {
         switch route {
-        case .activityDetail(_):
-            Text("Activity Detail").navigationTitle("Activity")
+        case .activityDetail(let activityId):
+            RoutedActivityDetailView(activityId: activityId)
 
         case .activityList:
             ActivitiesView()
@@ -98,38 +85,42 @@ extension AppRouter {
         case .accountInfo:
             AccountInformationView()
 
-        case .profile(let athleteId):
-            Text("Profile #\(athleteId)").navigationTitle("Profile")
-
         case .commitmentSetup:
-            Text("Daily Commitment Setup").navigationTitle("Daily Commitment")
-
-        case .commitmentHistory:
-            Text("Commitment History").navigationTitle("History")
+            FullCommitmentSheet()
 
         case .goalManagement:
-            Text("Goals Management").navigationTitle("Goals")
-
-        case .goalDetail(let goalId):
-            Text("Goal Detail #\(goalId)").navigationTitle("Goal")
-
-        case .journalEntry(_):
-            Text("Journal Entry").navigationTitle("New Entry")
-
-        case .journalList:
-            Text("Journal List").navigationTitle("Training Journal")
-
-        case .stravaConnect:
-            Text("Connect to Strava").navigationTitle("Strava")
-
-        case .stravaSettings:
-            Text("Strava Settings").navigationTitle("Strava")
-
-        case .activityInsights(let activityId):
-            Text("Activity Insights #\(activityId)").navigationTitle("Insights")
+            GoalSettingsView()
 
         case .awards:
             AwardsView()
+        }
+    }
+}
+
+private struct RoutedActivityDetailView: View {
+    @Environment(DataManager.self) private var dataManager
+    let activityId: Int
+
+    var body: some View {
+        if let activity = dataManager.activities.first(where: { $0.id == activityId }) {
+            ActivityDetailView(
+                activity: LocalActivity(
+                    id: activity.id,
+                    name: activity.name ?? "Activity",
+                    type: activity.type ?? "",
+                    summary_polyline: activity.summary_polyline ?? "",
+                    distance: activity.distance ?? 0,
+                    start_date: activity.start_date.map(Date.init(timeIntervalSince1970:)),
+                    elapsed_time: activity.elapsed_time ?? 0
+                )
+            )
+        } else {
+            ContentUnavailableView(
+                "Activity unavailable",
+                systemImage: "figure.run.circle",
+                description: Text("Refresh Activities and try this link again.")
+            )
+            .navigationTitle("Activity")
         }
     }
 }

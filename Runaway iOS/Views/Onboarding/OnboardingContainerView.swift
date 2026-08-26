@@ -264,7 +264,7 @@ class OnboardingViewModel: ObservableObject {
             return
         }
         Task {
-            try? await RunnerMindsetService.saveProfile(
+            _ = try? await RunnerMindsetService.saveProfile(
                 athleteId: athleteId,
                 whyIRun: whyIRun,
                 coreValues: coreValues

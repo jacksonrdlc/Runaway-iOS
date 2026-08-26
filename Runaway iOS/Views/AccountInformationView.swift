@@ -80,7 +80,9 @@ struct AccountInformationView: View {
     // MARK: - View Components
 
     private var profilePhotoSection: some View {
-        VStack(spacing: AppTheme.Spacing.md) {
+        let profileURL = dataManager.athlete?.profile
+
+        return VStack(spacing: AppTheme.Spacing.md) {
             // Photo Display
             PhotosPicker(selection: $selectedPhoto, matching: .images) {
                 if let profileImage = profileImage {
@@ -90,7 +92,7 @@ struct AccountInformationView: View {
                         .frame(width: 120, height: 120)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(AppTheme.Colors.accent, lineWidth: 3))
-                } else if let profileURL = dataManager.athlete?.profile {
+                } else if let profileURL {
                     AsyncImage(url: profileURL) { image in
                         image
                             .resizable()

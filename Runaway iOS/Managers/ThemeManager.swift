@@ -114,22 +114,3 @@ struct DynamicColors {
         themeManager.isDarkMode ? Color.white.opacity(0.18) : Color.black.opacity(0.12)
     }
 }
-
-// MARK: - Environment Key for Theme
-private struct ThemeKey: EnvironmentKey {
-    static let defaultValue = ThemeManager.shared
-}
-
-extension EnvironmentValues {
-    var themeManager: ThemeManager {
-        get { self[ThemeKey.self] }
-        set { self[ThemeKey.self] = newValue }
-    }
-}
-
-// MARK: - View Extension for Easy Access
-extension View {
-    func themed() -> some View {
-        self.environmentObject(ThemeManager.shared)
-    }
-}

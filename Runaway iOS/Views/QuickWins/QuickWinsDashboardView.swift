@@ -429,7 +429,7 @@ struct QuickWinsEmptyStateView: View {
             Text("No Insights Available")
                 .font(.headline)
 
-            Text("Complete more runs to get AI-powered insights and recommendations.")
+            Text("Complete more runs to unlock private, on-device insights and recommendations.")
                 .font(.subheadline)
                 .foregroundColor(AppTheme.Colors.textSecondary)
                 .multilineTextAlignment(.center)

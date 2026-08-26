@@ -50,7 +50,12 @@ struct ActivitiesView: View {
     
     var body: some View {
         ZStack {
-            colors.background.ignoresSafeArea()
+            LinearGradient(
+                colors: [AppTheme.Colors.DarkMode.backgroundElevated, colors.background],
+                startPoint: .topTrailing,
+                endPoint: .bottomLeading
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // ── Header ─────────────────────────────────────────────────
@@ -65,13 +70,13 @@ struct ActivitiesView: View {
                     Button(action: { Task { await refreshActivities() } }) {
                         Image(systemName: AppIcons.refresh)
                             .font(.system(size: 17, weight: .medium))
-                            .foregroundColor(Color(red: 0.10, green: 0.05, blue: 0))
-                            .frame(width: 40, height: 40)
-                            .background(AppTheme.Colors.warmAmber)
-                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
-                            .shadow(color: AppTheme.Colors.warmAmber.opacity(0.3), radius: 8, x: 0, y: 3)
+                            .foregroundColor(AppTheme.Colors.warmAmber)
+                            .frame(width: 44, height: 44)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
                     }
                     .disabled(dataManager.isLoadingActivities)
+                    .accessibilityHint("Syncs your latest activities")
                 }
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.top, AppTheme.Spacing.md)

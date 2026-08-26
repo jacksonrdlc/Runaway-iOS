@@ -298,7 +298,7 @@ struct EnhancedAnalysisLoadingView: View {
                     .font(AppTheme.Typography.title)
                     .foregroundColor(AppTheme.Colors.adaptiveTextPrimary)
                 
-                Text("Training ML models and generating insights from your running data")
+                Text("Preparing private insights from your running data on this device")
                     .font(AppTheme.Typography.body)
                     .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                     .multilineTextAlignment(.center)
@@ -338,7 +338,7 @@ struct EnhancedEmptyAnalysisView: View {
             }
             
             VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                FeatureItem(icon: "brain.head.profile", text: "AI-powered performance analysis")
+                FeatureItem(icon: "brain.head.profile", text: "On-device performance analysis")
                 FeatureItem(icon: "chart.line.uptrend.xyaxis", text: "Trend identification and predictions")
                 FeatureItem(icon: "lightbulb", text: "Personalized training recommendations")
             }

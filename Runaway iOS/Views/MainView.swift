@@ -7,12 +7,37 @@ import SwiftUI
 import WidgetKit
 import Supabase
 
+enum RunawayTab: Int, CaseIterable {
+    case today
+    case activities
+    case plan
+    case you
+
+    var title: String {
+        switch self {
+        case .today: "Today"
+        case .activities: "Activities"
+        case .plan: "Plan"
+        case .you: "You"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .today: "sun.max.fill"
+        case .activities: "figure.run"
+        case .plan: "calendar.badge.clock"
+        case .you: "person.crop.circle"
+        }
+    }
+}
+
 struct MainView: View {
     @Environment(UserSession.self) var userSession
     @Environment(RealtimeService.self) var realtimeService
     @Environment(DataManager.self) var dataManager
     @Environment(AppRouter.self) private var router
-    @State var selectedTab = 0
+    @State var selectedTab = RunawayTab.today
     @State var isDataReady: Bool = false
     @State private var showingRunRecording = false
 
@@ -23,16 +48,18 @@ struct MainView: View {
     var body: some View {
         if isDataReady {
             TabView(selection: $selectedTab) {
-                Tab("Dashboard", systemImage: "chart.bar.fill", value: 0) {
+                Tab(RunawayTab.today.title, systemImage: RunawayTab.today.systemImage, value: RunawayTab.today) {
                     NavigationStack(path: Bindable(router).path) {
-                        TrainingView()
+                        TrainingView {
+                            selectedTab = .activities
+                        }
                             .navigationDestination(for: AppRouter.Route.self) { route in
                                 router.destination(for: route)
                             }
                     }
                 }
 
-                Tab("Activities", systemImage: "figure.run", value: 1) {
+                Tab(RunawayTab.activities.title, systemImage: RunawayTab.activities.systemImage, value: RunawayTab.activities) {
                     NavigationStack(path: Bindable(router).path) {
                         ActivitiesView()
                             .navigationDestination(for: AppRouter.Route.self) { route in
@@ -41,7 +68,7 @@ struct MainView: View {
                     }
                 }
 
-                Tab("Races", systemImage: "flag.checkered", value: 2) {
+                Tab(RunawayTab.plan.title, systemImage: RunawayTab.plan.systemImage, value: RunawayTab.plan) {
                     NavigationStack(path: Bindable(router).path) {
                         PlanView()
                             .navigationDestination(for: AppRouter.Route.self) { route in
@@ -50,7 +77,7 @@ struct MainView: View {
                     }
                 }
 
-                Tab("Profile", systemImage: "person", value: 3) {
+                Tab(RunawayTab.you.title, systemImage: RunawayTab.you.systemImage, value: RunawayTab.you) {
                     NavigationStack(path: Bindable(router).path) {
                         profileContent
                             .navigationDestination(for: AppRouter.Route.self) { route in
@@ -59,9 +86,10 @@ struct MainView: View {
                     }
                 }
             }
+            .tint(AppTheme.Colors.warmAmber)
             .ignoresSafeArea(.keyboard)
             .overlay(alignment: .bottomTrailing) {
-                if selectedTab == 0 {
+                if selectedTab == .today {
                     StartRunFAB { showingRunRecording = true }
                         .padding(.trailing, AppTheme.Spacing.lg)
                         .padding(.bottom, 90) // Clear the tab bar + home indicator
@@ -70,12 +98,11 @@ struct MainView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: selectedTab)
             .onChange(of: selectedTab) { oldTab, newTab in
-                let tabNames = ["Dashboard", "Activities", "Races", "Profile"]
-                let tabName = newTab < tabNames.count ? tabNames[newTab] : "Unknown"
+                router.popToRoot()
                 AnalyticsService.shared.track(.tabSelected, category: .navigation, properties: [
-                    "tab_name": tabName,
-                    "tab_index": newTab,
-                    "previous_tab": oldTab
+                    "tab_name": newTab.title,
+                    "tab_index": newTab.rawValue,
+                    "previous_tab": oldTab.title
                 ])
             }
             .fullScreenCover(isPresented: $showingRunRecording) {
@@ -139,7 +166,7 @@ struct MainView: View {
         Group {
             if let athlete = dataManager.athlete, let stats = dataManager.stats {
                 AthleteView(athlete: athlete, stats: stats)
-                    .navigationTitle("Profile")
+                    .navigationTitle("You")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -154,13 +181,13 @@ struct MainView: View {
                     ProgressView()
                         .scaleEffect(1.2)
                         .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.Colors.accent))
-                    Text("Loading profile...")
+                    Text("Loading your profile...")
                         .font(AppTheme.Typography.body)
                         .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(backgroundColor)
-                .navigationTitle("Profile")
+                .navigationTitle("You")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -178,7 +205,7 @@ struct MainView: View {
                         }
                     }
                 })
-                .navigationTitle("Profile")
+                .navigationTitle("You")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -216,7 +243,7 @@ extension MainView {
 
 // MARK: - Start Run FAB
 
-/// Floating action button for starting a run, overlaid on the Dashboard tab.
+/// Floating action button for starting a run, overlaid on the Today tab.
 /// Tap opens `RunRecordingView` as a full-screen modal — full screen rather
 /// than a sheet so a swipe-down can't accidentally end a run mid-stride.
 private struct StartRunFAB: View {

@@ -47,17 +47,17 @@ class DataManager {
     // MARK: - Initialization
 
     private init(
-        activityStore: ActivityStore = .shared,
-        athleteStore: AthleteStore = .shared,
-        commitmentManager: CommitmentManager = .shared,
-        goalManager: GoalManager = .shared,
-        widgetSyncService: WidgetSyncService = .shared
+        activityStore: ActivityStore? = nil,
+        athleteStore: AthleteStore? = nil,
+        commitmentManager: CommitmentManager? = nil,
+        goalManager: GoalManager? = nil,
+        widgetSyncService: WidgetSyncService? = nil
     ) {
-        self.activityStore = activityStore
-        self.athleteStore = athleteStore
-        self.commitmentManager = commitmentManager
-        self.goalManager = goalManager
-        self.widgetSyncService = widgetSyncService
+        self.activityStore = activityStore ?? .shared
+        self.athleteStore = athleteStore ?? .shared
+        self.commitmentManager = commitmentManager ?? .shared
+        self.goalManager = goalManager ?? .shared
+        self.widgetSyncService = widgetSyncService ?? .shared
 
         setupStoreBindings()
     }
@@ -144,7 +144,7 @@ class DataManager {
         isLoadingCommitment = true
         defer { isLoadingCommitment = false }
 
-        await commitmentManager.loadTodaysCommitment(for: userId)
+        _ = await commitmentManager.loadTodaysCommitment(for: userId)
         todaysCommitment = commitmentManager.todaysCommitment
     }
 
@@ -280,6 +280,12 @@ class DataManager {
         }
 
         await regenerateWeeklyPlan(currentPlan: plan, activities: weekActivities)
+    }
+
+    /// Keep all plan surfaces synchronized after a deterministic on-device edit.
+    func updateCurrentWeeklyPlan(_ plan: WeeklyTrainingPlan) {
+        currentWeeklyPlan = plan
+        TrainingPlanService.cachePlan(plan)
     }
 
     // MARK: - Data Modification Methods

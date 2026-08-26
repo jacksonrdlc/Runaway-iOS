@@ -35,8 +35,9 @@ struct SignInEmailView: View {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
 
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.lg) {
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: AppTheme.Spacing.lg) {
                     Spacer()
                         .frame(height: AppTheme.Spacing.xl)
 
@@ -117,7 +118,8 @@ struct SignInEmailView: View {
                     )
                     .padding(.bottom, AppTheme.Spacing.xl)
                 }
-                .frame(minHeight: UIScreen.main.bounds.height - 150)
+                    .frame(minHeight: max(0, geometry.size.height - 150))
+                }
             }
         }
         .navigationBarTitleDisplayMode(.inline)

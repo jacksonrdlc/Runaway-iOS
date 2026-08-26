@@ -50,7 +50,7 @@ struct OnboardingWelcomeView: View {
 
             // Features preview
             VStack(alignment: .leading, spacing: 16) {
-                FeatureRow(icon: "chart.line.uptrend.xyaxis", title: "Smart Analytics", description: "AI-powered insights for your training")
+                FeatureRow(icon: "chart.line.uptrend.xyaxis", title: "Private Insights", description: "On-device guidance for your training")
                 FeatureRow(icon: "flame.fill", title: "Daily Commitments", description: "Build habits that stick")
                 FeatureRow(icon: "person.fill.checkmark", title: "Personal Coach", description: "Guidance tailored to you")
             }

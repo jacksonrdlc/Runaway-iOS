@@ -34,7 +34,8 @@ final class PersistenceController {
     static let schema: [any PersistentModel.Type] = [
         SDActivity.self,
         SDAthlete.self,
-        SDDailyCommitment.self
+        SDDailyCommitment.self,
+        SDWorkoutReflection.self
     ]
 
     // MARK: - Initialization
@@ -127,12 +128,14 @@ final class PersistenceController {
             let activityCount = try mainContext.fetchCount(FetchDescriptor<SDActivity>())
             let athleteCount = try mainContext.fetchCount(FetchDescriptor<SDAthlete>())
             let commitmentCount = try mainContext.fetchCount(FetchDescriptor<SDDailyCommitment>())
+            let reflectionCount = try mainContext.fetchCount(FetchDescriptor<SDWorkoutReflection>())
 
             #if DEBUG
             print("[PersistenceController] Data counts:")
             print("  Activities: \(activityCount)")
             print("  Athletes: \(athleteCount)")
             print("  Commitments: \(commitmentCount)")
+            print("  Reflections: \(reflectionCount)")
             #endif
         } catch {
             #if DEBUG
@@ -150,7 +153,10 @@ final class PersistenceController {
             let commitmentCount = try mainContext.fetchCount(
                 FetchDescriptor<SDDailyCommitment>(predicate: SDDailyCommitment.pendingSyncPredicate)
             )
-            return activityCount + commitmentCount
+            let reflectionCount = try mainContext.fetchCount(
+                FetchDescriptor<SDWorkoutReflection>(predicate: SDWorkoutReflection.pendingSyncPredicate)
+            )
+            return activityCount + commitmentCount + reflectionCount
         } catch {
             #if DEBUG
             print("[PersistenceController] Error getting pending sync count: \(error)")

@@ -591,20 +591,9 @@ struct ReturnToRunningCard: View {
                 }
             }
 
-            // CTA
-            Button(action: {}) {
-                HStack {
-                    Image(systemName: "play.fill")
-                    Text("Start Your Comeback")
-                }
-                .font(AppTheme.Typography.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.orange)
-                .cornerRadius(AppTheme.CornerRadius.medium)
-            }
+            Label("Use these steps to guide your next run", systemImage: "checkmark.circle.fill")
+                .font(AppTheme.Typography.caption.weight(.medium))
+                .foregroundColor(AppTheme.Colors.adaptiveTextSecondary)
         }
         .padding()
     }

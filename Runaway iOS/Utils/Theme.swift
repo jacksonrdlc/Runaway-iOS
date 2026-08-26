@@ -15,6 +15,11 @@ struct AppTheme {
         static let amberLight   = Color(red: 0.984, green: 0.749, blue: 0.298) // #FBBF4C
         static let amberDark    = Color(red: 0.780, green: 0.475, blue: 0.012) // #C77903
 
+        // Cool performance colors keep amber focused on running and primary actions.
+        static let strideBlue      = Color(red: 0.220, green: 0.580, blue: 0.980) // #3894FA
+        static let strideBlueLight = Color(red: 0.400, green: 0.720, blue: 1.000) // #66B8FF
+        static let recoveryMint    = Color(red: 0.180, green: 0.760, blue: 0.650) // #2EC2A6
+
         // Legacy alias — keep existing code working
         static let royalBlue     = warmAmber
         static let royalBlueLight = amberLight
@@ -57,12 +62,12 @@ struct AppTheme {
         static let orangeDark = amberDark
 
         // MARK: - Global dark backgrounds (shared between modes when forced dark)
-        static let background           = Color(red: 0.031, green: 0.039, blue: 0.055) // #080A0E
-        static let backgroundElevated   = Color(red: 0.047, green: 0.059, blue: 0.078) // #0C0F14
-        static let cardBackground       = Color(red: 0.071, green: 0.086, blue: 0.110) // #12161C
-        static let cardBackgroundElevated = Color(red: 0.090, green: 0.106, blue: 0.133) // #171B22
-        static let surfaceBackground    = Color(red: 0.110, green: 0.129, blue: 0.161) // #1C2129
-        static let surfaceElevated      = Color(red: 0.129, green: 0.149, blue: 0.184) // #212630
+        static let background           = Color(red: 0.039, green: 0.063, blue: 0.098) // #0A1019
+        static let backgroundElevated   = Color(red: 0.055, green: 0.090, blue: 0.137) // #0E1723
+        static let cardBackground       = Color(red: 0.071, green: 0.110, blue: 0.157) // #121C28
+        static let cardBackgroundElevated = Color(red: 0.090, green: 0.141, blue: 0.204) // #172434
+        static let surfaceBackground    = Color(red: 0.110, green: 0.169, blue: 0.239) // #1C2B3D
+        static let surfaceElevated      = Color(red: 0.137, green: 0.204, blue: 0.286) // #233449
 
         // Text (dark bg)
         static let textPrimary    = Color.white
@@ -79,8 +84,8 @@ struct AppTheme {
         static let warningBackground = warmAmber.opacity(0.15)
         static let error             = Color(red: 1.0, green: 0.38, blue: 0.38)
         static let errorBackground   = Color(red: 1.0, green: 0.38, blue: 0.38).opacity(0.15)
-        static let info              = amberLight
-        static let infoBackground    = warmAmber.opacity(0.12)
+        static let info              = strideBlueLight
+        static let infoBackground    = strideBlue.opacity(0.14)
 
         // MARK: - Icon colors
         static let iconPrimary  = Color.white
@@ -148,8 +153,8 @@ struct AppTheme {
 
         // MARK: - Semantic
         struct Semantic {
-            static let link = warmAmber
-            static let linkVisited = amberDark
+            static let link = strideBlueLight
+            static let linkVisited = strideBlue
             static let interactive = warmAmber
             static let interactiveHover = amberLight
             static let interactivePressed = amberDark
@@ -182,12 +187,12 @@ struct AppTheme {
         // MARK: - Dark Mode (Copilot-dark + Runaway amber)
         struct DarkMode {
             // True near-black — deeper than before
-            static let background         = Color(red: 0.031, green: 0.039, blue: 0.055) // #080A0E
-            static let backgroundElevated = Color(red: 0.047, green: 0.059, blue: 0.078) // #0C0F14
-            static let cardBackground     = Color(red: 0.071, green: 0.086, blue: 0.110) // #12161C
-            static let cardBackgroundElevated = Color(red: 0.090, green: 0.106, blue: 0.133) // #171B22
-            static let surfaceBackground  = Color(red: 0.110, green: 0.129, blue: 0.161) // #1C2129
-            static let surfaceElevated    = Color(red: 0.129, green: 0.149, blue: 0.184) // #212630
+            static let background         = Color(red: 0.039, green: 0.063, blue: 0.098)
+            static let backgroundElevated = Color(red: 0.055, green: 0.090, blue: 0.137)
+            static let cardBackground     = Color(red: 0.071, green: 0.110, blue: 0.157)
+            static let cardBackgroundElevated = Color(red: 0.090, green: 0.141, blue: 0.204)
+            static let surfaceBackground  = Color(red: 0.110, green: 0.169, blue: 0.239)
+            static let surfaceElevated    = Color(red: 0.137, green: 0.204, blue: 0.286)
 
             // Text
             static let textPrimary    = Color.white
@@ -200,7 +205,7 @@ struct AppTheme {
             static let accentBright = amberLight
 
             // Tab bar
-            static let tabBarBackground = Color(red: 0.031, green: 0.039, blue: 0.055)
+            static let tabBarBackground = Color(red: 0.055, green: 0.090, blue: 0.137)
         }
     }
 

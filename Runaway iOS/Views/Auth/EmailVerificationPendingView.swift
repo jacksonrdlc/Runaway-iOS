@@ -209,9 +209,7 @@ struct EmailVerificationPendingView: View {
 
     private func openMailApp() {
         if let mailURL = URL(string: "message://") {
-            if UIApplication.shared.canOpenURL(mailURL) {
-                UIApplication.shared.open(mailURL)
-            }
+            UIApplication.shared.open(mailURL)
         }
     }
 

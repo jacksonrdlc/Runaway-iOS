@@ -16,6 +16,7 @@ import SwiftUI
 struct TrainingView: View {
     @Environment(DataManager.self) var dataManager
     @Environment(AppRouter.self) private var router
+    let onSeeAllActivities: () -> Void
 
     private var greetingPrefix: String {
         let h = Calendar.current.component(.hour, from: Date())
@@ -31,7 +32,23 @@ struct TrainingView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.Colors.DarkMode.background.ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    AppTheme.Colors.DarkMode.backgroundElevated,
+                    AppTheme.Colors.DarkMode.background
+                ],
+                startPoint: .topTrailing,
+                endPoint: .bottomLeading
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [AppTheme.Colors.warmAmber.opacity(0.07), .clear],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 280
+            )
+            .ignoresSafeArea()
 
             if dataManager.activities.isEmpty {
                 EmptyInsightsStateView()
@@ -95,7 +112,7 @@ struct TrainingView: View {
                 HStack {
                     EyebrowLabel(text: "LATEST")
                     Spacer()
-                    Button(action: {}) {
+                    Button(action: onSeeAllActivities) {
                         Text("See all")
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundColor(AppTheme.Colors.warmAmber)
@@ -125,12 +142,6 @@ struct TrainingView: View {
     }
 }
 
-// MARK: - Notification for Coach Navigation
-
-extension Notification.Name {
-    static let navigateToCoachTab = Notification.Name("navigateToCoachTab")
-}
-
 // MARK: - Empty State
 
 struct EmptyInsightsStateView: View {
@@ -145,11 +156,11 @@ struct EmptyInsightsStateView: View {
                 .foregroundColor(AppTheme.Colors.accent)
 
             VStack(spacing: AppTheme.Spacing.sm) {
-                Text("No Insights Available")
+                Text("Your Today view is ready")
                     .font(AppTheme.Typography.title)
                     .foregroundColor(colors.textPrimary)
 
-                Text("Start logging activities to see AI-powered insights and performance analytics.")
+                Text("Log your first activity to unlock private, on-device guidance and performance trends.")
                     .font(AppTheme.Typography.body)
                     .foregroundColor(colors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -208,7 +219,7 @@ struct LoadingInsightsStateView: View {
 struct TrainingView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
-            TrainingView()
+            TrainingView(onSeeAllActivities: {})
                 .environment(DataManager.shared)
         }
     }

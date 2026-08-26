@@ -8,6 +8,26 @@
 import SwiftUI
 import Charts
 
+enum AthleteAccountAction: Equatable {
+    case systemSettings
+    case trainingPreferences
+}
+
+enum AthleteAccountItem: CaseIterable {
+    case devicesAndSensors
+    case trainingPreferences
+    case notifications
+
+    var action: AthleteAccountAction {
+        switch self {
+        case .devicesAndSensors, .notifications:
+            return .systemSettings
+        case .trainingPreferences:
+            return .trainingPreferences
+        }
+    }
+}
+
 struct AthleteView: View {
     let athlete: Athlete
     let stats: AthleteStats
@@ -18,6 +38,8 @@ struct AthleteView: View {
     @State private var milestones: [RunnerIdentityMilestone] = []
     @State private var mindsetLoadError = false
     @State private var showingEditMindset = false
+    @State private var showingTrainingPreferences = false
+    @Environment(\.openURL) private var openURL
 
     private var lifetimeMiles: Double { (stats.distance ?? 0) * 0.000621371 }
     private var lifetimeRuns: Int { stats.count ?? 0 }
@@ -29,10 +51,18 @@ struct AthleteView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.Colors.DarkMode.background.ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    AppTheme.Colors.DarkMode.backgroundElevated,
+                    AppTheme.Colors.DarkMode.background
+                ],
+                startPoint: .topTrailing,
+                endPoint: .bottomLeading
+            )
+            .ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
 
                     // ── Profile header ─────────────────────────────────────
                     HStack(spacing: 16) {
@@ -46,13 +76,13 @@ struct AthleteView: View {
                                     .foregroundColor(AppTheme.Colors.warmAmber)
                             }
                         }
-                        .frame(width: 60, height: 60)
+                        .frame(width: 52, height: 52)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(AppTheme.Colors.warmAmber.opacity(0.25), lineWidth: 1.5))
 
                         VStack(alignment: .leading, spacing: 3) {
                             Text([athlete.firstname, athlete.lastname].compactMap { $0 }.joined(separator: " "))
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .font(.system(size: 19, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             Text(locationSubtitle)
                                 .font(.system(size: 13, design: .rounded))
@@ -198,11 +228,17 @@ struct AthleteView: View {
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
                             AccountRow(icon: "bolt.fill", title: "Strava", subtitle: stravaSubtitle)
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
-                            AccountRow(icon: "applewatch", title: "Devices & sensors", subtitle: "Apple Watch")
+                            AccountRow(icon: "applewatch", title: "Devices & sensors", subtitle: "Apple Watch", action: {
+                                performAccountAction(for: .devicesAndSensors)
+                            })
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
-                            AccountRow(icon: "chart.bar.fill", title: "Training preferences", subtitle: "Goals & zones")
+                            AccountRow(icon: "chart.bar.fill", title: "Training preferences", subtitle: "Pace, audio & zones", action: {
+                                performAccountAction(for: .trainingPreferences)
+                            })
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
-                            AccountRow(icon: "bell.fill", title: "Notifications", subtitle: "Workout reminders")
+                            AccountRow(icon: "bell.fill", title: "Notifications", subtitle: "Workout reminders", action: {
+                                performAccountAction(for: .notifications)
+                            })
                         }
                         .background(AppTheme.Colors.DarkMode.cardBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -247,6 +283,9 @@ struct AthleteView: View {
                 )
             }
         }
+        .sheet(isPresented: $showingTrainingPreferences) {
+            CoachSettingsView()
+        }
         .onReceive(NotificationCenter.default.publisher(for: MilestoneService.didUpdateNotification)) { _ in
             guard let athleteId = athlete.id else { return }
             Task {
@@ -256,6 +295,16 @@ struct AthleteView: View {
     }
 
     // MARK: - Computed strings
+
+    private func performAccountAction(for item: AthleteAccountItem) {
+        switch item.action {
+        case .systemSettings:
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            openURL(url)
+        case .trainingPreferences:
+            showingTrainingPreferences = true
+        }
+    }
 
     private var locationSubtitle: String {
         var parts: [String] = []
@@ -576,11 +625,11 @@ struct AthleteWeeklyStatsCard: View {
         var totalTime = 0.0
 
         for dayArray in dayArrays {
-            totalRuns += dayArray.count
-
             for activityJson in dayArray {
                 if let data = activityJson.data(using: .utf8),
-                   let activity = try? JSONDecoder().decode(RAActivity.self, from: data) {
+                   let activity = try? JSONDecoder().decode(RAActivity.self, from: data),
+                   AppConstants.ActivityTypes.isRunning(activity.type) {
+                    totalRuns += 1
                     totalDistance += activity.distance
                     totalTime += activity.time
                 }
@@ -709,7 +758,8 @@ struct MonthlyStatsCard: View {
         for dayArray in dayArrays {
             for activityJson in dayArray {
                 if let data = activityJson.data(using: .utf8),
-                   let activity = try? JSONDecoder().decode(RAActivity.self, from: data) {
+                   let activity = try? JSONDecoder().decode(RAActivity.self, from: data),
+                   AppConstants.ActivityTypes.isRunning(activity.type) {
                     totalMonthlyRuns += 1
                     totalMonthlyTime += activity.time
                     totalMonthlyDistance += activity.distance

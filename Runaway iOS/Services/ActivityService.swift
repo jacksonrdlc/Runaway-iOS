@@ -210,15 +210,6 @@ class ActivityService {
         // Refresh widgets after creating activity
         WidgetSyncService.refreshForActivityUpdate()
 
-        // Fire-and-forget runner identity feedback generation
-        Task {
-            guard let athleteId = createdActivity.athlete_id else { return }
-            try? await FeedbackWorkoutService.generateFeedback(
-                athleteId: athleteId,
-                activityId: createdActivity.id
-            )
-        }
-
         Task {
             guard let athleteId = createdActivity.athlete_id else { return }
             try? await MilestoneService.checkMilestones(
@@ -270,15 +261,6 @@ class ActivityService {
 
         // Refresh widgets after creating activity
         WidgetSyncService.refreshForActivityUpdate()
-
-        // Fire-and-forget runner identity feedback generation
-        Task {
-            guard let athleteId = createdActivity.athlete_id else { return }
-            try? await FeedbackWorkoutService.generateFeedback(
-                athleteId: athleteId,
-                activityId: createdActivity.id
-            )
-        }
 
         Task {
             guard let athleteId = createdActivity.athlete_id else { return }

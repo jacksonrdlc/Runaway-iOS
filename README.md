@@ -4,7 +4,7 @@ Native iOS running coach app with AI-powered analysis, real-time Strava/Garmin s
 
 ## Features
 
-- **AI Coaching**: Chat with Claude for personalized coaching, weekly summaries, and goal assessment
+- **Embedded Training Intelligence**: Readiness-aware recommendations, workout insights, and adaptive planning
 - **Activity Sync**: Real-time sync from Strava and Garmin via Supabase Edge Functions
 - **Digital Twin**: Biometric enrichment and observation tracking across activities
 - **Race Reconnaissance**: Course maps with elevation charts and tactical insights

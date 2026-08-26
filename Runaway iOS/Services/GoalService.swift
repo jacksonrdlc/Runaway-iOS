@@ -7,10 +7,33 @@ import Foundation
 import Supabase
 import WidgetKit
 
+enum RaceDateCodec {
+    static func date(from value: String, calendar: Calendar = .current) -> Date? {
+        let parts = value.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        var components = DateComponents()
+        components.calendar = calendar
+        components.timeZone = calendar.timeZone
+        components.year = parts[0]
+        components.month = parts[1]
+        components.day = parts[2]
+        components.hour = 12
+        return components.date
+    }
+
+    static func string(from date: Date, calendar: Calendar = .current) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day else { return "" }
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+}
+
 struct AthleteRace: Codable, Identifiable, Sendable {
     let id: Int?
     let athleteId: Int
-    let runsignupRaceId: Int
+    let runsignupRaceId: Int?
     let eventId: Int?
     let raceName: String
     let raceDate: String?
@@ -20,6 +43,7 @@ struct AthleteRace: Codable, Identifiable, Sendable {
     let logoUrl: String?
     let externalUrl: String?
     let distanceMiles: Double?
+    let source: String?
     let syncedAt: String?
 
     enum CodingKeys: String, CodingKey {
@@ -34,15 +58,13 @@ struct AthleteRace: Codable, Identifiable, Sendable {
         case logoUrl         = "logo_url"
         case externalUrl     = "external_url"
         case distanceMiles   = "distance_miles"
+        case source
         case syncedAt        = "synced_at"
     }
 
     var parsedDate: Date? {
         guard let s = raceDate else { return nil }
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withFullDate]
-        f.timeZone = TimeZone(identifier: "UTC")
-        return f.date(from: s)
+        return RaceDateCodec.date(from: s)
     }
 
     var isUpcoming: Bool {
@@ -99,6 +121,11 @@ struct AthleteRace: Codable, Identifiable, Sendable {
         }
     }
 
+    var preferredDistanceLabel: String? {
+        guard let miles = distanceMiles, miles > 0 else { return distanceLabel }
+        return UnitFormatter.formatMiles(miles, decimals: 1)
+    }
+
     func toRunningGoal() -> RunningGoal {
         let deadline = parsedDate ?? Date().addingTimeInterval(365 * 24 * 3600)
         return RunningGoal(
@@ -118,7 +145,80 @@ struct AthleteRace: Codable, Identifiable, Sendable {
     }
 }
 
+struct ManualRaceDraft: Sendable, Equatable {
+    let name: String
+    let distanceMiles: Double
+    let date: Date
+
+    var isValid: Bool {
+        let earliestDate = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: Calendar.current.startOfDay(for: Date())
+        ) ?? Date.distantFuture
+        return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && distanceMiles.isFinite
+            && distanceMiles > 0
+            && date >= earliestDate
+    }
+}
+
+struct ManualRaceEdit: Sendable, Equatable {
+    let raceID: Int
+    let draft: ManualRaceDraft
+
+    init?(race: AthleteRace) {
+        guard race.source?.lowercased() == "manual",
+              let raceID = race.id,
+              let date = race.parsedDate else {
+            return nil
+        }
+        self.raceID = raceID
+        self.draft = ManualRaceDraft(
+            name: race.raceName,
+            distanceMiles: race.detectedDistance,
+            date: date
+        )
+    }
+}
+
+private struct ManualRaceInsertPayload: Encodable {
+    let athleteId: Int
+    let runsignupRaceId: Int? = nil
+    let eventId = 0
+    let raceName: String
+    let raceDate: String
+    let distanceMiles: Double
+    let source = "manual"
+
+    enum CodingKeys: String, CodingKey {
+        case athleteId = "athlete_id"
+        case runsignupRaceId = "runsignup_race_id"
+        case eventId = "event_id"
+        case raceName = "race_name"
+        case raceDate = "race_date"
+        case distanceMiles = "distance_miles"
+        case source
+    }
+}
+
+private struct ManualRaceUpdatePayload: Encodable {
+    let raceName: String
+    let raceDate: String
+    let distanceMiles: Double
+
+    enum CodingKeys: String, CodingKey {
+        case raceName = "race_name"
+        case raceDate = "race_date"
+        case distanceMiles = "distance_miles"
+    }
+}
+
 class GoalService {
+    static func raceDateString(from date: Date) -> String {
+        RaceDateCodec.string(from: date)
+    }
+
     private static func getCurrentUserId() async throws -> Int {
         let userId = await MainActor.run { UserSession.shared.userId }
         guard let u = userId else { throw GoalServiceError.userNotAuthenticated }
@@ -156,6 +256,48 @@ class GoalService {
     static func getNextRace() async throws -> AthleteRace? {
         let upcoming = try await getUpcomingRaces()
         return upcoming.first
+    }
+
+    static func createManualRace(_ draft: ManualRaceDraft) async throws -> AthleteRace {
+        guard draft.isValid else { throw GoalServiceError.invalidRace }
+        let userId = try await getCurrentUserId()
+        let payload = ManualRaceInsertPayload(
+            athleteId: userId,
+            raceName: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            raceDate: raceDateString(from: draft.date),
+            distanceMiles: draft.distanceMiles
+        )
+        let race: AthleteRace = try await supabase
+            .from("athlete_races")
+            .insert(payload)
+            .select()
+            .single()
+            .execute()
+            .value
+        WidgetSyncService.refreshForGoalUpdate()
+        return race
+    }
+
+    static func updateManualRace(raceID: Int, draft: ManualRaceDraft) async throws -> AthleteRace {
+        guard raceID > 0, draft.isValid else { throw GoalServiceError.invalidRace }
+        let userId = try await getCurrentUserId()
+        let payload = ManualRaceUpdatePayload(
+            raceName: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            raceDate: raceDateString(from: draft.date),
+            distanceMiles: draft.distanceMiles
+        )
+        let race: AthleteRace = try await supabase
+            .from("athlete_races")
+            .update(payload)
+            .eq("id", value: raceID)
+            .eq("athlete_id", value: userId)
+            .eq("source", value: "manual")
+            .select()
+            .single()
+            .execute()
+            .value
+        WidgetSyncService.refreshForGoalUpdate()
+        return race
     }
 
     static func getActiveGoals() async throws -> [RunningGoal] {
@@ -217,6 +359,7 @@ enum GoalServiceError: LocalizedError {
     case goalNotFound
     case duplicateActiveGoal
     case networkError(String)
+    case invalidRace
     var errorDescription: String? {
         switch self {
         case .userNotAuthenticated: return "User not authenticated"
@@ -224,6 +367,7 @@ enum GoalServiceError: LocalizedError {
         case .goalNotFound: return "Goal not found"
         case .duplicateActiveGoal: return "Goal type duplicate"
         case .networkError(let m): return "Network error: \(m)"
+        case .invalidRace: return "Enter a race name, future date, and distance greater than zero."
         }
     }
 }

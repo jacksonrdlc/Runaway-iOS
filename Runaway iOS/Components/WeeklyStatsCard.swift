@@ -39,7 +39,7 @@ struct WeeklyStatsCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(String(format: stats.totalMiles >= 10 ? "%.1f" : "%.2f", stats.totalMiles))
                             .font(.system(size: 52, weight: .bold, design: .rounded))
-                            .foregroundColor(AppTheme.Colors.warmAmber)
+                            .foregroundColor(AppTheme.Colors.strideBlueLight)
                             .monospacedDigit()
                         Text(UnitFormatter.distanceUnitAbbreviation)
                             .font(.system(size: 20, weight: .medium, design: .rounded))
@@ -167,7 +167,7 @@ struct WeeklyStatsCard: View {
     }
 
     private var progressColor: Color {
-        progress >= 1.0 ? AppTheme.Colors.success : AppTheme.Colors.warmAmber
+        progress >= 1.0 ? AppTheme.Colors.success : AppTheme.Colors.strideBlue
     }
 }
 
@@ -189,10 +189,12 @@ struct WeeklyActivityStats {
         }
 
         let current = activities.filter {
+            guard AppConstants.ActivityTypes.isRunning($0.type) else { return false }
             guard let ts = $0.activity_date ?? $0.start_date else { return false }
             let d = Date(timeIntervalSince1970: ts); return d >= weekStart && d <= today
         }
         let prev = activities.filter {
+            guard AppConstants.ActivityTypes.isRunning($0.type) else { return false }
             guard let ts = $0.activity_date ?? $0.start_date else { return false }
             let d = Date(timeIntervalSince1970: ts); return d >= prevStart && d < weekStart
         }

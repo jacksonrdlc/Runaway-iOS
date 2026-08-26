@@ -172,13 +172,16 @@ class ReadinessService: ObservableObject {
         // Calculate overall score
         let overallScore: Int
         if totalWeight > 0 {
-            overallScore = Int((totalWeightedScore / totalWeight) * (totalWeight / 1.0))
+            overallScore = Self.normalizedScore(
+                weightedScore: totalWeightedScore,
+                availableWeight: totalWeight
+            )
         } else {
             overallScore = 50 // Default if no data
         }
 
         // Generate personalized recommendation
-        let recommendation = generateRecommendation(
+        var recommendation = generateRecommendation(
             score: overallScore,
             sleep: sleep,
             hrv: hrv,
@@ -186,6 +189,9 @@ class ReadinessService: ObservableObject {
             trainingLoad: trainingLoad,
             restDays: restDayFactor
         )
+        if totalWeight < 0.75 {
+            recommendation = "Estimate based on available data. \(recommendation)"
+        }
 
         let readiness = DailyReadiness(
             athleteId: athleteId,
@@ -287,12 +293,15 @@ class ReadinessService: ObservableObject {
                 userId: athleteId,
                 limit: 60
             )
+            let runningActivities = activities.filter {
+                Self.isReadinessActivity(activityType: $0.type)
+            }
 
             let today = Date()
 
             // Calculate acute load (last 7 days)
             let sevenDaysAgo = today.timeIntervalSince1970 - (7 * 24 * 60 * 60)
-            let acuteActivities = activities.filter {
+            let acuteActivities = runningActivities.filter {
                 guard let date = $0.activity_date else { return false }
                 return date >= sevenDaysAgo
             }
@@ -302,7 +311,7 @@ class ReadinessService: ObservableObject {
 
             // Calculate chronic load (8-28 days ago)
             let twentyEightDaysAgo = today.timeIntervalSince1970 - (28 * 24 * 60 * 60)
-            let chronicActivities = activities.filter {
+            let chronicActivities = runningActivities.filter {
                 guard let date = $0.activity_date else { return false }
                 return date >= twentyEightDaysAgo && date < sevenDaysAgo
             }
@@ -344,6 +353,15 @@ class ReadinessService: ObservableObject {
         } catch {
             return (70, "No data", .stable)
         }
+    }
+
+    nonisolated static func normalizedScore(weightedScore: Double, availableWeight: Double) -> Int {
+        guard availableWeight > 0 else { return 50 }
+        return min(100, max(0, Int((weightedScore / availableWeight).rounded())))
+    }
+
+    nonisolated static func isReadinessActivity(activityType: String?) -> Bool {
+        AppConstants.ActivityTypes.isRunning(activityType)
     }
 
     private func calculateActivityLoad(_ activity: Activity) -> Double {

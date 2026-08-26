@@ -55,6 +55,20 @@ final class UnitPreferences: ObservableObject {
 /// Centralized formatting for distances, paces, and speeds
 struct UnitFormatter {
 
+    static func milesToPreferredUnit(_ miles: Double) -> Double {
+        UnitPreferences.shared.distanceUnit == .kilometers ? miles * 1.609344 : miles
+    }
+
+    static func preferredUnitToMiles(_ value: Double) -> Double {
+        UnitPreferences.shared.distanceUnit == .kilometers ? value / 1.609344 : value
+    }
+
+    static func formatMiles(_ miles: Double, decimals: Int = 1, includeUnit: Bool = true) -> String {
+        let value = milesToPreferredUnit(miles)
+        let formatted = String(format: "%.\(decimals)f", value)
+        return includeUnit ? "\(formatted) \(distanceUnitAbbreviation)" : formatted
+    }
+
     /// Format distance from meters to user's preferred unit
     /// - Parameters:
     ///   - meters: Distance in meters

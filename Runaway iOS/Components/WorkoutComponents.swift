@@ -10,7 +10,11 @@ import SwiftUI
 struct TodaysFocusCard: View {
     @Environment(DataManager.self) var dataManager
     @StateObject private var restDayService = RestDayService.shared
+    @StateObject private var readinessService = ReadinessService.shared
     @State private var showingWorkoutDetail = false
+    @State private var showingTrainingDecision = false
+    @State private var changeReceipt: TodayWorkoutAdjustmentResult?
+    @State private var planBeforeAdjustment: WeeklyTrainingPlan?
 
     private var todaysWorkout: DailyWorkout? {
         guard let plan = dataManager.currentWeeklyPlan else { return nil }
@@ -48,9 +52,22 @@ struct TodaysFocusCard: View {
             return .activityCompleted(activity)
         }
 
-        // Priority 2: If there's a planned workout today, show it
+        let recommendation = TodayRecommendationPolicy.recommendation(
+            readinessScore: readinessService.todaysReadiness?.score
+        )
+
+        // Recovery guidance overrides generic and planned workout prompts.
+        if recommendation.directive == .recover {
+            return .readinessRecommendation(recommendation)
+        }
+
+        // A planned workout remains visible when readiness supports training.
         if let workout = todaysWorkout {
             return .plannedWorkout(workout)
+        }
+
+        if recommendation.directive == .reduceIntensity || recommendation.directive == .unknown {
+            return .readinessRecommendation(recommendation)
         }
 
         // Priority 3: Only suggest rest when user exercised yesterday and may need recovery
@@ -60,6 +77,22 @@ struct TodaysFocusCard: View {
 
         // Default: encourage a run
         return .readyToRun
+    }
+
+    private var recommendation: TodayRecommendation {
+        TodayRecommendationPolicy.recommendation(
+            readinessScore: readinessService.todaysReadiness?.score
+        )
+    }
+
+    private var shouldOfferTrainingDecision: Bool {
+        guard todaysActivity == nil,
+              let workout = todaysWorkout,
+              workout.workoutType != .rest,
+              !workout.description.hasPrefix("Adjusted for today's readiness") else {
+            return false
+        }
+        return recommendation.directive == .recover || recommendation.directive == .reduceIntensity
     }
 
     private var nextUpLabel: String {
@@ -107,6 +140,14 @@ struct TodaysFocusCard: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.white.opacity(0.08))
+                        .clipShape(Capsule())
+                case .readinessRecommendation(let recommendation):
+                    Text(recommendation.status)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(recommendation.directive == .recover ? .orange : AppTheme.Colors.warmAmber)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background((recommendation.directive == .recover ? Color.orange : AppTheme.Colors.warmAmber).opacity(0.15))
                         .clipShape(Capsule())
                 }
             }
@@ -251,6 +292,90 @@ struct TodaysFocusCard: View {
                 .padding(.vertical, 10)
                 .background(AppTheme.Colors.DarkMode.surfaceBackground)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
+
+            case .readinessRecommendation(let recommendation):
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
+                            .fill(AppTheme.Colors.warmAmber.opacity(0.16))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: recommendation.systemImage)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(AppTheme.Colors.warmAmber)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(recommendation.title)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                        Text(recommendation.detail)
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(AppTheme.Colors.DarkMode.surfaceBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
+            }
+
+
+            if shouldOfferTrainingDecision {
+                Button {
+                    showingTrainingDecision = true
+                } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 13, weight: .semibold))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Review today's plan")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            Text("Choose a safer version without changing the rest of your week")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(AppTheme.Colors.success)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.Colors.success.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let receipt = changeReceipt {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(AppTheme.Colors.success)
+                        .padding(.top, 1)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(receipt.receiptTitle)
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                        Text(receipt.receiptDetail)
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Button("Undo") {
+                        if let planBeforeAdjustment {
+                            dataManager.updateCurrentWeeklyPlan(planBeforeAdjustment)
+                        }
+                        self.planBeforeAdjustment = nil
+                        changeReceipt = nil
+                    }
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(AppTheme.Colors.success)
+                }
+                .padding(12)
+                .background(AppTheme.Colors.success.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
             }
         }
         .padding(AppTheme.Spacing.md)
@@ -265,6 +390,158 @@ struct TodaysFocusCard: View {
                 WorkoutDetailSheet(workout: workout)
             }
         }
+        .sheet(isPresented: $showingTrainingDecision) {
+            if let workout = todaysWorkout {
+                TrainingDecisionSheet(workout: workout, recommendation: recommendation) { adjustment in
+                    guard let plan = dataManager.currentWeeklyPlan,
+                          let result = TodayRecommendationPolicy.applying(
+                            adjustment,
+                            to: plan,
+                            readinessScore: readinessService.todaysReadiness?.score
+                          ) else { return }
+                    planBeforeAdjustment = plan
+                    dataManager.updateCurrentWeeklyPlan(result.plan)
+                    changeReceipt = result
+                }
+            }
+        }
+    }
+}
+
+private struct TrainingDecisionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let workout: DailyWorkout
+    let recommendation: TodayRecommendation
+    let onSelect: (TodayWorkoutAdjustment) -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("TODAY'S TRAINING DECISION", systemImage: "waveform.path.ecg")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .tracking(1.2)
+                        .foregroundColor(AppTheme.Colors.success)
+                    Text(recommendation.title)
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text(recommendation.detail)
+                        .font(.system(size: 15, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                }
+
+                HStack(spacing: 12) {
+                    Image(systemName: workout.workoutType.icon)
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundColor(AppTheme.Colors.warmAmber)
+                        .frame(width: 42, height: 42)
+                        .background(AppTheme.Colors.warmAmber.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 11))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Originally planned")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                        Text(workout.title)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    Spacer()
+                    if let distance = workout.formattedDistance {
+                        Text(distance)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                    }
+                }
+                .padding(14)
+                .background(AppTheme.Colors.DarkMode.cardBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+
+                VStack(spacing: 10) {
+                    if recommendation.directive == .recover {
+                        decisionButton(
+                            title: "Take a recovery day",
+                            detail: "Remove today's load and leave the rest of the week intact",
+                            icon: "moon.zzz.fill",
+                            adjustment: .recoveryDay,
+                            emphasized: true
+                        )
+                        decisionButton(
+                            title: "Make it an easy session",
+                            detail: "Reduce running distance by 35% and remove intensity",
+                            icon: "figure.walk",
+                            adjustment: .easierWorkout
+                        )
+                    } else {
+                        decisionButton(
+                            title: "Make it an easy session",
+                            detail: "Reduce running distance by 35% and remove intensity",
+                            icon: "figure.walk",
+                            adjustment: .easierWorkout,
+                            emphasized: true
+                        )
+                        decisionButton(
+                            title: "Take a recovery day",
+                            detail: "Remove today's load and leave the rest of the week intact",
+                            icon: "moon.zzz.fill",
+                            adjustment: .recoveryDay
+                        )
+                    }
+
+                    Button("Keep original workout") { dismiss() }
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .background(AppTheme.Colors.DarkMode.background.ignoresSafeArea())
+            .navigationTitle("Adjust Today")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func decisionButton(
+        title: String,
+        detail: String,
+        icon: String,
+        adjustment: TodayWorkoutAdjustment,
+        emphasized: Bool = false
+    ) -> some View {
+        Button {
+            onSelect(adjustment)
+            dismiss()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    Text(detail)
+                        .font(.system(size: 11, design: .rounded))
+                        .foregroundColor(emphasized ? Color.white.opacity(0.74) : AppTheme.Colors.DarkMode.textTertiary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .foregroundColor(emphasized ? .white : AppTheme.Colors.success)
+            .padding(14)
+            .background(emphasized ? AppTheme.Colors.success.opacity(0.82) : AppTheme.Colors.DarkMode.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -274,6 +551,7 @@ private enum TodayFocusState {
     case plannedWorkout(DailyWorkout)
     case readyToRun
     case restDay
+    case readinessRecommendation(TodayRecommendation)
 }
 
 struct WeekProgressRow: View {

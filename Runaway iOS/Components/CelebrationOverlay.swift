@@ -168,7 +168,7 @@ struct CelebrationOverlay: View {
             let piece = ConfettiPiece(
                 id: i,
                 color: confettiColors.randomElement() ?? .blue,
-                x: CGFloat.random(in: 0...UIScreen.main.bounds.width),
+                x: CGFloat.random(in: -0.5...0.5),
                 y: -20,
                 rotation: Double.random(in: 0...360),
                 scale: CGFloat.random(in: 0.5...1.0)
@@ -199,15 +199,17 @@ struct ConfettiView: View {
     @State private var opacity: Double = 1
 
     var body: some View {
-        confettiShape
-            .fill(piece.color)
-            .frame(width: 10 * piece.scale, height: 10 * piece.scale)
-            .rotationEffect(.degrees(rotation))
-            .offset(x: piece.x - UIScreen.main.bounds.width / 2, y: offsetY)
-            .opacity(opacity)
-            .onAppear {
-                animate()
-            }
+        GeometryReader { geometry in
+            confettiShape
+                .fill(piece.color)
+                .frame(width: 10 * piece.scale, height: 10 * piece.scale)
+                .rotationEffect(.degrees(rotation))
+                .offset(x: piece.x * geometry.size.width, y: offsetY)
+                .opacity(opacity)
+                .onAppear {
+                    animate(travelDistance: geometry.size.height + 50)
+                }
+        }
     }
 
     private var confettiShape: some Shape {
@@ -220,7 +222,7 @@ struct ConfettiView: View {
         return shapes.randomElement() ?? AnyShape(Circle())
     }
 
-    private func animate() {
+    private func animate(travelDistance: CGFloat) {
         let duration = Double.random(in: 1.5...2.5)
         let delay = Double.random(in: 0...0.3)
 
@@ -228,7 +230,7 @@ struct ConfettiView: View {
             .easeIn(duration: duration)
             .delay(delay)
         ) {
-            offsetY = UIScreen.main.bounds.height + 50
+            offsetY = travelDistance
             rotation = piece.rotation + Double.random(in: 180...720)
         }
 

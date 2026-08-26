@@ -291,13 +291,21 @@ struct ReadinessSection: View {
 struct ReadinessDetailView: View {
     let readiness: DailyReadiness
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var readinessService = ReadinessService.shared
+    @State private var isRecalibrating = false
+    @State private var recalibrationError: String?
+    @State private var lastRecalibratedAt: Date?
+
+    private var currentReadiness: DailyReadiness {
+        readinessService.todaysReadiness ?? readiness
+    }
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
                     // Large gauge
-                    ReadinessGauge(score: readiness.score, level: readiness.level, size: 180)
+                    ReadinessGauge(score: currentReadiness.score, level: currentReadiness.level, size: 180)
                         .padding(.top, 20)
 
                     // Recommendation card
@@ -306,12 +314,12 @@ struct ReadinessDetailView: View {
                             .font(.subheadline)
                             .foregroundColor(AppTheme.Colors.textSecondary)
 
-                        Text(readiness.recommendation)
+                        Text(currentReadiness.recommendation)
                             .font(.body)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
-                    .background(Color(hex: readiness.level.color).opacity(0.1))
+                    .background(Color(hex: currentReadiness.level.color).opacity(0.1))
                     .cornerRadius(12)
                     .padding(.horizontal)
 
@@ -321,10 +329,44 @@ struct ReadinessDetailView: View {
                             .font(.headline)
                             .padding(.horizontal)
 
-                        ForEach(readiness.factors) { factor in
+                        ForEach(currentReadiness.factors) { factor in
                             FactorDetailRow(factor: factor)
                         }
                     }
+
+                    VStack(spacing: 8) {
+                        Button {
+                            Task { await recalibrateReadiness() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if isRecalibrating {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
+                                }
+                                Text(isRecalibrating ? "Recalibrating..." : "Recalibrate readiness")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isRecalibrating)
+                        .accessibilityHint("Rechecks HealthKit, running load, and recovery data without using the cached score")
+
+                        if let lastRecalibratedAt {
+                            Text("Updated \(lastRecalibratedAt.formatted(.relative(presentation: .named)))")
+                                .font(.caption)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
+                        }
+
+                        if let recalibrationError {
+                            Text(recalibrationError)
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.Colors.error)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .padding(.horizontal)
                 }
                 .padding(.bottom, 40)
             }
@@ -337,6 +379,20 @@ struct ReadinessDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    @MainActor
+    private func recalibrateReadiness() async {
+        isRecalibrating = true
+        recalibrationError = nil
+        defer { isRecalibrating = false }
+
+        do {
+            _ = try await readinessService.calculateTodaysReadiness()
+            lastRecalibratedAt = Date()
+        } catch {
+            recalibrationError = "Couldn’t recalibrate right now. Your previous score is still available."
         }
     }
 }
@@ -632,13 +688,7 @@ struct ReadinessBanner: View {
 
     private var readinessHeadline: String {
         guard let readiness = readinessService.todaysReadiness else { return "Tap to calculate" }
-        switch readiness.level {
-        case .optimal: return "Ready for a hard effort"
-        case .good: return "Good to train today"
-        case .moderate: return "Keep it moderate"
-        case .low: return "Take it easy today"
-        case .poor: return "Rest day recommended"
-        }
+        return TodayRecommendationPolicy.recommendation(readinessScore: readiness.score).title
     }
 
     private var readinessSubtext: String {

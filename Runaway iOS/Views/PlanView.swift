@@ -20,9 +20,13 @@ struct PlanView: View {
     @Environment(DataManager.self) var dataManager
     @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var viewModel = PlanViewModel()
+    @StateObject private var unitPreferences = UnitPreferences.shared
     @State private var selectedSection: RaceSection = .upcoming
     @State private var showingWorkoutDetail: DailyWorkout?
     @State private var showingTrainingGuidelines = false
+    @State private var showingGoalSettings = false
+    @State private var showingManualRace = false
+    @State private var editingManualRace: AthleteRace?
     @State private var allGoals: [AthleteRace] = []
     @State private var isLoadingGoals = false
     @State private var lastRefreshError: String? = nil
@@ -55,13 +59,33 @@ struct PlanView: View {
             .padding(.horizontal)
             .padding(.vertical, AppTheme.Spacing.sm)
 
+            HStack {
+                Spacer()
+                Picker("Distance unit", selection: $unitPreferences.distanceUnit) {
+                    Text("mi").tag(DistanceUnit.miles)
+                    Text("km").tag(DistanceUnit.kilometers)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 120)
+                .accessibilityLabel("Plan distance unit")
+            }
+            .padding(.horizontal)
+            .padding(.bottom, AppTheme.Spacing.xs)
+
             switch selectedSection {
             case .upcoming: upcomingContent
             case .past:     pastContent
             }
         }
-        .background(bg)
-        .navigationTitle("Races")
+        .background {
+            LinearGradient(
+                colors: [AppTheme.Colors.DarkMode.backgroundElevated, bg],
+                startPoint: .topTrailing,
+                endPoint: .bottomLeading
+            )
+            .ignoresSafeArea()
+        }
+        .navigationTitle("Plan")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
@@ -74,6 +98,25 @@ struct PlanView: View {
         }
         .sheet(item: $showingWorkoutDetail) { PlanWorkoutDetailSheet(workout: $0) }
         .sheet(isPresented: $showingTrainingGuidelines) { TrainingGuidelinesSheet() }
+        .sheet(isPresented: $showingGoalSettings, onDismiss: {
+            Task { await loadAll() }
+        }) {
+            GoalSettingsView()
+        }
+        .sheet(isPresented: $showingManualRace, onDismiss: {
+            Task { await loadAll() }
+        }) {
+            ManualRaceSheet { _ in
+                Task { await loadAll() }
+            }
+        }
+        .sheet(item: $editingManualRace, onDismiss: {
+            Task { await loadAll() }
+        }) { race in
+            ManualRaceSheet(existingRace: race) { _ in
+                Task { await loadAll() }
+            }
+        }
         .task { await loadAll() }
     }
 
@@ -114,9 +157,12 @@ struct PlanView: View {
             VStack(spacing: AppTheme.Spacing.lg) {
                 // ── Upcoming Races Carousel ────────────────
                 if upcomingRaces.isEmpty {
-                    NoRaceCard()
+                    NoRaceCard { showingManualRace = true }
                 } else {
-                    RaceCarousel(races: upcomingRaces)
+                    RaceCarousel(
+                        races: upcomingRaces,
+                        onEdit: { editingManualRace = $0 }
+                    )
                 }
 
                 // ── Training Plan ──────────────────────────
@@ -216,13 +262,19 @@ struct PlanView: View {
 
 struct RaceCarousel: View {
     let races: [AthleteRace]
+    let onEdit: (AthleteRace) -> Void
     @State private var currentIndex = 0
 
     var body: some View {
         VStack(spacing: 8) {
             TabView(selection: $currentIndex) {
                 ForEach(Array(races.enumerated()), id: \.element.id) { index, race in
-                    NextRaceCard(race: race, index: index, total: races.count)
+                    NextRaceCard(
+                        race: race,
+                        index: index,
+                        total: races.count,
+                        onEdit: ManualRaceEdit(race: race) == nil ? nil : { onEdit(race) }
+                    )
                         .tag(index)
                 }
             }
@@ -250,6 +302,7 @@ struct NextRaceCard: View {
     let race: AthleteRace
     let index: Int
     let total: Int
+    let onEdit: (() -> Void)?
     @State private var showingCourseRecon = false
 
     private var daysUntil: Int {
@@ -295,7 +348,7 @@ struct NextRaceCard: View {
                         .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
                         .lineLimit(2)
 
-                    if let distLabel = race.distanceLabel {
+                    if let distLabel = race.preferredDistanceLabel {
                         Text(distLabel)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(urgencyColor)
@@ -315,24 +368,39 @@ struct NextRaceCard: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
 
-                    Button { showingCourseRecon = true } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "mountain.2.fill")
-                            Text("Scout Course")
+                    if race.runsignupRaceId != nil {
+                        Button { showingCourseRecon = true } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "mountain.2.fill")
+                                Text("Scout Course")
+                            }
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(urgencyColor)
+                            .cornerRadius(20)
                         }
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(urgencyColor)
-                        .cornerRadius(20)
+                        .padding(.top, 8)
                     }
-                    .padding(.top, 8)
                 }
 
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 4) {
+                    if let onEdit {
+                        Button(action: onEdit) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
+                                .frame(width: 32, height: 32)
+                                .background(Color.white.opacity(0.08), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit \(race.raceName)")
+                        .padding(.bottom, 2)
+                    }
+
                     Text("\(daysUntil)")
                         .font(.system(size: 44, weight: .heavy))
                         .foregroundColor(urgencyColor)
@@ -366,6 +434,8 @@ struct NextRaceCard: View {
 // MARK: - No Race Card
 
 struct NoRaceCard: View {
+    let onAddGoal: () -> Void
+
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "flag.checkered.2.crossed")
@@ -374,10 +444,19 @@ struct NoRaceCard: View {
             Text("No upcoming race set")
                 .font(AppTheme.Typography.headline)
                 .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
-            Text("Add a goal with a race date to see your countdown here.")
+            Text("Add a target race to shape weekly volume, long runs, and taper timing.")
                 .font(AppTheme.Typography.body)
                 .foregroundColor(AppTheme.Colors.DarkMode.textSecondary)
                 .multilineTextAlignment(.center)
+            Button(action: onAddGoal) {
+                Label("Set target race", systemImage: "plus")
+                    .font(AppTheme.Typography.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(AppTheme.Colors.strideBlue)
+            .foregroundStyle(Color.white)
+            .padding(.top, 4)
         }
         .padding(24)
         .frame(maxWidth: .infinity)
@@ -476,7 +555,7 @@ struct PlanHeaderCard: View {
 
             HStack(spacing: AppTheme.Spacing.xl) {
                 PlanStatItem(title: "Planned",
-                             value: String(format: "%.1f mi", plan.totalMileage),
+                             value: UnitFormatter.formatMiles(plan.totalMileage),
                              icon: "target")
                 if let ins = insights {
                     PlanStatItem(title: "Completed",
@@ -709,7 +788,7 @@ struct BaselineTransparencyCard: View {
 
             HStack(spacing: AppTheme.Spacing.lg) {
                 BaselineStatPill(label: "Prior 4 Weeks",
-                                 value: String(format: "%.1f mi/wk", baseline.averageWeeklyMileage),
+                                 value: "\(UnitFormatter.formatMiles(baseline.averageWeeklyMileage))/wk",
                                  icon: "calendar")
                 BaselineStatPill(label: "Runs/Week", value: "\(baseline.runsPerWeek)", icon: "figure.run")
                 BaselineStatPill(label: "Easy Pace", value: formatPace(baseline.averageEasyPace), icon: "speedometer")
@@ -721,11 +800,11 @@ struct BaselineTransparencyCard: View {
                     Text("How the algorithm uses this:")
                         .font(AppTheme.Typography.subheadline)
                         .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
-                    BaselineExplanationRow(text: "Your prior 4-week average (\(String(format: "%.1f", baseline.averageWeeklyMileage)) mi) sets your training baseline (current week excluded)")
-                    BaselineExplanationRow(text: "Long runs are capped at 30% of weekly mileage (min 5 mi)")
-                    BaselineExplanationRow(text: "Build weeks add 20% if under 30 mpw, 10% if above")
+                    BaselineExplanationRow(text: "Your prior 4-week average (\(UnitFormatter.formatMiles(baseline.averageWeeklyMileage))) sets your training baseline (current week excluded)")
+                    BaselineExplanationRow(text: "Long runs are capped at 30% of weekly distance")
+                    BaselineExplanationRow(text: "Build weeks increase progressively from your baseline")
                     if baseline.longestRecentRun > 0 {
-                        BaselineExplanationRow(text: "Your longest recent run: \(String(format: "%.1f", baseline.longestRecentRun)) mi")
+                        BaselineExplanationRow(text: "Your longest recent run: \(UnitFormatter.formatMiles(baseline.longestRecentRun))")
                     }
                     if !baseline.weeklyMileages.isEmpty {
                         Text("Prior 4 weeks (most recent first):")
@@ -735,7 +814,7 @@ struct BaselineTransparencyCard: View {
                         HStack(spacing: AppTheme.Spacing.sm) {
                             ForEach(Array(baseline.weeklyMileages.enumerated().reversed()), id: \.offset) { i, m in
                                 VStack(spacing: 2) {
-                                    Text(String(format: "%.1f", m)).font(AppTheme.Typography.caption)
+                                    Text(UnitFormatter.formatMiles(m, decimals: 1, includeUnit: false)).font(AppTheme.Typography.caption)
                                         .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
                                     Text("W\(4 - i)").font(.system(size: 10))
                                         .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
@@ -754,9 +833,7 @@ struct BaselineTransparencyCard: View {
     }
 
     private func formatPace(_ pace: Double) -> String {
-        let minutes = Int(pace)
-        let seconds = Int((pace - Double(minutes)) * 60)
-        return String(format: "%d:%02d", minutes, seconds)
+        UnitFormatter.formatPace(minutesPerMile: pace)
     }
 }
 

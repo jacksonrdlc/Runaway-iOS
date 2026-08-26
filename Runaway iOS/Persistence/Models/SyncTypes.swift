@@ -30,7 +30,7 @@ enum SyncStatus: String, Codable {
 // MARK: - Sync Metadata
 
 /// Metadata for tracking sync state of a record
-struct SyncMetadata: Codable {
+struct SyncMetadata: Codable, Equatable {
     /// When the record was last modified locally
     var lastModifiedLocally: Date
 

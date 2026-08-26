@@ -75,8 +75,8 @@ class BiometricService {
         var phase = "productive"
         
         if finalScore > 85 { phase = "peaking" }
-        else if finalScore < 60 { phase = "strained" }
         else if finalScore < 45 { phase = "overreaching" }
+        else if finalScore < 60 { phase = "strained" }
         
         return (finalScore, phase)
     }

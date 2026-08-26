@@ -16,7 +16,6 @@ enum AnalyticsCategory: String {
     case navigation = "navigation"
     case authentication = "authentication"
     case strava = "strava"
-    case chat = "chat"
     case insights = "insights"
     case goals = "goals"
     case settings = "settings"
@@ -71,11 +70,6 @@ enum AnalyticsEvent: String {
     case stravaSyncStarted = "strava_sync_started"
     case stravaSyncCompleted = "strava_sync_completed"
     case stravaSyncFailed = "strava_sync_failed"
-
-    // Chat / AI
-    case chatMessageSent = "chat_message_sent"
-    case chatResponseReceived = "chat_response_received"
-    case chatError = "chat_error"
 
     // Insights
     case insightViewed = "insight_viewed"
@@ -288,14 +282,6 @@ final class AnalyticsService {
             "split_number": splitNumber,
             "pace_seconds": pace,
             "total_distance": distance
-        ])
-    }
-
-    // Chat Events
-    func trackChatMessage(messageLength: Int, hasContext: Bool) {
-        track(.chatMessageSent, category: .chat, properties: [
-            "message_length": messageLength,
-            "has_context": hasContext
         ])
     }
 

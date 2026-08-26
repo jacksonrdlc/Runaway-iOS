@@ -29,8 +29,9 @@ struct SignInView: View {
             ZStack {
                 backgroundColor.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: AppTheme.Spacing.xl) {
+                GeometryReader { geometry in
+                    ScrollView {
+                        VStack(spacing: AppTheme.Spacing.xl) {
                         Spacer()
                             .frame(height: AppTheme.Spacing.xl)
 
@@ -74,7 +75,8 @@ struct SignInView: View {
                         )
                         .padding(.bottom, AppTheme.Spacing.xl)
                     }
-                    .frame(minHeight: UIScreen.main.bounds.height - 100)
+                        .frame(minHeight: max(0, geometry.size.height - 100))
+                    }
                 }
             }
             .navigationDestination(isPresented: $showEmailSignIn) {
@@ -185,11 +187,10 @@ struct SignInWithAppleButtonViewRepresentable: UIViewRepresentable {
         }
 
         func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = scene.windows.first else {
-                return UIWindow()
+            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+                preconditionFailure("Sign in with Apple requires an active window scene")
             }
-            return window
+            return scene.windows.first ?? ASPresentationAnchor(windowScene: scene)
         }
     }
 }

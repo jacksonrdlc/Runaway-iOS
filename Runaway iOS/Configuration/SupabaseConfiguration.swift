@@ -83,7 +83,8 @@ private final class HTTP2ForcedURLProtocol: URLProtocol {
 /// Keychain requires entitlements that standalone injection tools don't have in the Simulator.
 /// UserDefaults lets sessions be pre-seeded via `xcrun simctl spawn … defaults write`.
 struct UserDefaultsAuthStorage: AuthLocalStorage {
-    private let defaults = UserDefaults.standard
+    private var defaults: UserDefaults { .standard }
+
     func store(key: String, value: Data) throws {
         defaults.set(value, forKey: key)
     }

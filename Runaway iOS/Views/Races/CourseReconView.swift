@@ -116,9 +116,13 @@ struct CourseReconView: View {
     }
 
     private func loadCourse() async {
+        guard let raceId = race.runsignupRaceId else {
+            isLoading = false
+            return
+        }
         do {
             course = try await CourseReconService.shared.fetchCourse(
-                raceId: race.runsignupRaceId, 
+                raceId: raceId,
                 eventId: race.eventId ?? 0
             )
         } catch {

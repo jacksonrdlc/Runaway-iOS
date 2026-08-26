@@ -18,7 +18,6 @@ struct ActivityDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var showContent = false
-    @State private var fetchedFeedback: String? = nil
 
     // MARK: - Computed Properties
 
@@ -144,7 +143,7 @@ struct ActivityDetailView: View {
                         MiniStatTile(value: "--", label: "bpm avg")
                     }
 
-                    // ── AI Coach card ──────────────────────────────────────
+                    // ── Run insight card ───────────────────────────────────
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
                             ZStack {
@@ -155,17 +154,19 @@ struct ActivityDetailView: View {
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundColor(AppTheme.Colors.warmAmber)
                             }
-                            EyebrowLabel(text: "AI COACH", color: AppTheme.Colors.warmAmber)
+                            EyebrowLabel(text: "RUN INSIGHT", color: AppTheme.Colors.warmAmber)
                         }
-                        Text(fetchedFeedback ?? coachInsight)
-                            .font(.system(size: 14, design: .rounded))
-                            .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        OnDeviceActivityObservationText(
+                            activity: activity,
+                            initialObservation: coachInsight
+                        )
                     }
                     .padding(14)
                     .background(AppTheme.Colors.warmAmber.opacity(0.07))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.Colors.warmAmber.opacity(0.18), lineWidth: 1))
+
+                    WorkoutReflectionActivityCard(activity: activity)
 
                     // ── Splits (empty state) ───────────────────────────────
                     VStack(alignment: .leading, spacing: 10) {
@@ -182,9 +183,6 @@ struct ActivityDetailView: View {
                     Spacer(minLength: 32)
                 }
                 .padding(20)
-            }
-            .task(id: activity.id) {
-                fetchedFeedback = try? await ActivityInsightService.fetchFeedback(activityId: activity.id)
             }
         }
         .navigationBarTitleDisplayMode(.inline)

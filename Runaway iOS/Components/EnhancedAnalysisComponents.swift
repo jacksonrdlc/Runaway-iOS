@@ -106,8 +106,9 @@ struct PerformanceDashboardCard: View {
             return activityDate >= weekStart && activityDate < weekEnd
         }
 
-        let totalDistance = weekActivities.reduce(0) { $0 + (($1.distance ?? 0) * 0.000621371) }
-        let totalTime = weekActivities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
+        let runningActivities = weekActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }
+        let totalDistance = runningActivities.reduce(0) { $0 + (($1.distance ?? 0) * 0.000621371) }
+        let totalTime = runningActivities.reduce(0) { $0 + ($1.elapsed_time ?? 0) }
         let averagePace = totalDistance > 0 ? (totalTime / 60) / totalDistance : 0
 
         #if DEBUG
@@ -451,8 +452,9 @@ struct MonthlyProgressRing: View {
         print("📊 MonthlyProgressRing: Monthly activities found: \(monthlyActivities.count)")
         #endif
 
-        let totalDistance = monthlyActivities.reduce(0) { $0 + (($1.distance ?? 0) * 0.000621371) }
-        let totalRuns = monthlyActivities.count
+        let runningActivities = monthlyActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }
+        let totalDistance = runningActivities.reduce(0) { $0 + (($1.distance ?? 0) * 0.000621371) }
+        let totalRuns = runningActivities.count
         let goal = 200.0 // miles (50 miles/week)
         let progress = min(totalDistance / goal, 1.0)
 

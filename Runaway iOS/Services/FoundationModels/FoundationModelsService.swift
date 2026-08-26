@@ -2,7 +2,7 @@
 //  FoundationModelsService.swift
 //  Runaway iOS
 //
-//  On-device AI service using Apple Foundation Models (iOS 26+)
+//  On-device AI service using Apple Foundation Models (iOS 27+)
 //  Provides local LLM capabilities for chat and analysis without cloud dependency
 //
 
@@ -12,7 +12,28 @@ import FoundationModels
 #endif
 
 /// Service for on-device AI using Apple Foundation Models
-/// Requires iOS 26+ - no cloud fallback per design decision
+enum OnDeviceModelAvailability: Equatable {
+    case checking
+    case available
+    case deviceNotEligible
+    case appleIntelligenceNotEnabled
+    case modelNotReady
+    case unavailable
+}
+
+struct FoundationModelFailureCircuitBreaker {
+    private(set) var canAttemptGeneration = true
+
+    mutating func recordFailure() {
+        canAttemptGeneration = false
+    }
+
+    mutating func reset() {
+        canAttemptGeneration = true
+    }
+}
+
+/// Requires iOS 27+ - no cloud fallback per design decision
 @MainActor
 class FoundationModelsService: ObservableObject {
     static let shared = FoundationModelsService()
@@ -20,6 +41,7 @@ class FoundationModelsService: ObservableObject {
     // MARK: - Published Properties
 
     @Published private(set) var isAvailable: Bool = false
+    @Published private(set) var availabilityState: OnDeviceModelAvailability = .checking
     @Published private(set) var isProcessing: Bool = false
     @Published private(set) var lastError: FoundationModelsError?
 
@@ -27,6 +49,7 @@ class FoundationModelsService: ObservableObject {
 
     // Session stored as Any to avoid @available issues with stored properties
     private var _session: Any?
+    private var failureCircuitBreaker = FoundationModelFailureCircuitBreaker()
 
     // MARK: - Initialization
 
@@ -41,11 +64,13 @@ class FoundationModelsService: ObservableObject {
 
     /// Check if Foundation Models is available on this device
     func checkAvailability() {
+        failureCircuitBreaker.reset()
+        availabilityState = .checking
         #if canImport(FoundationModels)
         #if DEBUG
         print("🧠 Foundation Models: SDK available (canImport succeeded)")
         #endif
-        if #available(iOS 26.0, *) {
+        if #available(iOS 27.0, *) {
             #if DEBUG
             print("🧠 Foundation Models: iOS 26+ runtime check passed")
             #endif
@@ -55,6 +80,7 @@ class FoundationModelsService: ObservableObject {
             }
         } else {
             isAvailable = false
+            availabilityState = .unavailable
             #if DEBUG
             print("🧠 Foundation Models: iOS version < 26 (runtime)")
             #endif
@@ -62,6 +88,7 @@ class FoundationModelsService: ObservableObject {
         #else
         // SDK doesn't include FoundationModels - need Xcode 26+
         isAvailable = false
+        availabilityState = .unavailable
         #if DEBUG
         print("🧠 Foundation Models: SDK does NOT include FoundationModels framework")
         print("   Compile with Xcode 26+ to enable on-device AI")
@@ -70,7 +97,7 @@ class FoundationModelsService: ObservableObject {
     }
 
     #if canImport(FoundationModels)
-    @available(iOS 26.0, *)
+    @available(iOS 27.0, *)
     private func checkModelAvailability() async {
         #if DEBUG
         print("🧠 Foundation Models: Checking model availability...")
@@ -86,11 +113,22 @@ class FoundationModelsService: ObservableObject {
         switch availability {
         case .available:
             isAvailable = true
+            availabilityState = .available
             #if DEBUG
             print("🧠 Foundation Models: ✅ Available and ready!")
             #endif
-        case .unavailable:
+        case .unavailable(let reason):
             isAvailable = false
+            switch reason {
+            case .deviceNotEligible:
+                availabilityState = .deviceNotEligible
+            case .appleIntelligenceNotEnabled:
+                availabilityState = .appleIntelligenceNotEnabled
+            case .modelNotReady:
+                availabilityState = .modelNotReady
+            @unknown default:
+                availabilityState = .unavailable
+            }
             #if DEBUG
             print("🧠 Foundation Models: ❌ Unavailable on this device")
             print("   This could mean:")
@@ -100,6 +138,7 @@ class FoundationModelsService: ObservableObject {
             #endif
         @unknown default:
             isAvailable = false
+            availabilityState = .unavailable
             #if DEBUG
             print("🧠 Foundation Models: ❓ Unknown availability state")
             #endif
@@ -120,7 +159,7 @@ class FoundationModelsService: ObservableObject {
         systemPrompt: String? = nil,
         maxTokens: Int = 1024
     ) async throws -> String {
-        guard isAvailable else {
+        guard isAvailable, failureCircuitBreaker.canAttemptGeneration else {
             throw FoundationModelsError.notAvailable
         }
 
@@ -134,7 +173,7 @@ class FoundationModelsService: ObservableObject {
         }
 
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
+        if #available(iOS 27.0, *) {
             return try await generateWithFoundationModels(
                 prompt: prompt,
                 systemPrompt: systemPrompt,
@@ -147,7 +186,7 @@ class FoundationModelsService: ObservableObject {
     }
 
     #if canImport(FoundationModels)
-    @available(iOS 26.0, *)
+    @available(iOS 27.0, *)
     private func generateWithFoundationModels(
         prompt: String,
         systemPrompt: String?,
@@ -172,10 +211,15 @@ class FoundationModelsService: ObservableObject {
             // Access the content property of the Response
             return response.content
         } catch {
+            failureCircuitBreaker.recordFailure()
+            isAvailable = false
+            availabilityState = .modelNotReady
+            let wrappedError = FoundationModelsError.generationFailed(error)
+            lastError = wrappedError
             #if DEBUG
             print("🧠 Foundation Models error: \(error)")
             #endif
-            throw FoundationModelsError.generationFailed(error)
+            throw wrappedError
         }
     }
     #endif
@@ -334,7 +378,7 @@ enum FoundationModelsError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notAvailable:
-            return "On-device AI requires iOS 26 or later. Please upgrade to use AI features."
+            return "Runaway requires iOS 27 and an Apple Intelligence-capable device."
         case .modelNotReady:
             return "The AI model is still downloading. Please try again later."
         case .generationFailed(let error):

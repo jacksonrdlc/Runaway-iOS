@@ -48,7 +48,7 @@ struct KeyMetricsGrid: View {
             return activityDate >= weekInterval.start && activityDate < weekInterval.end
         }
 
-        let totalMeters = weeklyActivities.compactMap { $0.distance }.reduce(0, +)
+        let totalMeters = weeklyActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.compactMap { $0.distance }.reduce(0, +)
         return UnitFormatter.formatDistance(totalMeters, decimals: 1, includeUnit: true)
     }
 
@@ -370,7 +370,7 @@ struct MiniWeeklyChart: View {
                 return date >= weekStart && date < weekEnd
             }
 
-            let totalMeters = weekActivities.compactMap { $0.distance }.reduce(0, +)
+            let totalMeters = weekActivities.filter { AppConstants.ActivityTypes.isRunning($0.type) }.compactMap { $0.distance }.reduce(0, +)
             let distance = UnitFormatter.metersToPreferredUnit(totalMeters)
             weeks.append((week: 8 - weekOffset, miles: distance))
         }
