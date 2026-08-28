@@ -211,13 +211,24 @@ struct OnboardingProfileSetupView: View {
 
 // MARK: - Goals Setup View
 
+struct OnboardingGoalsPresentation: Equatable {
+    let usesVerticalScroll = true
+    let respectsSafeArea = true
+    let dismissesKeyboardInteractively = true
+    let keepsContinueReachableAtAccessibilitySizes = true
+    let continueMinimumTargetSize = AppTheme.Layout.touchTargetMinimum
+}
+
 struct OnboardingGoalsSetupView: View {
+    @Binding var primaryGoal: OnboardingPrimaryGoal
     @Binding var weeklyGoal: Double
     @Binding var monthlyGoal: Double
+    let isNavigationDisabled: Bool
     let onContinue: () -> Void
 
     @State private var weeklyGoalText: String = ""
     @State private var monthlyGoalText: String = ""
+    private let presentation = OnboardingGoalsPresentation()
 
     // Preset options for weekly goals
     private let weeklyPresets: [(label: String, value: Double)] = [
@@ -230,7 +241,8 @@ struct OnboardingGoalsSetupView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 24) {
+        ScrollView(.vertical) {
+            VStack(spacing: 24) {
             // Header
             VStack(spacing: 8) {
                 Image(systemName: "target")
@@ -247,6 +259,39 @@ struct OnboardingGoalsSetupView: View {
                     .multilineTextAlignment(.center)
             }
             .padding(.top, 40)
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Primary goal")
+                    .font(.headline)
+
+                ForEach([OnboardingPrimaryGoal.race, .running], id: \.rawValue) { goal in
+                    Button {
+                        primaryGoal = goal
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: primaryGoal == goal ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(primaryGoal == goal ? AppTheme.Colors.warmAmber : .secondary)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(goal.displayName)
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Text(goal.detail)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: AppTheme.Layout.touchTargetMinimum, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(goal.displayName)
+                    .accessibilityValue(primaryGoal == goal ? "Selected" : "Not selected")
+                }
+            }
+            .padding(.horizontal, 24)
 
             // Weekly goal presets
             VStack(alignment: .leading, spacing: 12) {
@@ -362,21 +407,23 @@ struct OnboardingGoalsSetupView: View {
             .cornerRadius(16)
             .padding(.horizontal, 24)
 
-            Spacer()
-
             // Continue button
             Button(action: onContinue) {
                 Text("Continue")
                     .font(.headline)
                     .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: presentation.continueMinimumTargetSize)
                     .padding()
                     .background(Color.blue)
                     .cornerRadius(16)
             }
+            .disabled(isNavigationDisabled)
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
+            }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaPadding(.bottom, 8)
         .onAppear {
             weeklyGoalText = weeklyGoal > 0 ? String(format: "%.0f", weeklyGoal) : ""
             monthlyGoalText = monthlyGoal > 0 ? String(format: "%.0f", monthlyGoal) : ""
@@ -1100,6 +1147,157 @@ private struct OnboardingChipGrid: View {
             selected.removeFirst()
             selected.append(value)
         }
+    }
+}
+
+// MARK: - Training Profile Steps
+
+struct OnboardingActivityMixView: View {
+    @ObservedObject var model: TrainingProfileEditorViewModel
+    let onBack: () -> Void
+    let onContinue: () -> Void
+    let isNavigationDisabled: Bool
+
+    private var canContinue: Bool {
+        model.draft.validated().profile.primaryActivity != nil
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
+                onboardingTrainingHeader(
+                    eyebrow: "TRAINING INTENT",
+                    title: "How do you want to train?",
+                    detail: "Pick the activities that belong in your week. You can change the role and frequency as soon as you select one."
+                )
+
+                ActivityMixEditor(model: model)
+
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    EyebrowLabel(text: "YOUR WEEK", color: AppTheme.Colors.warmAmber)
+                    Text(model.summary)
+                        .font(AppTheme.Typography.title3)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(AppTheme.Spacing.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppTheme.Colors.DarkMode.cardBackgroundElevated)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+
+                onboardingTrainingNavigation(
+                    onBack: onBack,
+                    onContinue: onContinue,
+                    continueLabel: "Continue to training schedule",
+                    isContinueDisabled: !canContinue || isNavigationDisabled
+                )
+            }
+            .padding(AppTheme.Spacing.xl)
+            .padding(.bottom, AppTheme.Spacing.xxl)
+        }
+        .background(AppTheme.Colors.DarkMode.background)
+    }
+}
+
+struct OnboardingTrainingScheduleView: View {
+    @ObservedObject var model: TrainingProfileEditorViewModel
+    let onBack: () -> Void
+    let onContinue: () -> Void
+    let isNavigationDisabled: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
+                onboardingTrainingHeader(
+                    eyebrow: "WEEKLY RHYTHM",
+                    title: "Shape a week you can repeat",
+                    detail: "Start with the simple version, then mark the days that genuinely cannot work."
+                )
+
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                    EyebrowLabel(text: "PLAN SUMMARY", color: AppTheme.Colors.warmAmber)
+                    Text(model.summary)
+                        .font(AppTheme.Typography.title3)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Runaway will balance this mix across your available days.")
+                        .font(AppTheme.Typography.caption)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                }
+                .padding(AppTheme.Spacing.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppTheme.Colors.DarkMode.cardBackgroundElevated)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+
+                TrainingScheduleEditor(model: model)
+
+                if model.controlPresentation.showsStrengthControls {
+                    StrengthTrainingDetailsEditor(model: model)
+                }
+
+                onboardingTrainingNavigation(
+                    onBack: onBack,
+                    onContinue: onContinue,
+                    continueLabel: "Continue onboarding",
+                    isContinueDisabled: model.draft.validated().profile.primaryActivity == nil || isNavigationDisabled
+                )
+            }
+            .padding(AppTheme.Spacing.xl)
+            .padding(.bottom, AppTheme.Spacing.xxl)
+        }
+        .background(AppTheme.Colors.DarkMode.background)
+    }
+}
+
+private func onboardingTrainingHeader(
+    eyebrow: String,
+    title: String,
+    detail: String
+) -> some View {
+    VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+        EyebrowLabel(text: eyebrow, color: AppTheme.Colors.warmAmber)
+        Text(title)
+            .font(AppTheme.Typography.title)
+            .foregroundColor(AppTheme.Colors.textPrimary)
+        Text(detail)
+            .font(AppTheme.Typography.subheadline)
+            .foregroundColor(AppTheme.Colors.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct OnboardingTrainingNavigationPresentation: Equatable {
+    let backLabel = "Back"
+    let continueLabel: String
+    let minimumTargetSize = AppTheme.Layout.touchTargetMinimum
+}
+
+private func onboardingTrainingNavigation(
+    onBack: @escaping () -> Void,
+    onContinue: @escaping () -> Void,
+    continueLabel: String,
+    isContinueDisabled: Bool
+) -> some View {
+    let presentation = OnboardingTrainingNavigationPresentation(continueLabel: continueLabel)
+    return HStack(spacing: AppTheme.Spacing.md) {
+        Button(action: onBack) {
+            Image(systemName: "chevron.left")
+                .frame(width: presentation.minimumTargetSize, height: AppTheme.Layout.touchTargetPreferred)
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(AppTheme.Colors.textSecondary)
+        .accessibilityLabel(presentation.backLabel)
+
+        Button(action: onContinue) {
+            Text("Continue")
+                .font(AppTheme.Typography.bodyBold)
+                .frame(maxWidth: .infinity, minHeight: AppTheme.Layout.touchTargetPreferred)
+        }
+        .primaryButton()
+        .buttonStyle(.plain)
+        .disabled(isContinueDisabled)
+        .opacity(isContinueDisabled ? 0.6 : 1)
+        .accessibilityLabel(presentation.continueLabel)
     }
 }
 

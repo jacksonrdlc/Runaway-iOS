@@ -12,6 +12,43 @@ import Supabase
 
 class OnboardingService {
 
+    static func makeTrainingProfile(from answers: OnboardingTrainingAnswers) -> TrainingProfile {
+        let profile = normalizingPrimaryGoal(answers.primaryGoal, in: answers.draft)
+        return profile.validated().profile
+    }
+
+    static func normalizingPrimaryGoal(
+        _ goal: OnboardingPrimaryGoal,
+        in draft: TrainingProfile
+    ) -> TrainingProfile {
+        guard goal == .race || goal == .running else { return draft }
+
+        var profile = draft
+        for index in profile.activities.indices where profile.activities[index].role == .primary {
+            profile.activities[index].role = .supporting
+        }
+        if let runningIndex = profile.activities.firstIndex(where: { $0.activity == .running }) {
+            profile.activities[runningIndex].role = .primary
+        } else {
+            profile.activities.insert(
+                TrainingActivityPreference(activity: .running, role: .primary, sessionsPerWeek: 3),
+                at: 0
+            )
+        }
+        return profile
+    }
+
+    @MainActor
+    static func saveTrainingProfileAndGenerateInitialPlan<GeneratedPlan>(
+        from answers: OnboardingTrainingAnswers,
+        store: TrainingProfileStore,
+        generate: @MainActor (TrainingProfile) async throws -> GeneratedPlan
+    ) async throws -> GeneratedPlan {
+        let profile = makeTrainingProfile(from: answers)
+        try store.save(profile)
+        return try await generate(store.profile)
+    }
+
     // MARK: - Get Onboarding State
 
     /// Fetch onboarding state for an athlete

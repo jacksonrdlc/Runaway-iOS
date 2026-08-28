@@ -88,12 +88,30 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
     case locationPermission = 6
     case coachSelection = 7
     case completion = 8
+    case activityMix = 9
+    case trainingSchedule = 10
+
+    static let allCases: [OnboardingStep] = [
+        .welcome,
+        .profileSetup,
+        .goalsSetup,
+        .activityMix,
+        .trainingSchedule,
+        .experienceAssessment,
+        .movementTest,
+        .runnerMindset,
+        .locationPermission,
+        .coachSelection,
+        .completion,
+    ]
 
     var title: String {
         switch self {
         case .welcome: return "Welcome"
         case .profileSetup: return "About You"
         case .goalsSetup: return "Your Goals"
+        case .activityMix: return "Training Mix"
+        case .trainingSchedule: return "Your Week"
         case .experienceAssessment: return "Your Experience"
         case .movementTest: return "Movement Test"
         case .runnerMindset: return "Your Mindset"
@@ -108,6 +126,8 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
         case .welcome: return "Let's get you set up"
         case .profileSetup: return "Tell us your name"
         case .goalsSetup: return "Set your running targets"
+        case .activityMix: return "Choose what belongs in your week"
+        case .trainingSchedule: return "Fit training around real life"
         case .experienceAssessment: return "Tell us about your running"
         case .movementTest: return "Quick 30-second assessment"
         case .runnerMindset: return "What drives you to run"
@@ -122,6 +142,8 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
         case .welcome: return "hand.wave.fill"
         case .profileSetup: return "person.fill"
         case .goalsSetup: return "target"
+        case .activityMix: return "figure.mixed.cardio"
+        case .trainingSchedule: return "calendar"
         case .experienceAssessment: return "figure.run"
         case .movementTest: return "waveform.path.ecg"
         case .runnerMindset: return "brain.head.profile"
@@ -133,21 +155,148 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
 
     var isSkippable: Bool {
         switch self {
-        case .welcome, .profileSetup, .goalsSetup, .completion: return false
+        case .welcome, .profileSetup, .goalsSetup, .activityMix, .trainingSchedule, .completion: return false
         case .experienceAssessment, .movementTest, .runnerMindset, .locationPermission, .coachSelection: return true
         }
     }
 
     static var totalSteps: Int {
-        return OnboardingStep.allCases.count
+        allCases.count
+    }
+
+    var flowIndex: Int {
+        Self.allCases.firstIndex(of: self) ?? 0
     }
 
     var next: OnboardingStep? {
-        return OnboardingStep(rawValue: rawValue + 1)
+        let nextIndex = flowIndex + 1
+        guard Self.allCases.indices.contains(nextIndex) else { return nil }
+        return Self.allCases[nextIndex]
     }
 
     var previous: OnboardingStep? {
-        return OnboardingStep(rawValue: rawValue - 1)
+        let previousIndex = flowIndex - 1
+        guard Self.allCases.indices.contains(previousIndex) else { return nil }
+        return Self.allCases[previousIndex]
+    }
+
+    static func resumeStep(
+        persistedRawValue: Int,
+        trainingDraftFlowVersion: Int?
+    ) -> OnboardingStep? {
+        guard let persisted = OnboardingStep(rawValue: persistedRawValue) else { return nil }
+        let legacyLaterSteps: Set<OnboardingStep> = [
+            .experienceAssessment,
+            .movementTest,
+            .runnerMindset,
+            .locationPermission,
+            .coachSelection,
+            .completion,
+        ]
+        if legacyLaterSteps.contains(persisted),
+           (trainingDraftFlowVersion ?? 0) < OnboardingAnswers.currentFlowVersion {
+            return .activityMix
+        }
+        return persisted
+    }
+}
+
+// MARK: - Training Profile Answers
+
+enum OnboardingPrimaryGoal: String, Codable, Sendable {
+    case race
+    case running
+    case generalFitness
+
+    var displayName: String {
+        switch self {
+        case .race: return "Train for a race"
+        case .running: return "Run consistently"
+        case .generalFitness: return "Build general fitness"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .race: return "Build toward a start line with running as the priority."
+        case .running: return "Create a repeatable running routine and progress steadily."
+        case .generalFitness: return "Balance movement for broad health and fitness."
+        }
+    }
+}
+
+struct OnboardingAnswers: Codable, Equatable, Sendable {
+    static let currentFlowVersion = 1
+
+    var primaryGoal: OnboardingPrimaryGoal
+    var draft: TrainingProfile
+    var flowVersion: Int
+
+    init(
+        primaryGoal: OnboardingPrimaryGoal,
+        draft: TrainingProfile,
+        flowVersion: Int = currentFlowVersion
+    ) {
+        self.primaryGoal = primaryGoal
+        self.draft = draft
+        self.flowVersion = flowVersion
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case primaryGoal, draft, flowVersion
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        primaryGoal = try container.decode(OnboardingPrimaryGoal.self, forKey: .primaryGoal)
+        draft = try container.decode(TrainingProfile.self, forKey: .draft)
+        flowVersion = try container.decodeIfPresent(Int.self, forKey: .flowVersion) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(primaryGoal, forKey: .primaryGoal)
+        try container.encode(draft, forKey: .draft)
+        try container.encode(flowVersion, forKey: .flowVersion)
+    }
+
+    static func `default`(for goal: OnboardingPrimaryGoal) -> OnboardingAnswers {
+        var profile = TrainingProfile.runningFirstDefault
+        if goal == .generalFitness {
+            profile.activities[0].sessionsPerWeek = 3
+        }
+        return OnboardingAnswers(primaryGoal: goal, draft: profile)
+    }
+}
+
+typealias OnboardingTrainingAnswers = OnboardingAnswers
+
+struct OnboardingTrainingDraftStore {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func load(for athleteId: Int) throws -> OnboardingAnswers? {
+        guard let data = defaults.data(forKey: key(for: athleteId)) else { return nil }
+        if let answers = try? JSONDecoder().decode(OnboardingAnswers.self, from: data) {
+            return answers
+        }
+        let legacyProfile = try JSONDecoder().decode(TrainingProfile.self, from: data)
+        return OnboardingAnswers(primaryGoal: .running, draft: legacyProfile)
+    }
+
+    func save(_ answers: OnboardingAnswers, for athleteId: Int) throws {
+        defaults.set(try JSONEncoder().encode(answers), forKey: key(for: athleteId))
+    }
+
+    func clear(for athleteId: Int) {
+        defaults.removeObject(forKey: key(for: athleteId))
+    }
+
+    private func key(for athleteId: Int) -> String {
+        "onboarding.trainingProfileDraft.\(athleteId)"
     }
 }
 
@@ -332,7 +481,7 @@ struct OnboardingProgress {
     let totalSteps: Int
 
     var progress: Double {
-        return Double(currentStep.rawValue) / Double(totalSteps - 1)
+        return Double(currentStep.flowIndex) / Double(totalSteps - 1)
     }
 
     var isComplete: Bool {
@@ -340,6 +489,6 @@ struct OnboardingProgress {
     }
 
     var stepsRemaining: Int {
-        return totalSteps - currentStep.rawValue - 1
+        return totalSteps - currentStep.flowIndex - 1
     }
 }

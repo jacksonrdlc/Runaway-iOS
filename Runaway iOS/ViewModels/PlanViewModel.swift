@@ -82,19 +82,12 @@ class PlanViewModel: ObservableObject {
         // Always calculate baseline for transparency
         trainingBaseline = algorithmService.calculateTrainingBaseline(activities: dataManager.activities)
 
-        // Check DataManager's cached plan first
+        await dataManager.loadCurrentWeeklyPlan()
+
+        // Check DataManager's active plan or profile-validated cache first
         if let cached = dataManager.currentWeeklyPlan {
             currentPlan = cached
             displayedPlan = cached
-            await loadAdaptiveInsights()
-            return
-        }
-
-        // Try to load from service cache
-        if let cached = TrainingPlanService.getCachedPlan() {
-            currentPlan = cached
-            displayedPlan = cached
-            dataManager.currentWeeklyPlan = cached
             await loadAdaptiveInsights()
             return
         }
@@ -121,16 +114,21 @@ class PlanViewModel: ObservableObject {
             targetRaceDate: dataManager.currentGoal?.deadline
         )
 
-        let plan = await algorithmService.generateAdaptivePlan(
-            athleteId: userId,
-            goal: dataManager.currentGoal,
-            settings: settings
-        )
-
-        currentPlan = plan
-        displayedPlan = plan
-        dataManager.currentWeeklyPlan = plan
-        TrainingPlanService.cachePlan(plan)
+        do {
+            let plan = try await TrainingPlanService.generateWeeklyPlan(
+                athleteId: userId,
+                goal: dataManager.currentGoal,
+                settings: settings
+            )
+            currentPlan = plan
+            displayedPlan = plan
+            dataManager.currentWeeklyPlan = plan
+        } catch {
+            #if DEBUG
+            print("📋 PlanViewModel: Failed to generate plan: \(error)")
+            #endif
+            return
+        }
 
         // Calculate and store baseline for transparency
         let baseline = algorithmService.calculateTrainingBaseline(activities: dataManager.activities)
@@ -149,7 +147,7 @@ class PlanViewModel: ObservableObject {
         await loadAdaptiveInsights()
 
         #if DEBUG
-        print("✅ PlanViewModel: Generated plan with \(plan.workouts.count) workouts, \(String(format: "%.1f", plan.totalMileage)) miles")
+        print("✅ PlanViewModel: Generated plan with \(currentPlan?.workouts.count ?? 0) workouts, \(String(format: "%.1f", currentPlan?.totalMileage ?? 0)) miles")
         #endif
     }
 

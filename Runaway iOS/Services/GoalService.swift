@@ -43,6 +43,7 @@ struct AthleteRace: Codable, Identifiable, Sendable {
     let logoUrl: String?
     let externalUrl: String?
     let distanceMiles: Double?
+    var distanceUnit: DistanceUnit? = nil
     let source: String?
     let syncedAt: String?
 
@@ -58,6 +59,7 @@ struct AthleteRace: Codable, Identifiable, Sendable {
         case logoUrl         = "logo_url"
         case externalUrl     = "external_url"
         case distanceMiles   = "distance_miles"
+        case distanceUnit    = "distance_unit"
         case source
         case syncedAt        = "synced_at"
     }
@@ -122,8 +124,26 @@ struct AthleteRace: Codable, Identifiable, Sendable {
     }
 
     var preferredDistanceLabel: String? {
-        guard let miles = distanceMiles, miles > 0 else { return distanceLabel }
-        return UnitFormatter.formatMiles(miles, decimals: 1)
+        primaryDistanceLabel(fallback: UnitPreferences.shared.distanceUnit)
+    }
+
+    func resolvedDistanceUnit(fallback: DistanceUnit) -> DistanceUnit {
+        distanceUnit ?? fallback
+    }
+
+    func primaryDistanceLabel(fallback: DistanceUnit) -> String? {
+        guard let miles = knownDistance else { return nil }
+        let unit = resolvedDistanceUnit(fallback: fallback)
+        let value = unit == .kilometers ? miles * 1.609344 : miles
+        return String(format: "%.1f %@", value, unit.abbreviation)
+    }
+
+    func convertedDistanceLabel(fallback: DistanceUnit) -> String? {
+        guard let miles = knownDistance else { return nil }
+        let primaryUnit = resolvedDistanceUnit(fallback: fallback)
+        let convertedUnit: DistanceUnit = primaryUnit == .miles ? .kilometers : .miles
+        let value = convertedUnit == .kilometers ? miles * 1.609344 : miles
+        return String(format: "%.2f %@ equivalent", value, convertedUnit.abbreviation)
     }
 
     func toRunningGoal() -> RunningGoal {
@@ -148,7 +168,20 @@ struct AthleteRace: Codable, Identifiable, Sendable {
 struct ManualRaceDraft: Sendable, Equatable {
     let name: String
     let distanceMiles: Double
+    let distanceUnit: DistanceUnit
     let date: Date
+
+    init(
+        name: String,
+        distanceMiles: Double,
+        distanceUnit: DistanceUnit = .miles,
+        date: Date
+    ) {
+        self.name = name
+        self.distanceMiles = distanceMiles
+        self.distanceUnit = distanceUnit
+        self.date = date
+    }
 
     var isValid: Bool {
         let earliestDate = Calendar.current.date(
@@ -167,7 +200,7 @@ struct ManualRaceEdit: Sendable, Equatable {
     let raceID: Int
     let draft: ManualRaceDraft
 
-    init?(race: AthleteRace) {
+    init?(race: AthleteRace, fallbackUnit: DistanceUnit = UnitPreferences.shared.distanceUnit) {
         guard race.source?.lowercased() == "manual",
               let raceID = race.id,
               let date = race.parsedDate else {
@@ -177,6 +210,7 @@ struct ManualRaceEdit: Sendable, Equatable {
         self.draft = ManualRaceDraft(
             name: race.raceName,
             distanceMiles: race.detectedDistance,
+            distanceUnit: race.resolvedDistanceUnit(fallback: fallbackUnit),
             date: date
         )
     }
@@ -189,6 +223,7 @@ private struct ManualRaceInsertPayload: Encodable {
     let raceName: String
     let raceDate: String
     let distanceMiles: Double
+    let distanceUnit: DistanceUnit
     let source = "manual"
 
     enum CodingKeys: String, CodingKey {
@@ -198,6 +233,7 @@ private struct ManualRaceInsertPayload: Encodable {
         case raceName = "race_name"
         case raceDate = "race_date"
         case distanceMiles = "distance_miles"
+        case distanceUnit = "distance_unit"
         case source
     }
 }
@@ -206,11 +242,13 @@ private struct ManualRaceUpdatePayload: Encodable {
     let raceName: String
     let raceDate: String
     let distanceMiles: Double
+    let distanceUnit: DistanceUnit
 
     enum CodingKeys: String, CodingKey {
         case raceName = "race_name"
         case raceDate = "race_date"
         case distanceMiles = "distance_miles"
+        case distanceUnit = "distance_unit"
     }
 }
 
@@ -265,7 +303,8 @@ class GoalService {
             athleteId: userId,
             raceName: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
             raceDate: raceDateString(from: draft.date),
-            distanceMiles: draft.distanceMiles
+            distanceMiles: draft.distanceMiles,
+            distanceUnit: draft.distanceUnit
         )
         let race: AthleteRace = try await supabase
             .from("athlete_races")
@@ -284,7 +323,8 @@ class GoalService {
         let payload = ManualRaceUpdatePayload(
             raceName: draft.name.trimmingCharacters(in: .whitespacesAndNewlines),
             raceDate: raceDateString(from: draft.date),
-            distanceMiles: draft.distanceMiles
+            distanceMiles: draft.distanceMiles,
+            distanceUnit: draft.distanceUnit
         )
         let race: AthleteRace = try await supabase
             .from("athlete_races")

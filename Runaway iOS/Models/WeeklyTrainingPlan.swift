@@ -51,8 +51,17 @@ struct WeeklyTrainingPlan: Codable, Identifiable {
     }
 
     var isCurrentWeek: Bool {
-        let now = Date()
-        return now >= weekStartDate && now <= weekEndDate
+        contains(date: Date())
+    }
+
+    func contains(date: Date, calendar: Calendar = .current) -> Bool {
+        let start = calendar.startOfDay(for: weekStartDate)
+        let followingSunday = calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: calendar.startOfDay(for: weekEndDate)
+        ) ?? weekEndDate.addingTimeInterval(86_400)
+        return date >= start && date < followingSunday
     }
 
     func workout(for date: Date) -> DailyWorkout? {
@@ -136,7 +145,7 @@ struct Exercise: Codable, Identifiable {
 
 // MARK: - Day of Week
 
-enum DayOfWeek: String, Codable, CaseIterable {
+enum DayOfWeek: String, Codable, CaseIterable, Sendable {
     case sunday = "sunday"
     case monday = "monday"
     case tuesday = "tuesday"
@@ -181,7 +190,18 @@ enum DayOfWeek: String, Codable, CaseIterable {
 
 // MARK: - Workout Type
 
-enum WorkoutType: String, Codable, CaseIterable {
+enum TrainingLoadClass: Int, Codable, Comparable, Sendable {
+    case recovery
+    case low
+    case moderate
+    case high
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
+enum WorkoutType: String, Codable, CaseIterable, Sendable {
     case easyRun = "easy_run"
     case longRun = "long_run"
     case tempoRun = "tempo_run"
@@ -195,6 +215,10 @@ enum WorkoutType: String, Codable, CaseIterable {
     case fullBody = "full_body"
     case yoga = "yoga"
     case crossTraining = "cross_training"
+    case cycling = "cycling"
+    case swimming = "swimming"
+    case walking = "walking"
+    case hiking = "hiking"
     case stretchMobility = "stretch_mobility"
 
     var displayName: String {
@@ -212,6 +236,10 @@ enum WorkoutType: String, Codable, CaseIterable {
         case .fullBody: return "Full Body"
         case .yoga: return "Yoga"
         case .crossTraining: return "Cross Training"
+        case .cycling: return "Cycling"
+        case .swimming: return "Swimming"
+        case .walking: return "Walking"
+        case .hiking: return "Hiking"
         case .stretchMobility: return "Stretch & Mobility"
         }
     }
@@ -226,6 +254,10 @@ enum WorkoutType: String, Codable, CaseIterable {
         case .strengthTraining, .upperBody, .lowerBody, .fullBody: return "dumbbell"
         case .yoga: return "figure.yoga"
         case .crossTraining: return "figure.mixed.cardio"
+        case .cycling: return "figure.outdoor.cycle"
+        case .swimming: return "figure.pool.swim"
+        case .walking: return "figure.walk"
+        case .hiking: return "figure.hiking"
         case .stretchMobility: return "figure.flexibility"
         }
     }
@@ -241,6 +273,77 @@ enum WorkoutType: String, Codable, CaseIterable {
         case .strengthTraining, .upperBody, .lowerBody, .fullBody: return .purple
         case .yoga, .stretchMobility: return .teal
         case .crossTraining: return .indigo
+        case .cycling: return .cyan
+        case .swimming: return .blue
+        case .walking: return .mint
+        case .hiking: return .brown
+        }
+    }
+
+    var activity: TrainingActivity? {
+        switch self {
+        case .easyRun, .longRun, .tempoRun, .intervalRun, .hillRun, .recoveryRun:
+            return .running
+        case .rest:
+            return nil
+        case .strengthTraining, .upperBody, .lowerBody, .fullBody:
+            return .strength
+        case .yoga, .stretchMobility:
+            return .mobility
+        case .crossTraining:
+            return nil
+        case .cycling:
+            return .cycling
+        case .swimming:
+            return .swimming
+        case .walking:
+            return .walking
+        case .hiking:
+            return .hiking
+        }
+    }
+
+    var loadClass: TrainingLoadClass {
+        switch self {
+        case .rest, .yoga, .stretchMobility:
+            return .recovery
+        case .recoveryRun, .cycling, .swimming, .walking, .upperBody:
+            return .low
+        case .easyRun, .strengthTraining, .lowerBody, .fullBody, .crossTraining, .hiking:
+            return .moderate
+        case .longRun, .tempoRun, .intervalRun, .hillRun:
+            return .high
+        }
+    }
+
+    var isRecoveryCompatible: Bool {
+        switch self {
+        case .easyRun, .longRun, .tempoRun, .intervalRun, .hillRun:
+            return false
+        case .recoveryRun, .rest, .yoga, .walking, .stretchMobility:
+            return true
+        case .strengthTraining, .upperBody, .lowerBody, .fullBody, .crossTraining, .cycling, .swimming, .hiking:
+            return false
+        }
+    }
+
+    var isLowerBodyDemanding: Bool {
+        switch self {
+        case .easyRun, .longRun, .tempoRun, .intervalRun, .hillRun, .recoveryRun:
+            return true
+        case .rest, .strengthTraining, .upperBody, .yoga, .crossTraining, .swimming, .stretchMobility:
+            return false
+        case .lowerBody, .fullBody, .cycling, .walking, .hiking:
+            return true
+        }
+    }
+
+    var isHighIntensity: Bool {
+        switch self {
+        case .tempoRun, .intervalRun, .hillRun:
+            return true
+        case .easyRun, .longRun, .recoveryRun, .rest, .strengthTraining, .upperBody, .lowerBody, .fullBody, .yoga, .crossTraining, .cycling, .swimming, .walking, .hiking, .stretchMobility:
+            return false
         }
     }
 
@@ -248,7 +351,7 @@ enum WorkoutType: String, Codable, CaseIterable {
         switch self {
         case .easyRun, .longRun, .tempoRun, .intervalRun, .hillRun, .recoveryRun:
             return true
-        default:
+        case .rest, .strengthTraining, .upperBody, .lowerBody, .fullBody, .yoga, .crossTraining, .cycling, .swimming, .walking, .hiking, .stretchMobility:
             return false
         }
     }
@@ -257,9 +360,33 @@ enum WorkoutType: String, Codable, CaseIterable {
         switch self {
         case .strengthTraining, .upperBody, .lowerBody, .fullBody:
             return true
-        default:
+        case .easyRun, .longRun, .tempoRun, .intervalRun, .hillRun, .recoveryRun, .rest, .yoga, .crossTraining, .cycling, .swimming, .walking, .hiking, .stretchMobility:
             return false
         }
+    }
+}
+
+extension Activity {
+    var isRunningWorkoutActivity: Bool {
+        isCompatible(with: .easyRun)
+    }
+
+    func isCompatible(with workoutType: WorkoutType) -> Bool {
+        let value = (type ?? name ?? "").lowercased()
+        if value.contains("run") || value.contains("jog") { return workoutType.isRunning }
+        if value.contains("ride") || value.contains("cycl") || value.contains("bike") {
+            return workoutType == .cycling
+        }
+        if value.contains("swim") { return workoutType == .swimming }
+        if value.contains("walk") { return workoutType == .walking }
+        if value.contains("hike") { return workoutType == .hiking }
+        if value.contains("strength") || value.contains("weight") || value.contains("workout") || value.contains("crossfit") {
+            return workoutType.isStrength
+        }
+        if value.contains("yoga") || value.contains("mobility") || value.contains("stretch") {
+            return workoutType == .yoga || workoutType == .stretchMobility
+        }
+        return false
     }
 }
 
@@ -421,7 +548,11 @@ extension WeeklyTrainingPlan {
             let actualActivity = activities.first { activity in
                 guard let activityDate = activity.activity_date ?? activity.start_date else { return false }
                 let activityDateObj = Date(timeIntervalSince1970: activityDate)
-                return calendar.isDate(activityDateObj, inSameDayAs: dayDate)
+                guard calendar.isDate(activityDateObj, inSameDayAs: dayDate) else { return false }
+                if let plannedWorkout, plannedWorkout.workoutType != .rest {
+                    return activity.isCompatible(with: plannedWorkout.workoutType)
+                }
+                return activity.isRunningWorkoutActivity
             }
 
             let entry = WeekDayEntry(
@@ -438,13 +569,40 @@ extension WeeklyTrainingPlan {
 
     /// Calculate actual vs planned stats
     func weekStats(with activities: [Activity]) -> (plannedMiles: Double, actualMiles: Double, completedWorkouts: Int, plannedWorkouts: Int) {
-        let entries = mergedWithActivities(activities)
-
-        let plannedMiles = totalMileage
-        let actualMiles = entries.compactMap { $0.actualActivity?.distance }.reduce(0, +) * 0.000621371
-        let completedWorkouts = entries.filter { $0.isCompleted }.count
-        let plannedWorkouts = workouts.count
+        let runningActivities = activities.filter { activity in
+            guard activity.isRunningWorkoutActivity,
+                  let timestamp = activity.activity_date ?? activity.start_date else { return false }
+            return contains(date: Date(timeIntervalSince1970: timestamp))
+        }
+        let plannedMiles = workouts.filter { $0.workoutType.isRunning }.compactMap(\.distance).reduce(0, +)
+        let actualMiles = runningActivities.compactMap(\.distance).reduce(0, +) * 0.000621371
+        let completedWorkouts = runningActivities.count
+        let plannedWorkouts = workouts.filter { $0.workoutType.isRunning }.count
 
         return (plannedMiles, actualMiles, completedWorkouts, plannedWorkouts)
+    }
+}
+
+struct WeeklyRunProgress: Equatable {
+    let actualMiles: Double
+    let completedRuns: Int
+
+    static func activitiesOnly(
+        _ activities: [Activity],
+        weekStart: Date,
+        calendar: Calendar = .current
+    ) -> WeeklyRunProgress {
+        let start = calendar.startOfDay(for: weekStart)
+        let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start.addingTimeInterval(7 * 86_400)
+        let runs = activities.filter { activity in
+            guard activity.isRunningWorkoutActivity,
+                  let timestamp = activity.activity_date ?? activity.start_date else { return false }
+            let date = Date(timeIntervalSince1970: timestamp)
+            return date >= start && date < end
+        }
+        return WeeklyRunProgress(
+            actualMiles: runs.compactMap(\.distance).reduce(0, +) * 0.000621371,
+            completedRuns: runs.count
+        )
     }
 }

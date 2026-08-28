@@ -141,7 +141,7 @@ enum SplitDetail: String, Codable, CaseIterable {
     }
 }
 
-enum DistanceUnit: String, Codable, CaseIterable {
+enum DistanceUnit: String, Codable, CaseIterable, Sendable {
     case miles = "miles"
     case kilometers = "kilometers"
 

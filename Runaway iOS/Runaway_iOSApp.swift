@@ -18,6 +18,7 @@ struct Runaway_iOSApp: App {
     @StateObject private var stravaService = StravaService()
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var syncEngine = SyncEngine.shared
+    @StateObject private var trainingProfileStore = TrainingProfileStore.shared
     @State private var router = AppRouter()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
@@ -75,6 +76,7 @@ struct Runaway_iOSApp: App {
                 .environment(dataManager)
                 .environmentObject(themeManager)
                 .environmentObject(syncEngine)
+                .environmentObject(trainingProfileStore)
                 .environment(router)
                 .modelContainer(PersistenceController.shared.container)
                 .onChange(of: themeManager.currentTheme) { _, newTheme in

@@ -8,6 +8,28 @@
 
 import Foundation
 
+enum PlanRegenerationScope: Sendable {
+    case initialCurrentWeek
+    case nextWeek
+    case remainingCurrentWeek
+}
+
+enum CachedTrainingPlanStatus {
+    case missing
+    case valid(WeeklyTrainingPlan)
+    case stale(WeeklyTrainingPlan)
+}
+
+private struct TrainingPlanCacheEnvelope: Codable {
+    static let currentVersion = 1
+
+    let cacheVersion: Int
+    let plan: WeeklyTrainingPlan
+    let profileFingerprint: String
+    let profileSchemaVersion: Int
+    let expiresAt: Date
+}
+
 class TrainingPlanService {
 
     // MARK: - Rest Day Integration
@@ -63,70 +85,161 @@ class TrainingPlanService {
     }
 
     // MARK: - Cache Keys
-    private static let cacheKey = "cached_weekly_training_plan"
-    private static let cacheExpirationKey = "weekly_plan_cache_expiration"
+    static let cacheKey = "cached_weekly_training_plan"
+    static let cacheExpirationKey = "weekly_plan_cache_expiration"
+    static let pendingNextWeekCacheKey = "pending_next_week_training_plan"
 
     // MARK: - Cache Management
 
     /// Save plan to local cache with expiration at next Sunday midnight
-    static func cachePlan(_ plan: WeeklyTrainingPlan) {
+    static func cachePlan(
+        _ plan: WeeklyTrainingPlan,
+        profile: TrainingProfile,
+        defaults: UserDefaults = .standard
+    ) throws {
+        let normalizedProfile = profile.validated(existingPlan: plan).profile
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
+        let expiration = nextSundayMidnight()
+        let envelope = TrainingPlanCacheEnvelope(
+            cacheVersion: TrainingPlanCacheEnvelope.currentVersion,
+            plan: plan,
+            profileFingerprint: normalizedProfile.fingerprint,
+            profileSchemaVersion: normalizedProfile.schemaVersion,
+            expiresAt: expiration
+        )
+        let encoded = try encoder.encode(envelope)
+        let previousPlan = defaults.data(forKey: cacheKey)
+        let previousExpiration = defaults.object(forKey: cacheExpirationKey)
 
-        if let encoded = try? encoder.encode(plan) {
-            UserDefaults.standard.set(encoded, forKey: cacheKey)
-            // Cache expires at next Sunday midnight
-            let expiration = nextSundayMidnight()
-            UserDefaults.standard.set(expiration.timeIntervalSince1970, forKey: cacheExpirationKey)
-
-            #if DEBUG
-            print("📋 TrainingPlan: Cached plan, expires \(expiration)")
-            #endif
+        defaults.set(encoded, forKey: cacheKey)
+        defaults.set(expiration.timeIntervalSince1970, forKey: cacheExpirationKey)
+        guard defaults.data(forKey: cacheKey) == encoded else {
+            if let previousPlan { defaults.set(previousPlan, forKey: cacheKey) }
+            else { defaults.removeObject(forKey: cacheKey) }
+            if let previousExpiration { defaults.set(previousExpiration, forKey: cacheExpirationKey) }
+            else { defaults.removeObject(forKey: cacheExpirationKey) }
+            throw TrainingPlanError.cachePersistenceFailed
         }
+
+        #if DEBUG
+        print("📋 TrainingPlan: Cached plan, expires \(expiration)")
+        #endif
+    }
+
+    static func cachePendingNextWeekPlan(
+        _ plan: WeeklyTrainingPlan,
+        profile: TrainingProfile,
+        defaults: UserDefaults = .standard
+    ) throws {
+        let normalizedProfile = profile.validated(existingPlan: plan).profile
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let expiration = Calendar.current.date(byAdding: .day, value: 1, to: plan.weekEndDate)
+            ?? plan.weekEndDate.addingTimeInterval(86_400)
+        let envelope = TrainingPlanCacheEnvelope(
+            cacheVersion: TrainingPlanCacheEnvelope.currentVersion,
+            plan: plan,
+            profileFingerprint: normalizedProfile.fingerprint,
+            profileSchemaVersion: normalizedProfile.schemaVersion,
+            expiresAt: expiration
+        )
+        let encoded = try encoder.encode(envelope)
+        let previousPlan = defaults.data(forKey: pendingNextWeekCacheKey)
+
+        defaults.set(encoded, forKey: pendingNextWeekCacheKey)
+        guard defaults.data(forKey: pendingNextWeekCacheKey) == encoded else {
+            if let previousPlan { defaults.set(previousPlan, forKey: pendingNextWeekCacheKey) }
+            else { defaults.removeObject(forKey: pendingNextWeekCacheKey) }
+            throw TrainingPlanError.cachePersistenceFailed
+        }
+    }
+
+    static func pendingNextWeekPlan(
+        for profile: TrainingProfile,
+        defaults: UserDefaults = .standard
+    ) -> WeeklyTrainingPlan? {
+        guard let data = defaults.data(forKey: pendingNextWeekCacheKey) else { return nil }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let envelope = try? decoder.decode(TrainingPlanCacheEnvelope.self, from: data) else {
+            return nil
+        }
+
+        let normalizedProfile = profile.validated(existingPlan: envelope.plan).profile
+        let metadataMatches = envelope.cacheVersion == TrainingPlanCacheEnvelope.currentVersion
+            && envelope.profileSchemaVersion == normalizedProfile.schemaVersion
+            && envelope.profileSchemaVersion == TrainingProfile.currentSchemaVersion
+            && envelope.profileFingerprint == normalizedProfile.fingerprint
+        return metadataMatches && Date() < envelope.expiresAt ? envelope.plan : nil
+    }
+
+    static func promotePendingNextWeekPlanIfCurrent(
+        for profile: TrainingProfile,
+        defaults: UserDefaults = .standard
+    ) throws -> WeeklyTrainingPlan? {
+        guard
+            let pendingPlan = pendingNextWeekPlan(for: profile, defaults: defaults),
+            Calendar.current.isDate(pendingPlan.weekStartDate, inSameDayAs: currentWeekSunday())
+        else {
+            return nil
+        }
+
+        try cachePlan(pendingPlan, profile: profile, defaults: defaults)
+        defaults.removeObject(forKey: pendingNextWeekCacheKey)
+        return pendingPlan
     }
 
     /// Get cached plan if valid (not expired and for current week)
     static func getCachedPlan() -> WeeklyTrainingPlan? {
-        // Check if cache has expired
-        let expirationTimestamp = UserDefaults.standard.double(forKey: cacheExpirationKey)
-        guard expirationTimestamp > 0 else { return nil }
+        nil
+    }
 
-        let expirationDate = Date(timeIntervalSince1970: expirationTimestamp)
-        guard Date() < expirationDate else {
-            #if DEBUG
-            print("📋 TrainingPlan: Cache expired")
-            #endif
-            clearCache()
-            return nil
-        }
-
-        // Load and decode cached plan
-        guard let data = UserDefaults.standard.data(forKey: cacheKey) else { return nil }
+    static func cachedPlanStatus(
+        for profile: TrainingProfile,
+        defaults: UserDefaults = .standard
+    ) -> CachedTrainingPlanStatus {
+        guard let data = defaults.data(forKey: cacheKey) else { return .missing }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-
-        guard let plan = try? decoder.decode(WeeklyTrainingPlan.self, from: data) else {
-            clearCache()
-            return nil
+        guard let envelope = try? decoder.decode(TrainingPlanCacheEnvelope.self, from: data) else {
+            if let legacyPlan = try? decoder.decode(WeeklyTrainingPlan.self, from: data) {
+                return .stale(legacyPlan)
+            }
+            return .missing
         }
 
-        // Verify plan is for current week
-        let currentSunday = currentWeekSunday()
+        let normalizedProfile = profile.validated(existingPlan: envelope.plan).profile
         let calendar = Calendar.current
-        if !calendar.isDate(plan.weekStartDate, inSameDayAs: currentSunday) {
-            #if DEBUG
-            print("📋 TrainingPlan: Cached plan is for different week")
-            #endif
-            clearCache()
-            return nil
+        let metadataMatches = envelope.cacheVersion == TrainingPlanCacheEnvelope.currentVersion
+            && envelope.profileSchemaVersion == normalizedProfile.schemaVersion
+            && envelope.profileSchemaVersion == TrainingProfile.currentSchemaVersion
+            && envelope.profileFingerprint == normalizedProfile.fingerprint
+        let dateMatches = Date() < envelope.expiresAt
+            && calendar.isDate(envelope.plan.weekStartDate, inSameDayAs: currentWeekSunday())
+
+        return metadataMatches && dateMatches ? .valid(envelope.plan) : .stale(envelope.plan)
+    }
+
+    static func cachedPlanForProfileMigration(
+        defaults: UserDefaults = .standard
+    ) -> WeeklyTrainingPlan? {
+        guard let data = defaults.data(forKey: cacheKey) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        if let envelope = try? decoder.decode(TrainingPlanCacheEnvelope.self, from: data) {
+            return envelope.plan
         }
+        return try? decoder.decode(WeeklyTrainingPlan.self, from: data)
+    }
 
-        #if DEBUG
-        print("📋 TrainingPlan: Loaded cached plan (expires \(expirationDate))")
-        #endif
-
-        return plan
+    private static func decodedCacheEnvelope(defaults: UserDefaults) -> TrainingPlanCacheEnvelope? {
+        guard let data = defaults.data(forKey: cacheKey) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(TrainingPlanCacheEnvelope.self, from: data)
     }
 
     /// Clear the cached plan
@@ -151,17 +264,84 @@ class TrainingPlanService {
 
     // MARK: - Generate Weekly Plan
 
+    static func generatePlan(
+        athleteId: Int? = nil,
+        profile: TrainingProfile,
+        scope: PlanRegenerationScope,
+        existingPlan: WeeklyTrainingPlan?,
+        goal: RunningGoal? = nil,
+        settings: PlanGenerationSettings = .default,
+        runningPlanGenerator: (() async throws -> WeeklyTrainingPlan)? = nil
+    ) async throws -> WeeklyTrainingPlan {
+        let validatedProfile = profile.validated(existingPlan: existingPlan).profile
+        let calendar = Calendar.current
+        let runningPlan: WeeklyTrainingPlan
+
+        switch scope {
+        case .initialCurrentWeek:
+            let generated: WeeklyTrainingPlan
+            if let runningPlanGenerator {
+                generated = try await runningPlanGenerator()
+            } else {
+                guard let athleteId = athleteId ?? existingPlan?.athleteId, athleteId > 0 else {
+                    throw TrainingPlanError.missingAthleteId
+                }
+                generated = await establishedRunningPlan(
+                    athleteId: athleteId,
+                    goal: goal,
+                    settings: settings
+                )
+            }
+            runningPlan = shiftedPlan(generated, to: currentWeekSunday())
+        case .nextWeek:
+            let generated: WeeklyTrainingPlan
+            if let runningPlanGenerator {
+                generated = try await runningPlanGenerator()
+            } else {
+                generated = await establishedRunningPlan(
+                    athleteId: athleteId ?? existingPlan?.athleteId ?? 0,
+                    goal: goal,
+                    settings: settings
+                )
+            }
+            let nextBoundary = calendar.safeDate(byAdding: .weekOfYear, value: 1, to: currentWeekSunday())
+            runningPlan = shiftedPlan(generated, to: nextBoundary)
+        case .remainingCurrentWeek:
+            guard let existingPlan else { throw TrainingPlanError.noPlanFound }
+            runningPlan = existingPlan
+        }
+        return composeProfileAwarePlan(
+            runningPlan: runningPlan,
+            profile: validatedProfile,
+            scope: scope,
+            existingPlan: existingPlan
+        )
+    }
+
     /// Generate a training plan for the current or specified week
     static func generateWeeklyPlan(
         athleteId: Int,
         goal: RunningGoal?,
-        weekStartDate: Date? = nil
+        weekStartDate: Date? = nil,
+        profile: TrainingProfile? = nil,
+        settings: PlanGenerationSettings = .default
     ) async throws -> WeeklyTrainingPlan {
-        let startDate = weekStartDate ?? currentWeekSunday()
-        let safePlan = generateLocalPlan(athleteId: athleteId, weekStartDate: startDate, goal: goal)
-        let personalizedPlan = await personalizePlanLocally(safePlan)
-        cachePlan(personalizedPlan)
-        return personalizedPlan
+        let resolvedProfile = await resolvedProfile(profile)
+        let generated = await establishedRunningPlan(
+            athleteId: athleteId,
+            goal: goal,
+            settings: settings
+        )
+        let targetDate = weekStartDate ?? currentWeekSunday()
+        let runningPlan = shiftedPlan(generated, to: targetDate)
+        let plan = composeProfileAwarePlan(
+            runningPlan: runningPlan,
+            profile: resolvedProfile,
+            scope: .initialCurrentWeek,
+            existingPlan: nil
+        )
+        try cachePlan(plan, profile: resolvedProfile)
+        return plan
     }
 
     // MARK: - Adaptive Plan Regeneration
@@ -172,15 +352,24 @@ class TrainingPlanService {
         athleteId: Int,
         currentPlan: WeeklyTrainingPlan,
         completedActivities: [Activity],
-        goal: RunningGoal?
+        goal: RunningGoal?,
+        profile: TrainingProfile? = nil
     ) async throws -> WeeklyTrainingPlan {
         _ = athleteId
-        _ = goal
-        let adjusted = adjustPlanLocally(
-            currentPlan: currentPlan,
+        let completedPlan = anchoringCompletedActivities(completedActivities, to: currentPlan)
+        let activityAdjustedPlan = adjustPlanLocally(
+            currentPlan: completedPlan,
             completedActivities: completedActivities
         )
-        cachePlan(adjusted)
+        let storedProfile = await resolvedProfile(profile)
+        let resolvedProfile = storedProfile.validated(existingPlan: activityAdjustedPlan).profile
+        let adjusted = try await generatePlan(
+            athleteId: athleteId,
+            profile: resolvedProfile,
+            scope: .remainingCurrentWeek,
+            existingPlan: activityAdjustedPlan,
+            goal: goal
+        )
         return adjusted
     }
 
@@ -196,7 +385,7 @@ class TrainingPlanService {
         let activityDate = Date(timeIntervalSince1970: activityTimestamp)
 
         // Only consider activities from the current week
-        guard activityDate >= currentPlan.weekStartDate && activityDate <= currentPlan.weekEndDate else {
+        guard containsActivityDate(activityDate, in: currentPlan) else {
             return false
         }
 
@@ -241,6 +430,18 @@ class TrainingPlanService {
         }
 
         return false
+    }
+
+    static func containsActivityDate(
+        _ date: Date,
+        in plan: WeeklyTrainingPlan,
+        calendar: Calendar = .current
+    ) -> Bool {
+        let weekStart = calendar.startOfDay(for: plan.weekStartDate)
+        guard let followingWeekStart = calendar.date(byAdding: .day, value: 7, to: weekStart) else {
+            return false
+        }
+        return date >= weekStart && date < followingWeekStart
     }
 
     /// Merge original plan with regenerated plan
@@ -299,6 +500,80 @@ class TrainingPlanService {
         )
     }
 
+    private static func anchoringCompletedActivities(
+        _ activities: [Activity],
+        to plan: WeeklyTrainingPlan
+    ) -> WeeklyTrainingPlan {
+        let calendar = Calendar.current
+        let datedActivities = activities.compactMap { activity -> (Activity, Date)? in
+            guard let timestamp = activity.activity_date ?? activity.start_date else { return nil }
+            let date = Date(timeIntervalSince1970: timestamp)
+            guard containsActivityDate(date, in: plan, calendar: calendar) else { return nil }
+            return (activity, calendar.startOfDay(for: date))
+        }.sorted { $0.0.id < $1.0.id }
+
+        let workouts = plan.workouts.map { workout -> DailyWorkout in
+            guard !workout.isCompleted,
+                  let activity = datedActivities.first(where: {
+                      $0.1 == calendar.startOfDay(for: workout.date)
+                          && activity($0.0, matches: workout.workoutType)
+                  })?.0 else {
+                return workout
+            }
+            let distance = activity.distance.map { $0 * 0.000621371 } ?? workout.distance
+            let duration = activity.elapsed_time.map { Int(($0 / 60).rounded()) }
+                ?? activity.moving_time.map { Int((Double($0) / 60).rounded()) }
+                ?? workout.duration
+            return DailyWorkout(
+                id: workout.id,
+                date: workout.date,
+                dayOfWeek: workout.dayOfWeek,
+                workoutType: workout.workoutType,
+                title: workout.title,
+                description: workout.description,
+                duration: duration,
+                distance: distance,
+                targetPace: workout.targetPace,
+                exercises: workout.exercises,
+                isCompleted: true,
+                completedActivityId: activity.id
+            )
+        }
+
+        return WeeklyTrainingPlan(
+            id: plan.id,
+            athleteId: plan.athleteId,
+            weekStartDate: plan.weekStartDate,
+            weekEndDate: plan.weekEndDate,
+            workouts: workouts,
+            weekNumber: plan.weekNumber,
+            totalMileage: workouts.filter { $0.workoutType.isRunning }.compactMap(\.distance).reduce(0, +),
+            focusArea: plan.focusArea,
+            notes: plan.notes,
+            generatedAt: plan.generatedAt,
+            goalId: plan.goalId
+        )
+    }
+
+    private static func activity(_ activity: Activity, matches workoutType: WorkoutType) -> Bool {
+        let type = (activity.type ?? activity.name ?? "").lowercased()
+        if type.contains("run") || type.contains("jog") { return workoutType.isRunning }
+        if type.contains("ride") || type.contains("cycl") || type.contains("bike") {
+            return workoutType == .cycling
+        }
+        if type.contains("swim") { return workoutType == .swimming }
+        if type.contains("walk") { return workoutType == .walking }
+        if type.contains("hik") { return workoutType == .hiking }
+        if type.contains("strength") || type.contains("weight") { return workoutType.isStrength }
+        if type.contains("yoga") { return workoutType == .yoga }
+        return false
+    }
+
+    private static func isRunningActivity(_ activity: Activity) -> Bool {
+        let type = (activity.type ?? activity.name ?? "").lowercased()
+        return type.contains("run") || type.contains("jog")
+    }
+
     /// Local fallback: adjust plan based on simple heuristics
     private static func adjustPlanLocally(
         currentPlan: WeeklyTrainingPlan,
@@ -312,9 +587,10 @@ class TrainingPlanService {
         var hardWorkoutDone = false
 
         for activity in completedActivities {
+            guard isRunningActivity(activity) else { continue }
             guard let ts = activity.activity_date ?? activity.start_date else { continue }
             let activityDate = Date(timeIntervalSince1970: ts)
-            guard activityDate >= currentPlan.weekStartDate && activityDate <= currentPlan.weekEndDate else { continue }
+            guard containsActivityDate(activityDate, in: currentPlan, calendar: calendar) else { continue }
 
             let miles = (activity.distance ?? 0) * 0.000621371
             actualMileage += miles
@@ -333,7 +609,7 @@ class TrainingPlanService {
 
         for workout in currentPlan.workouts {
             // If workout is in the past or today is past, keep as-is
-            if workout.date < today {
+            if workout.isCompleted || workout.date < today {
                 adjustedWorkouts.append(workout)
                 continue
             }
@@ -469,7 +745,16 @@ class TrainingPlanService {
 
     /// Fetch existing plan for a specific week
     static func getWeeklyPlan(athleteId: Int, weekStartDate: Date) async throws -> WeeklyTrainingPlan? {
-        guard let plan = getCachedPlan(), plan.athleteId == athleteId else { return nil }
+        nil
+    }
+
+    static func getWeeklyPlan(
+        athleteId: Int,
+        weekStartDate: Date,
+        profile: TrainingProfile
+    ) async throws -> WeeklyTrainingPlan? {
+        guard case let .valid(plan) = cachedPlanStatus(for: profile),
+              plan.athleteId == athleteId else { return nil }
         return Calendar.current.isDate(plan.weekStartDate, inSameDayAs: weekStartDate) ? plan : nil
     }
 
@@ -639,6 +924,438 @@ class TrainingPlanService {
         )
     }
 
+    private static func reconcileRunningFrequency(
+        in plan: WeeklyTrainingPlan,
+        profile: TrainingProfile
+    ) -> WeeklyTrainingPlan {
+        let requested = profile.preference(for: .running)?.sessionsPerWeek ?? 0
+        let runs = plan.workouts.filter { $0.workoutType.isRunning }.sorted { $0.date < $1.date }
+        guard runs.count != requested else { return plan }
+
+        func isEasy(_ workout: DailyWorkout) -> Bool {
+            workout.workoutType == .easyRun || workout.workoutType == .recoveryRun
+        }
+
+        let originalMileage = runs.compactMap(\.distance).reduce(0, +)
+        var reconciled = plan.workouts
+
+        if runs.count > requested {
+            func preservationRank(_ workout: DailyWorkout) -> Int {
+                switch workout.workoutType {
+                case .longRun: return 0
+                case .tempoRun, .intervalRun, .hillRun: return 1
+                case .easyRun: return 2
+                case .recoveryRun: return 3
+                default: return 4
+                }
+            }
+            let retained = runs.sorted {
+                let lhsRank = preservationRank($0)
+                let rhsRank = preservationRank($1)
+                if lhsRank != rhsRank { return lhsRank < rhsRank }
+                return $0.date < $1.date
+            }.prefix(requested)
+            let retainedIDs = Set(retained.map(\.id))
+            let removed = runs.filter { !retainedIDs.contains($0.id) }
+            let removedIDs = Set(removed.map(\.id))
+            let retainedEasy = runs.filter { isEasy($0) && retainedIDs.contains($0.id) }
+            let removedMileage = removed.compactMap(\.distance).reduce(0, +)
+            let bonus = retainedEasy.isEmpty ? 0 : removedMileage / Double(retainedEasy.count)
+            let retainedEasyIDs = Set(retainedEasy.map(\.id))
+            reconciled = reconciled.compactMap { workout in
+                guard !removedIDs.contains(workout.id) else { return nil }
+                guard retainedEasyIDs.contains(workout.id) else { return workout }
+                return resizingEasyRun(workout, distance: (workout.distance ?? 0) + bonus)
+            }
+        } else {
+            return plan
+        }
+
+        let finalRuns = reconciled.filter { $0.workoutType.isRunning }
+        let finalMileage = finalRuns.compactMap(\.distance).reduce(0, +)
+        guard finalRuns.count == requested else { return plan }
+        let preservedMileage = retainedMileageIsExpected(
+            requested: requested,
+            originalMileage: originalMileage,
+            finalMileage: finalMileage,
+            runs: finalRuns
+        )
+        guard preservedMileage else { return plan }
+        return WeeklyTrainingPlan(
+            id: plan.id,
+            athleteId: plan.athleteId,
+            weekStartDate: plan.weekStartDate,
+            weekEndDate: plan.weekEndDate,
+            workouts: reconciled.sorted { $0.date < $1.date },
+            weekNumber: plan.weekNumber,
+            totalMileage: finalMileage,
+            focusArea: plan.focusArea,
+            notes: plan.notes,
+            generatedAt: plan.generatedAt,
+            goalId: plan.goalId
+        )
+    }
+
+    private static func retainedMileageIsExpected(
+        requested: Int,
+        originalMileage: Double,
+        finalMileage: Double,
+        runs: [DailyWorkout]
+    ) -> Bool {
+        requested == 0
+            || runs.contains { $0.workoutType == .easyRun || $0.workoutType == .recoveryRun }
+                ? abs(finalMileage - originalMileage) < 0.001
+                : finalMileage <= originalMileage
+    }
+
+    private static func resizingEasyRun(_ workout: DailyWorkout, distance: Double) -> DailyWorkout {
+        let oldDistance = workout.distance ?? distance
+        let duration = workout.duration.map {
+            oldDistance > 0 ? Int((Double($0) * distance / oldDistance).rounded()) : $0
+        }
+        return DailyWorkout(
+            id: workout.id,
+            date: workout.date,
+            dayOfWeek: workout.dayOfWeek,
+            workoutType: workout.workoutType,
+            title: workout.title,
+            description: workout.description,
+            duration: duration,
+            distance: distance,
+            targetPace: workout.targetPace,
+            exercises: workout.exercises,
+            isCompleted: workout.isCompleted,
+            completedActivityId: workout.completedActivityId
+        )
+    }
+
+    private static func rolePrioritizedRemainingSessionBudgets(
+        profile: TrainingProfile,
+        dates: [Date],
+        protectedHistory: [DailyWorkout]
+    ) -> [TrainingActivity: Int] {
+        let calendar = Calendar.current
+        let protectedTrainingDays = Set(protectedHistory.compactMap { workout -> Date? in
+            workout.workoutType == .rest ? nil : calendar.startOfDay(for: workout.date)
+        })
+        let openAvailableDays = dates.filter { date in
+            let day = calendar.startOfDay(for: date)
+            let weekday = DayOfWeek.from(date: date).calendarWeekday
+            return !protectedTrainingDays.contains(day)
+                && !profile.unavailableWeekdays.contains(weekday)
+        }.count
+        var remainingCapacity = min(
+            max(0, profile.trainingDaysPerWeek - protectedTrainingDays.count),
+            openAvailableDays
+        )
+        let protectedCounts = protectedHistory.reduce(into: [TrainingActivity: Int]()) { counts, workout in
+            if let activity = workout.workoutType.activity {
+                counts[activity, default: 0] += 1
+            }
+        }
+        var budgets: [TrainingActivity: Int] = [:]
+
+        for role in [TrainingActivityRole.primary, .supporting, .optional] {
+            let preferences = profile.activities
+                .filter { $0.role == role }
+                .sorted { $0.activity.rawValue < $1.activity.rawValue }
+            for preference in preferences {
+                let unmet = max(
+                    0,
+                    preference.sessionsPerWeek - protectedCounts[preference.activity, default: 0]
+                )
+                let allocation = min(unmet, remainingCapacity)
+                budgets[preference.activity] = allocation
+                remainingCapacity -= allocation
+            }
+        }
+        return budgets
+    }
+
+    private static func composeProfileAwarePlan(
+        runningPlan: WeeklyTrainingPlan,
+        profile: TrainingProfile,
+        scope: PlanRegenerationScope,
+        existingPlan: WeeklyTrainingPlan?
+    ) -> WeeklyTrainingPlan {
+        var runningPlan = runningPlan
+        if scope == .nextWeek || scope == .initialCurrentWeek {
+            runningPlan = reconcileRunningFrequency(in: runningPlan, profile: profile)
+        }
+        let calendar = Calendar.current
+        let dates = (0..<7).map {
+            calendar.safeDate(byAdding: .day, value: $0, to: runningPlan.weekStartDate)
+        }
+        let today = calendar.startOfDay(for: Date())
+        let protectedHistory: [DailyWorkout]
+        let baselineRunCandidates: [DailyWorkout]
+        switch scope {
+        case .initialCurrentWeek, .nextWeek:
+            protectedHistory = []
+            baselineRunCandidates = runningPlan.workouts.filter { $0.workoutType.isRunning }
+        case .remainingCurrentWeek:
+            let existingWorkouts = existingPlan?.workouts ?? []
+            protectedHistory = existingWorkouts.filter {
+                $0.isCompleted || calendar.startOfDay(for: $0.date) <= today
+            }
+            let protectedIDs = Set(protectedHistory.map(\.id))
+            baselineRunCandidates = existingWorkouts.filter {
+                $0.workoutType.isRunning && !protectedIDs.contains($0.id)
+            }
+        }
+
+        let runCandidates = relocatedRunCandidates(
+            baselineRunCandidates,
+            profile: profile,
+            dates: dates
+        )
+        let remainingBudgets = rolePrioritizedRemainingSessionBudgets(
+            profile: profile,
+            dates: dates,
+            protectedHistory: protectedHistory
+        )
+        let fixedRunCandidates = Array(
+            runCandidates.prefix(remainingBudgets[.running, default: 0])
+        )
+        let completedAssignments = protectedHistory.map {
+            ScheduledWorkoutAssignment(
+                id: $0.id,
+                weekday: $0.dayOfWeek,
+                date: $0.date,
+                workoutType: $0.workoutType,
+                reason: .completedWorkoutProtected,
+                isCompleted: $0.isCompleted,
+                isFixed: true
+            )
+        }
+        let fixedRunAssignments = fixedRunCandidates.map {
+            ScheduledWorkoutAssignment(
+                id: $0.id,
+                weekday: $0.dayOfWeek,
+                date: $0.date,
+                workoutType: $0.workoutType,
+                reason: .requiredPrimary,
+                isCompleted: false,
+                isFixed: true
+            )
+        }
+        let context = SchedulingContext(
+            dates: dates,
+            profile: profile,
+            fixedPrimaryWorkouts: fixedRunAssignments,
+            completedWorkouts: completedAssignments,
+            unavailableWeekdays: profile.unavailableWeekdays,
+            readinessByWeekday: [:],
+            taperProtectedWeekdays: []
+        )
+        let assignments = ComplementarySchedulingPolicy.buildWeeklyAssignments(context: context)
+        let templateIDs = Set((protectedHistory + fixedRunCandidates).map(\.id))
+        let addedRunAssignments = assignments.filter {
+            !$0.isCompleted && $0.workoutType.isRunning && !templateIDs.contains($0.id)
+        }
+        let easyPrescriptions = fixedRunCandidates.filter {
+            $0.workoutType == .easyRun || $0.workoutType == .recoveryRun
+        }
+        let addedRunDistance: Double?
+        let mileageBalancedCandidates: [DailyWorkout]
+        if !addedRunAssignments.isEmpty, !easyPrescriptions.isEmpty {
+            let easyMileage = easyPrescriptions.compactMap(\.distance).reduce(0, +)
+            let distance = easyMileage / Double(easyPrescriptions.count + addedRunAssignments.count)
+            let easyIDs = Set(easyPrescriptions.map(\.id))
+            addedRunDistance = distance
+            mileageBalancedCandidates = fixedRunCandidates.map {
+                easyIDs.contains($0.id) ? resizingEasyRun($0, distance: distance) : $0
+            }
+        } else {
+            addedRunDistance = nil
+            mileageBalancedCandidates = fixedRunCandidates
+        }
+        let runningTemplate = easyPrescriptions.first
+        let templatesByID = Dictionary(uniqueKeysWithValues: (protectedHistory + mileageBalancedCandidates).map {
+            ($0.id, $0)
+        })
+        let assignmentByDay = Dictionary(uniqueKeysWithValues: assignments.map {
+            (calendar.startOfDay(for: $0.date), $0)
+        })
+
+        let workouts = dates.map { date -> DailyWorkout in
+            let day = calendar.startOfDay(for: date)
+            if let assignment = assignmentByDay[day] {
+                if let template = templatesByID[assignment.id] { return template }
+                return supportingWorkout(
+                    for: assignment,
+                    runningDistance: assignment.workoutType.isRunning ? addedRunDistance : nil,
+                    runningTargetPace: runningTemplate?.targetPace
+                )
+            }
+            return createWorkout(
+                date: date,
+                dayOfWeek: DayOfWeek.from(date: date),
+                type: .rest,
+                title: "Rest Day",
+                description: "Recover and prepare for the next scheduled session."
+            )
+        }
+        let runningMileage = workouts
+            .filter { $0.workoutType.isRunning }
+            .compactMap(\.distance)
+            .reduce(0, +)
+        let reasons = assignments.filter { !$0.isCompleted }.map {
+            "\($0.weekday.shortName): \($0.reason.rawValue)"
+        }.joined(separator: "; ")
+        let original = scope.isCurrentWeek ? existingPlan : nil
+
+        return WeeklyTrainingPlan(
+            id: original?.id ?? runningPlan.id,
+            athleteId: original?.athleteId ?? runningPlan.athleteId,
+            weekStartDate: runningPlan.weekStartDate,
+            weekEndDate: runningPlan.weekEndDate,
+            workouts: workouts,
+            weekNumber: original?.weekNumber ?? runningPlan.weekNumber,
+            totalMileage: runningMileage,
+            focusArea: original?.focusArea ?? runningPlan.focusArea,
+            notes: original?.notes ?? scheduleNotes(base: runningPlan.notes, reasons: reasons),
+            generatedAt: Date(),
+            goalId: original?.goalId ?? runningPlan.goalId
+        )
+    }
+
+    private static func relocatedRunCandidates(
+        _ candidates: [DailyWorkout],
+        profile: TrainingProfile,
+        dates: [Date]
+    ) -> [DailyWorkout] {
+        guard profile.preference(for: .running)?.sessionsPerWeek ?? 0 > 0 else { return [] }
+        let calendar = Calendar.current
+        let validDates = dates.filter {
+            !profile.unavailableWeekdays.contains(DayOfWeek.from(date: $0).calendarWeekday)
+        }
+        var occupied = Set<Date>()
+        let ordered = candidates.sorted {
+            if ($0.workoutType == .longRun) != ($1.workoutType == .longRun) {
+                return $0.workoutType == .longRun
+            }
+            return $0.date < $1.date
+        }
+
+        return ordered.compactMap { workout in
+            let preferredDate = workout.workoutType == .longRun
+                ? validDates.first { DayOfWeek.from(date: $0).calendarWeekday == profile.preferredLongRunWeekday }
+                : nil
+            let originalDay = calendar.startOfDay(for: workout.date)
+            let selectedDate = [preferredDate, validDates.first { calendar.isDate($0, inSameDayAs: originalDay) }]
+                .compactMap { $0 }
+                .first { !occupied.contains(calendar.startOfDay(for: $0)) }
+                ?? validDates
+                    .filter { !occupied.contains(calendar.startOfDay(for: $0)) }
+                    .min { lhs, rhs in
+                        abs(lhs.timeIntervalSince(workout.date)) < abs(rhs.timeIntervalSince(workout.date))
+                    }
+            guard let selectedDate else { return nil }
+            let day = calendar.startOfDay(for: selectedDate)
+            occupied.insert(day)
+            return DailyWorkout(
+                id: workout.id,
+                date: selectedDate,
+                dayOfWeek: DayOfWeek.from(date: selectedDate),
+                workoutType: workout.workoutType,
+                title: workout.title,
+                description: workout.description,
+                duration: workout.duration,
+                distance: workout.distance,
+                targetPace: workout.targetPace,
+                exercises: workout.exercises,
+                isCompleted: false,
+                completedActivityId: nil
+            )
+        }
+    }
+
+    @MainActor
+    private static func establishedRunningPlan(
+        athleteId: Int,
+        goal: RunningGoal?,
+        settings: PlanGenerationSettings
+    ) async -> WeeklyTrainingPlan {
+        let algorithm = AdaptiveTrainingAlgorithm()
+        return await algorithm.generateAdaptivePlan(
+            athleteId: athleteId,
+            goal: goal,
+            settings: settings
+        )
+    }
+
+    @MainActor
+    private static func resolvedProfile(_ injected: TrainingProfile?) -> TrainingProfile {
+        if let injected {
+            return injected.validated().profile
+        }
+        TrainingProfileStore.shared.reloadFromPersistence()
+        let profile = TrainingProfileStore.shared.profile
+        return profile.validated().profile
+    }
+
+    private static func shiftedPlan(_ plan: WeeklyTrainingPlan, to weekStart: Date) -> WeeklyTrainingPlan {
+        let calendar = Calendar.current
+        let dayDelta = calendar.dateComponents([.day], from: plan.weekStartDate, to: weekStart).day ?? 0
+        let workouts = plan.workouts.map { workout in
+            DailyWorkout(
+                id: workout.id,
+                date: calendar.safeDate(byAdding: .day, value: dayDelta, to: workout.date),
+                dayOfWeek: workout.dayOfWeek,
+                workoutType: workout.workoutType,
+                title: workout.title,
+                description: workout.description,
+                duration: workout.duration,
+                distance: workout.distance,
+                targetPace: workout.targetPace,
+                exercises: workout.exercises,
+                isCompleted: workout.isCompleted,
+                completedActivityId: workout.completedActivityId
+            )
+        }
+        return WeeklyTrainingPlan(
+            id: plan.id,
+            athleteId: plan.athleteId,
+            weekStartDate: weekStart,
+            weekEndDate: calendar.safeDate(byAdding: .day, value: 6, to: weekStart),
+            workouts: workouts,
+            weekNumber: plan.weekNumber,
+            totalMileage: plan.totalMileage,
+            focusArea: plan.focusArea,
+            notes: plan.notes,
+            generatedAt: plan.generatedAt,
+            goalId: plan.goalId
+        )
+    }
+
+    private static func scheduleNotes(base: String?, reasons: String) -> String? {
+        guard !reasons.isEmpty else { return base }
+        return [base, "Schedule: \(reasons)"].compactMap { $0 }.joined(separator: "\n")
+    }
+
+    private static func supportingWorkout(
+        for assignment: ScheduledWorkoutAssignment,
+        runningDistance: Double? = nil,
+        runningTargetPace: String? = nil
+    ) -> DailyWorkout {
+        let description = "Scheduled from your training profile (\(assignment.reason.rawValue))."
+        let exercises: [Exercise]? = assignment.workoutType.isStrength
+            ? [Exercise(name: "Profile-based strength session", sets: 3, reps: "8-12")]
+            : nil
+        return createWorkout(
+            date: assignment.date,
+            dayOfWeek: assignment.weekday,
+            type: assignment.workoutType,
+            title: assignment.workoutType.displayName,
+            description: description,
+            distance: runningDistance,
+            duration: assignment.workoutType.isStrength ? 45 : 40,
+            targetPace: runningTargetPace,
+            exercises: exercises
+        )
+    }
+
     private static func createWorkout(
         date: Date,
         dayOfWeek: DayOfWeek,
@@ -693,6 +1410,8 @@ enum TrainingPlanError: LocalizedError {
     case generationFailed(String)
     case httpError(Int)
     case noPlanFound
+    case missingAthleteId
+    case cachePersistenceFailed
 
     var errorDescription: String? {
         switch self {
@@ -704,6 +1423,19 @@ enum TrainingPlanError: LocalizedError {
             return "HTTP error: \(code)"
         case .noPlanFound:
             return "No training plan found for this week"
+        case .missingAthleteId:
+            return "A positive athlete ID is required to generate a training plan."
+        case .cachePersistenceFailed:
+            return "Failed to persist the generated training plan"
+        }
+    }
+}
+
+private extension PlanRegenerationScope {
+    var isCurrentWeek: Bool {
+        switch self {
+        case .initialCurrentWeek, .remainingCurrentWeek: return true
+        case .nextWeek: return false
         }
     }
 }

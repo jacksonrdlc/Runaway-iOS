@@ -34,11 +34,14 @@ class DataManager {
     var currentGoal: RunningGoal?
     var todaysCommitment: DailyCommitment?
     var currentWeeklyPlan: WeeklyTrainingPlan?
+    var pendingNextWeekPlan: WeeklyTrainingPlan?
     var isLoadingActivities = false
     var isLoadingAthlete = false
     var isLoadingCommitment = false
     var isRegeneratingPlan = false
     var lastDataRefresh: Date?
+    private var trainingPlanGenerationToken: UInt64 = 0
+    private var trainingPlanGenerationFingerprint: String?
 
     // MARK: - Singleton
 
@@ -184,32 +187,41 @@ class DataManager {
     // MARK: - Adaptive Training Plan
 
     /// Load the current week's training plan
-    func loadCurrentWeeklyPlan() async {
-        guard let userId = UserSession.shared.userId else { return }
+    func loadCurrentWeeklyPlan(
+        profile: TrainingProfile? = nil,
+        defaults: UserDefaults = .standard
+    ) async {
+        let migrationPlan = currentWeeklyPlan
+            ?? TrainingPlanService.cachedPlanForProfileMigration(defaults: defaults)
+        let normalizedProfile = resolvedTrainingProfile(profile, existingPlan: migrationPlan)
 
-        // Check cache first
-        if let cachedPlan = TrainingPlanService.getCachedPlan() {
-            currentWeeklyPlan = cachedPlan
+        if let promotedPlan = try? TrainingPlanService.promotePendingNextWeekPlanIfCurrent(
+            for: normalizedProfile,
+            defaults: defaults
+        ) {
+            currentWeeklyPlan = promotedPlan
+            pendingNextWeekPlan = nil
             return
         }
+        pendingNextWeekPlan = TrainingPlanService.pendingNextWeekPlan(
+            for: normalizedProfile,
+            defaults: defaults
+        )
 
-        // Try to fetch from server
-        do {
-            let sunday = TrainingPlanService.currentWeekSunday()
-            if let plan = try await TrainingPlanService.getWeeklyPlan(athleteId: userId, weekStartDate: sunday) {
-                currentWeeklyPlan = plan
-                TrainingPlanService.cachePlan(plan)
-            }
-        } catch {
-            #if DEBUG
-            print("📋 DataManager: Could not load weekly plan: \(error)")
-            #endif
+        // Check cache first
+        if case let .valid(cachedPlan) = TrainingPlanService.cachedPlanStatus(
+            for: normalizedProfile,
+            defaults: defaults
+        ) {
+            currentWeeklyPlan = cachedPlan
+            return
         }
     }
 
     /// Check if any new activities require plan regeneration and regenerate if needed
-    func checkAndRegeneratePlanIfNeeded() async {
-        guard let plan = currentWeeklyPlan ?? TrainingPlanService.getCachedPlan() else {
+    func checkAndRegeneratePlanIfNeeded(profile: TrainingProfile? = nil) async {
+        let normalizedProfile = resolvedTrainingProfile(profile)
+        guard let plan = currentWeeklyPlan ?? validCachedPlan(for: normalizedProfile, defaults: .standard) else {
             #if DEBUG
             print("📋 DataManager: No current plan to check for regeneration")
             #endif
@@ -222,7 +234,7 @@ class DataManager {
         let weekActivities = activities.filter { activity in
             guard let ts = activity.activity_date ?? activity.start_date else { return false }
             let activityDate = Date(timeIntervalSince1970: ts)
-            return activityDate >= plan.weekStartDate && activityDate <= plan.weekEndDate
+            return TrainingPlanService.containsActivityDate(activityDate, in: plan)
         }
 
         // Check if any activity warrants regeneration
@@ -238,14 +250,26 @@ class DataManager {
             #if DEBUG
             print("📋 DataManager: Triggering plan regeneration based on activity differences")
             #endif
-            await regenerateWeeklyPlan(currentPlan: plan, activities: weekActivities)
+            await regenerateWeeklyPlan(
+                currentPlan: plan,
+                activities: weekActivities,
+                profile: normalizedProfile
+            )
         }
     }
 
     /// Regenerate the weekly plan based on completed activities
-    func regenerateWeeklyPlan(currentPlan: WeeklyTrainingPlan, activities: [Activity]) async {
+    func regenerateWeeklyPlan(
+        currentPlan: WeeklyTrainingPlan,
+        activities: [Activity],
+        profile: TrainingProfile? = nil
+    ) async {
         guard let userId = UserSession.shared.userId else { return }
 
+        let normalizedProfile = resolvedTrainingProfile(profile)
+        let generationToken = beginTrainingPlanGeneration(
+            profileFingerprint: normalizedProfile.fingerprint
+        )
         isRegeneratingPlan = true
         defer { isRegeneratingPlan = false }
 
@@ -254,10 +278,20 @@ class DataManager {
                 athleteId: userId,
                 currentPlan: currentPlan,
                 completedActivities: activities,
-                goal: currentGoal
+                goal: currentGoal,
+                profile: normalizedProfile
             )
 
-            currentWeeklyPlan = regeneratedPlan
+            guard isCurrentTrainingPlanGeneration(
+                generationToken,
+                profileFingerprint: normalizedProfile.fingerprint
+            ) else { return }
+            _ = try publish(
+                regeneratedPlan,
+                profile: normalizedProfile,
+                scope: .remainingCurrentWeek,
+                defaults: .standard
+            )
 
             #if DEBUG
             print("📋 DataManager: Plan regenerated successfully")
@@ -269,23 +303,184 @@ class DataManager {
         }
     }
 
+    func generateTrainingPlan(
+        profile: TrainingProfile,
+        scope: PlanRegenerationScope,
+        athleteId: Int? = nil,
+        regenerationInput: WeeklyTrainingPlan? = nil,
+        defaults: UserDefaults = .standard
+    ) async throws -> WeeklyTrainingPlan {
+        let normalizedProfile = profile.validated(
+            existingPlan: regenerationInput ?? currentWeeklyPlan
+        ).profile
+        let generationToken = beginTrainingPlanGeneration(
+            profileFingerprint: normalizedProfile.fingerprint
+        )
+        let existingPlan = resolvedRegenerationInput(
+            explicit: regenerationInput,
+            scope: scope,
+            profile: normalizedProfile,
+            defaults: defaults
+        )
+        let generatedPlan = try await TrainingPlanService.generatePlan(
+            athleteId: resolvedAthleteID(athleteId, existingPlan: existingPlan),
+            profile: normalizedProfile,
+            scope: scope,
+            existingPlan: existingPlan,
+            goal: currentGoal
+        )
+        guard isCurrentTrainingPlanGeneration(
+            generationToken,
+            profileFingerprint: normalizedProfile.fingerprint
+        ) else { throw CancellationError() }
+        return try publish(generatedPlan, profile: normalizedProfile, scope: scope, defaults: defaults)
+    }
+
+    func generateTrainingPlan(
+        profile: TrainingProfile,
+        scope: PlanRegenerationScope,
+        regenerationInput: WeeklyTrainingPlan? = nil,
+        defaults: UserDefaults = .standard,
+        generator: (TrainingProfile, PlanRegenerationScope, WeeklyTrainingPlan?) async throws -> WeeklyTrainingPlan
+    ) async throws -> WeeklyTrainingPlan {
+        let normalizedProfile = profile.validated(
+            existingPlan: regenerationInput ?? currentWeeklyPlan
+        ).profile
+        let generationToken = beginTrainingPlanGeneration(
+            profileFingerprint: normalizedProfile.fingerprint
+        )
+        let existingPlan = resolvedRegenerationInput(
+            explicit: regenerationInput,
+            scope: scope,
+            profile: normalizedProfile,
+            defaults: defaults
+        )
+        let generatedPlan = try await generator(normalizedProfile, scope, existingPlan)
+        guard isCurrentTrainingPlanGeneration(
+            generationToken,
+            profileFingerprint: normalizedProfile.fingerprint
+        ) else { throw CancellationError() }
+        return try publish(generatedPlan, profile: normalizedProfile, scope: scope, defaults: defaults)
+    }
+
     /// Force regenerate the plan (user-triggered)
-    func forceRegeneratePlan() async {
-        guard let plan = currentWeeklyPlan ?? TrainingPlanService.getCachedPlan() else { return }
+    func forceRegeneratePlan(profile: TrainingProfile? = nil) async {
+        let normalizedProfile = resolvedTrainingProfile(profile)
+        guard let plan = currentWeeklyPlan ?? validCachedPlan(for: normalizedProfile, defaults: .standard) else { return }
 
         let weekActivities = activities.filter { activity in
             guard let ts = activity.activity_date ?? activity.start_date else { return false }
             let activityDate = Date(timeIntervalSince1970: ts)
-            return activityDate >= plan.weekStartDate && activityDate <= plan.weekEndDate
+            return TrainingPlanService.containsActivityDate(activityDate, in: plan)
         }
 
-        await regenerateWeeklyPlan(currentPlan: plan, activities: weekActivities)
+        await regenerateWeeklyPlan(
+            currentPlan: plan,
+            activities: weekActivities,
+            profile: normalizedProfile
+        )
     }
 
     /// Keep all plan surfaces synchronized after a deterministic on-device edit.
-    func updateCurrentWeeklyPlan(_ plan: WeeklyTrainingPlan) {
+    func updateCurrentWeeklyPlan(
+        _ plan: WeeklyTrainingPlan,
+        profile: TrainingProfile? = nil
+    ) throws {
+        let normalizedProfile = resolvedTrainingProfile(profile)
+        try TrainingPlanService.cachePlan(plan, profile: normalizedProfile)
         currentWeeklyPlan = plan
-        TrainingPlanService.cachePlan(plan)
+    }
+
+    private func resolvedTrainingProfile(
+        _ injected: TrainingProfile?,
+        existingPlan: WeeklyTrainingPlan? = nil
+    ) -> TrainingProfile {
+        let plan = existingPlan ?? currentWeeklyPlan
+        if let injected {
+            return injected.validated(existingPlan: plan).profile
+        }
+        TrainingProfileStore.shared.reloadFromPersistence(existingPlan: plan)
+        let profile = TrainingProfileStore.shared.profile
+        return profile.validated(existingPlan: plan).profile
+    }
+
+    private func resolvedRegenerationInput(
+        explicit: WeeklyTrainingPlan?,
+        scope: PlanRegenerationScope,
+        profile: TrainingProfile,
+        defaults: UserDefaults
+    ) -> WeeklyTrainingPlan? {
+        if let explicit { return explicit }
+        if let currentWeeklyPlan { return currentWeeklyPlan }
+
+        switch TrainingPlanService.cachedPlanStatus(for: profile, defaults: defaults) {
+        case let .valid(plan):
+            return plan
+        case let .stale(plan) where scope == .remainingCurrentWeek:
+            return plan
+        case .missing, .stale:
+            return nil
+        }
+    }
+
+    private func validCachedPlan(
+        for profile: TrainingProfile,
+        defaults: UserDefaults
+    ) -> WeeklyTrainingPlan? {
+        guard case let .valid(plan) = TrainingPlanService.cachedPlanStatus(
+            for: profile,
+            defaults: defaults
+        ) else { return nil }
+        return plan
+    }
+
+    private func resolvedAthleteID(
+        _ explicitAthleteID: Int?,
+        existingPlan: WeeklyTrainingPlan?
+    ) -> Int? {
+        if let explicitAthleteID { return explicitAthleteID }
+        if let existingAthleteID = existingPlan?.athleteId, existingAthleteID > 0 {
+            return existingAthleteID
+        }
+        if let loadedAthleteID = athlete?.id, loadedAthleteID > 0 {
+            return loadedAthleteID
+        }
+        return UserSession.shared.userId
+    }
+
+    private func publish(
+        _ plan: WeeklyTrainingPlan,
+        profile: TrainingProfile,
+        scope: PlanRegenerationScope,
+        defaults: UserDefaults
+    ) throws -> WeeklyTrainingPlan {
+        switch scope {
+        case .initialCurrentWeek, .remainingCurrentWeek:
+            try TrainingPlanService.cachePlan(plan, profile: profile, defaults: defaults)
+            currentWeeklyPlan = plan
+        case .nextWeek:
+            try TrainingPlanService.cachePendingNextWeekPlan(
+                plan,
+                profile: profile,
+                defaults: defaults
+            )
+            pendingNextWeekPlan = plan
+        }
+        return plan
+    }
+
+    private func beginTrainingPlanGeneration(profileFingerprint: String) -> UInt64 {
+        trainingPlanGenerationToken &+= 1
+        trainingPlanGenerationFingerprint = profileFingerprint
+        return trainingPlanGenerationToken
+    }
+
+    private func isCurrentTrainingPlanGeneration(
+        _ token: UInt64,
+        profileFingerprint: String
+    ) -> Bool {
+        token == trainingPlanGenerationToken
+            && profileFingerprint == trainingPlanGenerationFingerprint
     }
 
     // MARK: - Data Modification Methods

@@ -151,6 +151,82 @@ struct Runaway_iOSTests {
         #expect(race.source == "manual")
     }
 
+    @Test func raceRetainsItsSavedDisplayUnitAndProvidesAnEquivalentDistance() throws {
+        let data = try #require(
+            """
+            {
+              "id": 12,
+              "athlete_id": 7,
+              "runsignup_race_id": null,
+              "event_id": 0,
+              "race_name": "Skippo",
+              "race_date": "2026-11-02",
+              "distance_miles": 11.8061,
+              "distance_unit": "kilometers",
+              "source": "manual"
+            }
+            """.data(using: .utf8)
+        )
+
+        let race = try JSONDecoder().decode(AthleteRace.self, from: data)
+
+        #expect(race.resolvedDistanceUnit(fallback: .miles) == .kilometers)
+        #expect(race.primaryDistanceLabel(fallback: .miles) == "19.0 km")
+        #expect(race.convertedDistanceLabel(fallback: .miles) == "11.81 mi equivalent")
+    }
+
+    @Test func legacyRaceUsesTheCurrentPreferenceUntilItIsSavedAgain() throws {
+        let data = try #require(
+            """
+            {
+              "id": 12,
+              "athlete_id": 7,
+              "race_name": "Legacy Race",
+              "race_date": "2026-11-02",
+              "distance_miles": 6.21371,
+              "source": "manual"
+            }
+            """.data(using: .utf8)
+        )
+
+        let race = try JSONDecoder().decode(AthleteRace.self, from: data)
+
+        #expect(race.distanceUnit == nil)
+        #expect(race.resolvedDistanceUnit(fallback: .kilometers) == .kilometers)
+    }
+
+    @Test func manualRaceDraftCarriesUnitSeparatelyFromNormalizedMiles() {
+        let draft = ManualRaceDraft(
+            name: "Metric Race",
+            distanceMiles: 6.21371,
+            distanceUnit: .kilometers,
+            date: Date().addingTimeInterval(172_800)
+        )
+
+        #expect(draft.distanceMiles == 6.21371)
+        #expect(draft.distanceUnit == .kilometers)
+    }
+
+    @Test func runningGoalsRetainTheirSavedUnitWhileLegacyGoalsRemainCompatible() throws {
+        let metric = GoalSettings(
+            weeklyGoalMiles: 18.6411,
+            monthlyGoalMiles: 74.5645,
+            distanceUnit: .kilometers
+        )
+        let encoded = try JSONEncoder().encode(metric)
+        let decoded = try JSONDecoder().decode(GoalSettings.self, from: encoded)
+        let legacyData = try #require(
+            """
+            {"weeklyGoalMiles":20,"monthlyGoalMiles":80,"showInWidget":true}
+            """.data(using: .utf8)
+        )
+        let legacy = try JSONDecoder().decode(GoalSettings.self, from: legacyData)
+
+        #expect(decoded.distanceUnit == .kilometers)
+        #expect(legacy.distanceUnit == nil)
+        #expect(legacy.resolvedDistanceUnit(fallback: .miles) == .miles)
+    }
+
     @Test func readinessNormalizesOnlyAvailableFactors() {
         let weightedScore = (70.0 * 0.20) + (75.0 * 0.20)
         #expect(

@@ -585,9 +585,8 @@ struct WeeklyPlanSection: View {
                 athleteId: userId,
                 goal: dataManager.currentGoal
             )
-            // Store in DataManager and cache
+            // The service persists successfully before the active plan is published.
             dataManager.currentWeeklyPlan = plan
-            TrainingPlanService.cachePlan(plan)
         } catch {
             #if DEBUG
             print("Failed to generate plan: \(error)")

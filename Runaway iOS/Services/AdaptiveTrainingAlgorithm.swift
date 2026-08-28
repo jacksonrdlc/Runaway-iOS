@@ -380,7 +380,7 @@ class AdaptiveTrainingAlgorithm {
         let weekActivities = activities.filter { activity in
             guard let ts = activity.activity_date ?? activity.start_date else { return false }
             let activityDate = Date(timeIntervalSince1970: ts)
-            return activityDate >= plan.weekStartDate && activityDate <= plan.weekEndDate
+            return plan.contains(date: activityDate)
         }
 
         // Calculate actual vs planned

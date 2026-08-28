@@ -20,7 +20,6 @@ struct PlanView: View {
     @Environment(DataManager.self) var dataManager
     @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var viewModel = PlanViewModel()
-    @StateObject private var unitPreferences = UnitPreferences.shared
     @State private var selectedSection: RaceSection = .upcoming
     @State private var showingWorkoutDetail: DailyWorkout?
     @State private var showingTrainingGuidelines = false
@@ -58,19 +57,6 @@ struct PlanView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal)
             .padding(.vertical, AppTheme.Spacing.sm)
-
-            HStack {
-                Spacer()
-                Picker("Distance unit", selection: $unitPreferences.distanceUnit) {
-                    Text("mi").tag(DistanceUnit.miles)
-                    Text("km").tag(DistanceUnit.kilometers)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 120)
-                .accessibilityLabel("Plan distance unit")
-            }
-            .padding(.horizontal)
-            .padding(.bottom, AppTheme.Spacing.xs)
 
             switch selectedSection {
             case .upcoming: upcomingContent
@@ -348,7 +334,9 @@ struct NextRaceCard: View {
                         .foregroundColor(AppTheme.Colors.DarkMode.textPrimary)
                         .lineLimit(2)
 
-                    if let distLabel = race.preferredDistanceLabel {
+                    if let distLabel = race.primaryDistanceLabel(
+                        fallback: UnitPreferences.shared.distanceUnit
+                    ) {
                         Text(distLabel)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(urgencyColor)
@@ -356,6 +344,14 @@ struct NextRaceCard: View {
                             .padding(.vertical, 3)
                             .background(urgencyColor.opacity(0.15))
                             .cornerRadius(6)
+
+                        if let equivalent = race.convertedDistanceLabel(
+                            fallback: UnitPreferences.shared.distanceUnit
+                        ) {
+                            Text(equivalent)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                        }
                     }
 
                     if let loc = race.locationString {

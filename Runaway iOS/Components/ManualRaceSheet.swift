@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ManualRaceSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var unitPreferences = UnitPreferences.shared
 
     let existingRace: AthleteRace?
     let onSaved: (AthleteRace) -> Void
@@ -10,6 +9,7 @@ struct ManualRaceSheet: View {
     @State private var raceName = ""
     @State private var raceDate = Calendar.current.date(byAdding: .month, value: 3, to: Date()) ?? Date()
     @State private var selectedDistance: RaceDistance = .halfMarathon
+    @State private var selectedDistanceUnit: DistanceUnit
     @State private var customDistance = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -17,15 +17,19 @@ struct ManualRaceSheet: View {
     init(existingRace: AthleteRace? = nil, onSaved: @escaping (AthleteRace) -> Void) {
         self.existingRace = existingRace
         self.onSaved = onSaved
+        let initialUnit = existingRace?.resolvedDistanceUnit(
+            fallback: UnitPreferences.shared.distanceUnit
+        ) ?? UnitPreferences.shared.distanceUnit
+        _selectedDistanceUnit = State(initialValue: initialUnit)
 
-        if let edit = existingRace.flatMap(ManualRaceEdit.init) {
+        if let edit = existingRace.flatMap({ ManualRaceEdit(race: $0, fallbackUnit: initialUnit) }) {
             let distance = RaceDistance.matching(miles: edit.draft.distanceMiles)
             _raceName = State(initialValue: edit.draft.name)
             _raceDate = State(initialValue: edit.draft.date)
             _selectedDistance = State(initialValue: distance)
             _customDistance = State(
                 initialValue: distance == .custom
-                    ? UnitFormatter.milesToPreferredUnit(edit.draft.distanceMiles)
+                    ? distanceValue(fromMiles: edit.draft.distanceMiles, unit: initialUnit)
                         .formatted(.number.precision(.fractionLength(0...2)))
                     : ""
             )
@@ -33,7 +37,7 @@ struct ManualRaceSheet: View {
     }
 
     private var existingEdit: ManualRaceEdit? {
-        existingRace.flatMap(ManualRaceEdit.init)
+        existingRace.flatMap { ManualRaceEdit(race: $0) }
     }
 
     var body: some View {
@@ -99,13 +103,6 @@ struct ManualRaceSheet: View {
                 .background(AppTheme.Colors.surfaceBackground, in: RoundedRectangle(cornerRadius: 12))
 
             fieldLabel("Distance")
-            Picker("Distance unit", selection: $unitPreferences.distanceUnit) {
-                Text("Miles").tag(DistanceUnit.miles)
-                Text("Kilometers").tag(DistanceUnit.kilometers)
-            }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Race distance unit")
-
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 ForEach(RaceDistance.allCases) { distance in
                     Button {
@@ -126,7 +123,7 @@ struct ManualRaceSheet: View {
             }
 
             if selectedDistance == .custom {
-                TextField(unitPreferences.distanceUnit.displayName, text: $customDistance)
+                TextField(selectedDistanceUnit.displayName, text: $customDistance)
                     .keyboardType(.decimalPad)
                     .padding(14)
                     .background(AppTheme.Colors.surfaceBackground, in: RoundedRectangle(cornerRadius: 12))
@@ -145,14 +142,6 @@ struct ManualRaceSheet: View {
         .padding(18)
         .background(AppTheme.Colors.cardBackground, in: RoundedRectangle(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(AppTheme.Colors.strideBlue.opacity(0.18)))
-        .onChange(of: unitPreferences.distanceUnit) { oldUnit, newUnit in
-            guard selectedDistance == .custom,
-                  oldUnit != newUnit,
-                  let value = Double(customDistance) else { return }
-            let miles = oldUnit == .kilometers ? value / 1.609344 : value
-            let converted = newUnit == .kilometers ? miles * 1.609344 : miles
-            customDistance = converted.formatted(.number.precision(.fractionLength(0...2)))
-        }
     }
 
     private var saveButton: some View {
@@ -182,12 +171,22 @@ struct ManualRaceSheet: View {
     }
 
     private var draft: ManualRaceDraft {
-        let customMiles = Double(customDistance).map(UnitFormatter.preferredUnitToMiles) ?? 0
+        let savedUnit = selectedDistance.preferredUnit ?? selectedDistanceUnit
+        let customMiles = Double(customDistance).map { distanceMiles(from: $0, unit: savedUnit) } ?? 0
         return ManualRaceDraft(
             name: raceName,
             distanceMiles: selectedDistance.miles ?? customMiles,
+            distanceUnit: savedUnit,
             date: raceDate
         )
+    }
+
+    private func distanceValue(fromMiles miles: Double, unit: DistanceUnit) -> Double {
+        unit == .kilometers ? miles * 1.609344 : miles
+    }
+
+    private func distanceMiles(from value: Double, unit: DistanceUnit) -> Double {
+        unit == .kilometers ? value / 1.609344 : value
     }
 
     private func save() {
@@ -237,6 +236,13 @@ private enum RaceDistance: String, CaseIterable, Identifiable {
         case .marathon: return 26.2188
         case .fiftyK: return 31.0686
         case .custom: return nil
+        }
+    }
+
+    var preferredUnit: DistanceUnit? {
+        switch self {
+        case .fiveK, .tenK, .fiftyK: return .kilometers
+        case .halfMarathon, .marathon, .custom: return nil
         }
     }
 

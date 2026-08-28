@@ -7,13 +7,41 @@
 
 import SwiftUI
 
+@MainActor
+struct WeeklyTrainingPlanSurface {
+    let dataManager: DataManager
+    let trainingProfileStore: TrainingProfileStore
+
+    var currentPlan: WeeklyTrainingPlan? { dataManager.currentWeeklyPlan }
+
+    func load() async {
+        await dataManager.loadCurrentWeeklyPlan(profile: trainingProfileStore.profile)
+    }
+
+    func generateInitialCurrentWeek() async throws -> WeeklyTrainingPlan {
+        try await dataManager.generateTrainingPlan(
+            profile: trainingProfileStore.profile,
+            scope: .initialCurrentWeek
+        )
+    }
+}
+
 struct WeeklyTrainingPlanView: View {
     @Environment(DataManager.self) var dataManager
-    @State private var weeklyPlan: WeeklyTrainingPlan?
+    @EnvironmentObject private var trainingProfileStore: TrainingProfileStore
     @State private var isLoading = false
     @State private var isGenerating = false
     @State private var selectedWorkout: DailyWorkout?
     @State private var errorMessage: String?
+
+    private var surface: WeeklyTrainingPlanSurface {
+        WeeklyTrainingPlanSurface(
+            dataManager: dataManager,
+            trainingProfileStore: trainingProfileStore
+        )
+    }
+
+    private var weeklyPlan: WeeklyTrainingPlan? { surface.currentPlan }
 
     var body: some View {
         ScrollView {
@@ -181,35 +209,18 @@ struct WeeklyTrainingPlanView: View {
     // MARK: - Actions
 
     private func loadPlan() async {
-        guard let userId = UserSession.shared.userId else { return }
-
         isLoading = true
         errorMessage = nil
-
-        do {
-            let sunday = TrainingPlanService.currentWeekSunday()
-            weeklyPlan = try await TrainingPlanService.getWeeklyPlan(athleteId: userId, weekStartDate: sunday)
-        } catch {
-            // No plan exists yet - that's okay
-            #if DEBUG
-            print("No existing plan: \(error)")
-            #endif
-        }
-
+        await surface.load()
         isLoading = false
     }
 
     private func generatePlan() async {
-        guard let userId = UserSession.shared.userId else { return }
-
         isGenerating = true
         errorMessage = nil
 
         do {
-            weeklyPlan = try await TrainingPlanService.generateWeeklyPlan(
-                athleteId: userId,
-                goal: dataManager.currentGoal
-            )
+            _ = try await surface.generateInitialCurrentWeek()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -378,6 +389,8 @@ struct WorkoutDetailSheet: View {
                             .font(.body)
                             .foregroundColor(AppTheme.Colors.textSecondary)
                     }
+
+                    NativeWorkoutContextCard(workout: workout)
 
                     // Exercises (for strength workouts)
                     if let exercises = workout.exercises, !exercises.isEmpty {

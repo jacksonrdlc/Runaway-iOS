@@ -16,6 +16,7 @@ import SwiftUI
 struct TrainingView: View {
     @Environment(DataManager.self) var dataManager
     @Environment(AppRouter.self) private var router
+    @EnvironmentObject private var trainingProfileStore: TrainingProfileStore
     let onSeeAllActivities: () -> Void
 
     private var greetingPrefix: String {
@@ -51,7 +52,12 @@ struct TrainingView: View {
             .ignoresSafeArea()
 
             if dataManager.activities.isEmpty {
-                EmptyInsightsStateView()
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    TrainingPersonalizationPromptCard(store: trainingProfileStore)
+                        .padding(.horizontal, AppTheme.Spacing.lg)
+                        .padding(.top, AppTheme.Spacing.sm)
+                    EmptyInsightsStateView()
+                }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 16) {
@@ -79,6 +85,8 @@ struct TrainingView: View {
                         }
                         .padding(.horizontal, AppTheme.Spacing.lg)
                         .padding(.top, AppTheme.Spacing.sm)
+
+                        TrainingPersonalizationPromptCard(store: trainingProfileStore)
 
                         // ── 2. Readiness ring card ─────────────────────────
                         ReadinessBanner()
@@ -221,6 +229,7 @@ struct TrainingView_Previews: PreviewProvider {
         NavigationView {
             TrainingView(onSeeAllActivities: {})
                 .environment(DataManager.shared)
+                .environmentObject(TrainingProfileStore())
         }
     }
 }

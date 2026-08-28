@@ -20,14 +20,19 @@ struct GoalSettings: Codable, Equatable {
     /// Whether to show goals in the widget
     var showInWidget: Bool
 
+    /// Unit selected when these running goals were last saved.
+    var distanceUnit: DistanceUnit?
+
     init(
         weeklyGoalMiles: Double = 20.0,
         monthlyGoalMiles: Double = 80.0,
-        showInWidget: Bool = true
+        showInWidget: Bool = true,
+        distanceUnit: DistanceUnit? = nil
     ) {
         self.weeklyGoalMiles = weeklyGoalMiles
         self.monthlyGoalMiles = monthlyGoalMiles
         self.showInWidget = showInWidget
+        self.distanceUnit = distanceUnit
     }
 
     // MARK: - Computed Properties
@@ -40,6 +45,10 @@ struct GoalSettings: Codable, Equatable {
     /// Monthly goal in kilometers
     var monthlyGoalKilometers: Double {
         monthlyGoalMiles * 1.60934
+    }
+
+    func resolvedDistanceUnit(fallback: DistanceUnit) -> DistanceUnit {
+        distanceUnit ?? fallback
     }
 }
 
@@ -55,6 +64,7 @@ final class GoalSettingsStore: ObservableObject {
     // Keys for direct widget access (simpler than decoding full object)
     static let weeklyGoalKey = "weekly_goal_miles"
     static let monthlyGoalKey = "monthly_goal_miles"
+    static let distanceUnitKey = "goal_distance_unit"
 
     private init() {
         // Use app group for widget access
@@ -65,7 +75,9 @@ final class GoalSettingsStore: ObservableObject {
            let loaded = try? JSONDecoder().decode(GoalSettings.self, from: data) {
             self._settings = Published(initialValue: loaded)
         } else {
-            self._settings = Published(initialValue: GoalSettings())
+            self._settings = Published(
+                initialValue: GoalSettings(distanceUnit: UnitPreferences.shared.distanceUnit)
+            )
         }
 
         // Ensure widget keys are synced on init
@@ -90,11 +102,15 @@ final class GoalSettingsStore: ObservableObject {
     private func syncWidgetKeys() {
         userDefaults.set(settings.weeklyGoalMiles, forKey: GoalSettingsStore.weeklyGoalKey)
         userDefaults.set(settings.monthlyGoalMiles, forKey: GoalSettingsStore.monthlyGoalKey)
+        userDefaults.set(
+            settings.resolvedDistanceUnit(fallback: UnitPreferences.shared.distanceUnit).rawValue,
+            forKey: GoalSettingsStore.distanceUnitKey
+        )
     }
 
     /// Reset to defaults
-    func resetToDefaults() {
-        settings = GoalSettings()
+    func resetToDefaults(distanceUnit: DistanceUnit = .miles) {
+        settings = GoalSettings(distanceUnit: distanceUnit)
     }
 
     // MARK: - Convenience Accessors
@@ -119,15 +135,16 @@ struct GoalSettingsView: View {
 
     @State private var weeklyGoalText: String = ""
     @State private var monthlyGoalText: String = ""
+    @State private var editingUnit: DistanceUnit = .miles
 
     /// Convert miles to display unit (km if metric)
     private func toDisplayUnit(_ miles: Double) -> Double {
-        unitPreferences.isMetric ? miles * 1.60934 : miles
+        editingUnit == .kilometers ? miles * 1.60934 : miles
     }
 
     /// Convert from display unit back to miles
     private func fromDisplayUnit(_ value: Double) -> Double {
-        unitPreferences.isMetric ? value / 1.60934 : value
+        editingUnit == .kilometers ? value / 1.60934 : value
     }
 
     var body: some View {
@@ -137,22 +154,22 @@ struct GoalSettingsView: View {
                     HStack {
                         Text("Weekly Goal")
                         Spacer()
-                        TextField(UnitFormatter.distanceUnitName.capitalized, text: $weeklyGoalText)
+                        TextField(editingUnit.displayName, text: $weeklyGoalText)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
-                        Text(UnitFormatter.distanceUnitAbbreviation)
+                        Text(editingUnit.abbreviation)
                             .foregroundColor(.secondary)
                     }
 
                     HStack {
                         Text("Monthly Goal")
                         Spacer()
-                        TextField(UnitFormatter.distanceUnitName.capitalized, text: $monthlyGoalText)
+                        TextField(editingUnit.displayName, text: $monthlyGoalText)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
-                        Text(UnitFormatter.distanceUnitAbbreviation)
+                        Text(editingUnit.abbreviation)
                             .foregroundColor(.secondary)
                     }
                 } header: {
@@ -171,7 +188,8 @@ struct GoalSettingsView: View {
 
                 Section {
                     Button("Reset to Defaults") {
-                        store.resetToDefaults()
+                        editingUnit = unitPreferences.distanceUnit
+                        store.resetToDefaults(distanceUnit: editingUnit)
                         loadDisplayValues()
                     }
                     .foregroundColor(.red)
@@ -187,6 +205,9 @@ struct GoalSettingsView: View {
                 }
             }
             .onAppear {
+                editingUnit = store.settings.resolvedDistanceUnit(
+                    fallback: unitPreferences.distanceUnit
+                )
                 loadDisplayValues()
             }
         }
@@ -201,6 +222,7 @@ struct GoalSettingsView: View {
     }
 
     private func saveAndDismiss() {
+        store.settings.distanceUnit = editingUnit
         // Parse values and convert from display unit back to miles for storage
         if let weekly = Double(weeklyGoalText), weekly > 0 {
             store.settings.weeklyGoalMiles = fromDisplayUnit(weekly)

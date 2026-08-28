@@ -32,6 +32,7 @@ struct AthleteView: View {
     let athlete: Athlete
     let stats: AthleteStats
     @Environment(DataManager.self) private var dataManager
+    @EnvironmentObject private var trainingProfileStore: TrainingProfileStore
     @State private var personalBests: [PersonalBest] = []
     @State private var isLoadingPRs = false
     @State private var mindsetProfile: MindsetProfile? = nil
@@ -232,7 +233,7 @@ struct AthleteView: View {
                                 performAccountAction(for: .devicesAndSensors)
                             })
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
-                            AccountRow(icon: "chart.bar.fill", title: "Training preferences", subtitle: "Pace, audio & zones", action: {
+                            AccountRow(icon: "chart.bar.fill", title: "Training preferences", subtitle: trainingPreferencesSubtitle, action: {
                                 performAccountAction(for: .trainingPreferences)
                             })
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 64)
@@ -284,7 +285,7 @@ struct AthleteView: View {
             }
         }
         .sheet(isPresented: $showingTrainingPreferences) {
-            CoachSettingsView()
+            TrainingProfileView(route: TrainingProfileRoute(store: trainingProfileStore))
         }
         .onReceive(NotificationCenter.default.publisher(for: MilestoneService.didUpdateNotification)) { _ in
             guard let athleteId = athlete.id else { return }
@@ -295,6 +296,10 @@ struct AthleteView: View {
     }
 
     // MARK: - Computed strings
+
+    private var trainingPreferencesSubtitle: String {
+        "\(TrainingPersonalizationPresentation.settingsStatus(for: trainingProfileStore).rawValue) · Weekly mix, schedule & strength"
+    }
 
     private func performAccountAction(for item: AthleteAccountItem) {
         switch item.action {

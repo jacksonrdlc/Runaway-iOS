@@ -5,12 +5,31 @@
 
 import SwiftUI
 
+enum TodayActivityCompletionPolicy {
+    static func completedActivity(
+        for plannedWorkout: DailyWorkout?,
+        among activities: [Activity],
+        on date: Date,
+        calendar: Calendar = .current
+    ) -> Activity? {
+        activities.first { activity in
+            guard let timestamp = activity.activity_date ?? activity.start_date,
+                  calendar.isDate(Date(timeIntervalSince1970: timestamp), inSameDayAs: date) else {
+                return false
+            }
+            guard let plannedWorkout else { return true }
+            return activity.isCompatible(with: plannedWorkout.workoutType)
+        }
+    }
+}
+
 // MARK: - Workout Components
 
 struct TodaysFocusCard: View {
     @Environment(DataManager.self) var dataManager
     @StateObject private var restDayService = RestDayService.shared
     @StateObject private var readinessService = ReadinessService.shared
+    @EnvironmentObject private var trainingProfileStore: TrainingProfileStore
     @State private var showingWorkoutDetail = false
     @State private var showingTrainingDecision = false
     @State private var changeReceipt: TodayWorkoutAdjustmentResult?
@@ -25,14 +44,11 @@ struct TodaysFocusCard: View {
 
     /// Check if there's an activity logged today
     private var todaysActivity: Activity? {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-
-        return dataManager.activities.first { activity in
-            guard let timestamp = activity.activity_date ?? activity.start_date else { return false }
-            let activityDate = calendar.startOfDay(for: Date(timeIntervalSince1970: timestamp))
-            return calendar.isDate(activityDate, inSameDayAs: today)
-        }
+        TodayActivityCompletionPolicy.completedActivity(
+            for: todaysWorkout,
+            among: dataManager.activities,
+            on: Date()
+        )
     }
 
     /// Check if there was an activity logged yesterday (user may need recovery)
@@ -52,9 +68,7 @@ struct TodaysFocusCard: View {
             return .activityCompleted(activity)
         }
 
-        let recommendation = TodayRecommendationPolicy.recommendation(
-            readinessScore: readinessService.todaysReadiness?.score
-        )
+        let recommendation = recommendation
 
         // Recovery guidance overrides generic and planned workout prompts.
         if recommendation.directive == .recover {
@@ -62,8 +76,16 @@ struct TodaysFocusCard: View {
         }
 
         // A planned workout remains visible when readiness supports training.
-        if let workout = todaysWorkout {
-            return .plannedWorkout(workout)
+        if let workout = todaysWorkout,
+           recommendation.workoutType == workout.workoutType {
+            return .plannedWorkout(
+                workout,
+                TodayRecommendationPresentation(recommendation: recommendation)
+            )
+        }
+
+        if recommendation.workoutType != nil {
+            return .readinessRecommendation(recommendation)
         }
 
         if recommendation.directive == .reduceIntensity || recommendation.directive == .unknown {
@@ -80,9 +102,37 @@ struct TodaysFocusCard: View {
     }
 
     private var recommendation: TodayRecommendation {
-        TodayRecommendationPolicy.recommendation(
+        let date = Date()
+        let workouts = dataManager.currentWeeklyPlan?.workouts ?? []
+        let context = TodayRecommendationContextBuilder.build(
+            date: date,
+            profile: trainingProfileStore.profile,
+            plannedWorkout: todaysWorkout,
+            planWorkouts: workouts,
+            activities: dataManager.activities,
             readinessScore: readinessService.todaysReadiness?.score
         )
+
+        return TodayRecommendationPolicy.recommendation(
+            plannedWorkout: todaysWorkout,
+            profile: trainingProfileStore.profile,
+            recentCompletedWorkouts: context.recentCompletedWorkouts,
+            readinessScore: readinessService.todaysReadiness?.score,
+            schedulingContext: context.schedulingContext
+        )
+    }
+
+    private func activityAccent(for accent: TodayRecommendationAccent) -> Color {
+        switch accent {
+        case .runningPrimary:
+            return AppTheme.Colors.warmAmber
+        case .aerobic:
+            return AppTheme.Colors.strideBlue
+        case .recovery:
+            return AppTheme.Colors.recoveryMint
+        case .workout(let workoutType):
+            return workoutType.color
+        }
     }
 
     private var shouldOfferTrainingDecision: Bool {
@@ -117,13 +167,13 @@ struct TodaysFocusCard: View {
                         .padding(.vertical, 4)
                         .background(AppTheme.Colors.success.opacity(0.15))
                         .clipShape(Capsule())
-                case .plannedWorkout(let workout):
-                    Text(workout.workoutType.rawValue.capitalized)
+                case .plannedWorkout(_, let presentation):
+                    Text(presentation.badgeText)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(workout.workoutType.color)
+                        .foregroundColor(activityAccent(for: presentation.accent))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(workout.workoutType.color.opacity(0.15))
+                        .background(activityAccent(for: presentation.accent).opacity(0.15))
                         .clipShape(Capsule())
                 case .readyToRun:
                     Text("Ready")
@@ -142,12 +192,13 @@ struct TodaysFocusCard: View {
                         .background(Color.white.opacity(0.08))
                         .clipShape(Capsule())
                 case .readinessRecommendation(let recommendation):
-                    Text(recommendation.status)
+                    let presentation = TodayRecommendationPresentation(recommendation: recommendation)
+                    Text(recommendation.badgeTitle)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(recommendation.directive == .recover ? .orange : AppTheme.Colors.warmAmber)
+                        .foregroundColor(activityAccent(for: presentation.accent))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background((recommendation.directive == .recover ? Color.orange : AppTheme.Colors.warmAmber).opacity(0.15))
+                        .background(activityAccent(for: presentation.accent).opacity(0.15))
                         .clipShape(Capsule())
                 }
             }
@@ -187,58 +238,68 @@ struct TodaysFocusCard: View {
                 .background(AppTheme.Colors.success.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
 
-            case .plannedWorkout(let workout):
-                HStack(spacing: 12) {
-                    // Amber bolt disc
-                    ZStack {
-                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
-                            .fill(AppTheme.Colors.warmAmber.opacity(0.16))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(AppTheme.Colors.warmAmber)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(workout.title)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white)
-                        HStack(spacing: 8) {
-                            if let distance = workout.formattedDistance {
-                                Text(distance)
-                                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                            }
-                            if let pace = workout.targetPace {
-                                Text("·")
-                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                                    .font(.system(size: 12))
-                                Text(pace)
-                                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                            }
-                        }
-                        if !workout.description.isEmpty {
-                            Text(workout.description)
-                                .font(.system(size: 12, design: .rounded))
-                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                                .lineLimit(1)
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(AppTheme.Colors.DarkMode.surfaceBackground)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
-                .onTapGesture {
+            case .plannedWorkout(let workout, let presentation):
+                Button {
                     showingWorkoutDetail = true
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
+                                .fill(activityAccent(for: presentation.accent).opacity(0.16))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: presentation.systemImage)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(activityAccent(for: presentation.accent))
+                        }
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(presentation.title)
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white)
+                            HStack(spacing: 8) {
+                                if let distance = workout.formattedDistance {
+                                    Text(distance)
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                }
+                                if let pace = workout.targetPace {
+                                    Text("·")
+                                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                        .font(.system(size: 12))
+                                    Text(pace)
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                                        .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                }
+                            }
+                            if !workout.description.isEmpty {
+                                Text(workout.description)
+                                    .font(.system(size: 12, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                    .lineLimit(1)
+                            }
+                            if let reason = presentation.reason {
+                                Text(reason)
+                                    .font(.system(size: 11, design: .rounded))
+                                    .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.Colors.DarkMode.surfaceBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("View \(workout.title) details")
+                .accessibilityHint("Opens the planned workout details.")
 
             case .readyToRun:
                 HStack(spacing: 12) {
@@ -294,14 +355,15 @@ struct TodaysFocusCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
 
             case .readinessRecommendation(let recommendation):
+                let presentation = TodayRecommendationPresentation(recommendation: recommendation)
                 HStack(spacing: 12) {
                     ZStack {
                         RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 2)
-                            .fill(AppTheme.Colors.warmAmber.opacity(0.16))
+                            .fill(activityAccent(for: presentation.accent).opacity(0.16))
                             .frame(width: 44, height: 44)
                         Image(systemName: recommendation.systemImage)
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(AppTheme.Colors.warmAmber)
+                            .foregroundColor(activityAccent(for: presentation.accent))
                     }
                     VStack(alignment: .leading, spacing: 3) {
                         Text(recommendation.title)
@@ -311,6 +373,12 @@ struct TodaysFocusCard: View {
                             .font(.system(size: 12, design: .rounded))
                             .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
                             .lineLimit(2)
+                        if let reason = recommendation.reason {
+                            Text(reason)
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(AppTheme.Colors.DarkMode.textTertiary)
+                                .lineLimit(1)
+                        }
                     }
                     Spacer(minLength: 0)
                 }
@@ -318,6 +386,10 @@ struct TodaysFocusCard: View {
                 .padding(.vertical, 10)
                 .background(AppTheme.Colors.DarkMode.surfaceBackground)
                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small + 4))
+            }
+
+            if case let .plannedWorkout(workout, _) = todaysFocus, todaysActivity == nil {
+                NativeTrainingSummaryStrip(workout: workout)
             }
 
 
@@ -365,13 +437,24 @@ struct TodaysFocusCard: View {
                     Spacer(minLength: 0)
                     Button("Undo") {
                         if let planBeforeAdjustment {
-                            dataManager.updateCurrentWeeklyPlan(planBeforeAdjustment)
+                            do {
+                                try dataManager.updateCurrentWeeklyPlan(planBeforeAdjustment)
+                            } catch {
+                                #if DEBUG
+                                print("Failed to restore plan: \(error)")
+                                #endif
+                                return
+                            }
                         }
                         self.planBeforeAdjustment = nil
                         changeReceipt = nil
                     }
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(AppTheme.Colors.success)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Undo workout adjustment")
+                    .accessibilityHint("Restores the originally planned workout.")
                 }
                 .padding(12)
                 .background(AppTheme.Colors.success.opacity(0.08))
@@ -399,10 +482,147 @@ struct TodaysFocusCard: View {
                             to: plan,
                             readinessScore: readinessService.todaysReadiness?.score
                           ) else { return }
-                    planBeforeAdjustment = plan
-                    dataManager.updateCurrentWeeklyPlan(result.plan)
-                    changeReceipt = result
+                    do {
+                        try dataManager.updateCurrentWeeklyPlan(result.plan)
+                        planBeforeAdjustment = plan
+                        changeReceipt = result
+                    } catch {
+                        #if DEBUG
+                        print("Failed to update plan: \(error)")
+                        #endif
+                    }
                 }
+            }
+        }
+    }
+}
+
+@MainActor
+struct TrainingPersonalizationRoute {
+    let store: TrainingProfileStore
+
+    var shouldShowPrompt: Bool {
+        store.needsPersonalization
+    }
+
+    var editorRoute: TrainingProfileRoute {
+        TrainingProfileRoute(store: store)
+    }
+
+    func dismiss() {
+        store.dismissPersonalizationPrompt()
+    }
+}
+
+enum TrainingPersonalizationStatus: String, Equatable {
+    case needsPersonalization = "Personalization needed"
+    case personalized = "Personalized"
+}
+
+struct TrainingActionPresentation: Equatable {
+    let accessibilityLabel: String
+    let accessibilityHint: String
+    let minimumTargetSize: CGFloat
+}
+
+struct TrainingPersonalizationPromptDescriptor: Identifiable {
+    let id = "today-training-personalization"
+    let route: TrainingPersonalizationRoute
+    let personalizeAction: TrainingActionPresentation
+    let dismissAction: TrainingActionPresentation
+}
+
+enum TrainingPersonalizationPresentation {
+    @MainActor
+    static func todayPrompts(for store: TrainingProfileStore) -> [TrainingPersonalizationPromptDescriptor] {
+        let route = TrainingPersonalizationRoute(store: store)
+        guard route.shouldShowPrompt else { return [] }
+        return [
+            TrainingPersonalizationPromptDescriptor(
+                route: route,
+                personalizeAction: TrainingActionPresentation(
+                    accessibilityLabel: "Personalize training",
+                    accessibilityHint: "Opens your training profile editor.",
+                    minimumTargetSize: AppTheme.Layout.touchTargetMinimum
+                ),
+                dismissAction: TrainingActionPresentation(
+                    accessibilityLabel: "Dismiss training personalization",
+                    accessibilityHint: "Hides this card without changing your profile or plans.",
+                    minimumTargetSize: AppTheme.Layout.touchTargetMinimum
+                )
+            )
+        ]
+    }
+
+    @MainActor
+    static func settingsStatus(for store: TrainingProfileStore) -> TrainingPersonalizationStatus {
+        store.hasPersonalizedProfile ? .personalized : .needsPersonalization
+    }
+}
+
+struct TrainingPersonalizationPromptCard: View {
+    @ObservedObject var store: TrainingProfileStore
+    @State private var isPresentingEditor = false
+
+    private var route: TrainingPersonalizationRoute {
+        TrainingPersonalizationRoute(store: store)
+    }
+
+    var body: some View {
+        ForEach(TrainingPersonalizationPresentation.todayPrompts(for: store)) { descriptor in
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(AppTheme.Colors.warmAmber)
+                        .frame(width: 44, height: 44)
+                        .background(AppTheme.Colors.warmAmber.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                        Text("Make your week feel like yours")
+                            .font(AppTheme.Typography.title3)
+                            .foregroundColor(AppTheme.Colors.textPrimary)
+                        Text("Tell Runaway how running, strength, and recovery fit together.")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Button("Not now") {
+                        route.dismiss()
+                    }
+                    .font(AppTheme.Typography.subheadlineBold)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .frame(minWidth: 88, minHeight: descriptor.dismissAction.minimumTargetSize)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel(descriptor.dismissAction.accessibilityLabel)
+                    .accessibilityHint(descriptor.dismissAction.accessibilityHint)
+
+                    Button {
+                        isPresentingEditor = true
+                    } label: {
+                        Text("Personalize training")
+                            .font(AppTheme.Typography.subheadlineBold)
+                            .frame(maxWidth: .infinity, minHeight: descriptor.personalizeAction.minimumTargetSize)
+                    }
+                    .primaryButton()
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(descriptor.personalizeAction.accessibilityLabel)
+                    .accessibilityHint(descriptor.personalizeAction.accessibilityHint)
+                }
+            }
+            .padding(AppTheme.Spacing.lg)
+            .background(AppTheme.Colors.DarkMode.cardBackgroundElevated)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
+                    .stroke(AppTheme.Colors.warmAmber.opacity(0.2), lineWidth: 1)
+            )
+            .sheet(isPresented: $isPresentingEditor) {
+                TrainingProfileView(route: descriptor.route.editorRoute)
             }
         }
     }
@@ -548,7 +768,7 @@ private struct TrainingDecisionSheet: View {
 /// State for Today's Focus card
 private enum TodayFocusState {
     case activityCompleted(Activity)
-    case plannedWorkout(DailyWorkout)
+    case plannedWorkout(DailyWorkout, TodayRecommendationPresentation)
     case readyToRun
     case restDay
     case readinessRecommendation(TodayRecommendation)
@@ -627,12 +847,8 @@ struct WeekProgressRow: View {
     /// Build week entries from activities only (when no training plan exists)
     private func buildEntriesFromActivitiesOnly() -> [WeekDayEntry] {
         let calendar = Calendar.current
-        let now = Date()
-
-        // Get start of this week (Sunday)
-        guard let weekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
-            return []
-        }
+        let weekStart = TrainingPlanService.currentWeekSunday()
+        let runningActivities = dataManager.activities.filter(\.isRunningWorkoutActivity)
 
         return DayOfWeek.allCases.compactMap { dayOfWeek in
             guard let dayDate = calendar.date(byAdding: .day, value: dayOfWeek.calendarWeekday - 1, to: weekStart) else {
@@ -640,7 +856,7 @@ struct WeekProgressRow: View {
             }
 
             // Find activity for this day
-            let activity = dataManager.activities.first { activity in
+            let activity = runningActivities.first { activity in
                 guard let dateInterval = activity.activity_date ?? activity.start_date else { return false }
                 let activityDate = Date(timeIntervalSince1970: dateInterval)
                 return calendar.isDate(activityDate, inSameDayAs: dayDate)
@@ -656,14 +872,11 @@ struct WeekProgressRow: View {
             return (stats.actualMiles, stats.plannedMiles, stats.completedWorkouts, stats.plannedWorkouts)
         }
 
-        // Calculate from activities only
-        let completedActivities = weekEntries.filter { $0.actualActivity != nil }
-        let totalDistance = completedActivities.compactMap { entry -> Double? in
-            guard let distance = entry.actualActivity?.distance else { return nil }
-            return UnitFormatter.metersToPreferredUnit(distance)
-        }.reduce(0, +)
-
-        return (totalDistance, 0, completedActivities.count, 0)
+        let stats = WeeklyRunProgress.activitiesOnly(
+            dataManager.activities,
+            weekStart: TrainingPlanService.currentWeekSunday()
+        )
+        return (stats.actualMiles, 0, stats.completedRuns, 0)
     }
 
     var body: some View {
@@ -887,6 +1100,7 @@ struct WeekDayActivityTile: View {
         case .crossTraining: return "figure.mixed.cardio"
         case .strengthTraining, .upperBody, .lowerBody, .fullBody: return "dumbbell.fill"
         case .yoga, .stretchMobility: return "figure.yoga"
+        case .cycling, .swimming, .walking, .hiking: return "figure.mixed.cardio"
         }
     }
 

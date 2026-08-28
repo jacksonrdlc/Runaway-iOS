@@ -7,10 +7,130 @@
 
 import SwiftUI
 
+@MainActor
+struct OnboardingPersistenceClient {
+    let loadDraft: @MainActor (Int) async throws -> OnboardingAnswers?
+    let saveDraft: @MainActor (OnboardingAnswers, Int) throws -> Void
+    let saveStep: @MainActor (Int, Int) async throws -> Void
+    let clearDraft: @MainActor (Int) throws -> Void
+
+    init(
+        loadDraft: @escaping @MainActor (Int) async throws -> OnboardingAnswers?,
+        saveDraft: @escaping @MainActor (OnboardingAnswers, Int) throws -> Void,
+        saveStep: @escaping @MainActor (Int, Int) async throws -> Void,
+        clearDraft: @escaping @MainActor (Int) throws -> Void = { _ in }
+    ) {
+        self.loadDraft = loadDraft
+        self.saveDraft = saveDraft
+        self.saveStep = saveStep
+        self.clearDraft = clearDraft
+    }
+
+    static func production(defaults: UserDefaults) -> OnboardingPersistenceClient {
+        let draftStore = OnboardingTrainingDraftStore(defaults: defaults)
+        return OnboardingPersistenceClient(
+            loadDraft: { athleteId in try draftStore.load(for: athleteId) },
+            saveDraft: { answers, athleteId in try draftStore.save(answers, for: athleteId) },
+            saveStep: { stateId, step in
+                try await OnboardingService.updateCurrentStep(stateId: stateId, step: step)
+            },
+            clearDraft: { athleteId in draftStore.clear(for: athleteId) }
+        )
+    }
+}
+
+@MainActor
+enum OnboardingCompletionLifecycle {
+    static func run<Completion>(
+        saveProfile: @MainActor () throws -> Void,
+        generatePlan: @MainActor () async throws -> Void,
+        complete: @MainActor () async throws -> Completion,
+        clearDraft: @MainActor () throws -> Void
+    ) async throws -> Completion {
+        try saveProfile()
+        try await generatePlan()
+        let completion = try await complete()
+        try clearDraft()
+        return completion
+    }
+}
+
+enum OnboardingLifecyclePresentation {
+    static func shouldFlushDraft(for scenePhase: ScenePhase) -> Bool {
+        scenePhase == .inactive || scenePhase == .background
+    }
+}
+
+@MainActor
+enum OnboardingInitialPlanGenerator {
+    static func generate(
+        profile: TrainingProfile,
+        manager: DataManager? = nil,
+        defaults: UserDefaults = .standard
+    ) async throws -> WeeklyTrainingPlan {
+        let manager = manager ?? .shared
+        return try await generate(
+            profile: profile,
+            athleteId: manager.athlete?.id,
+            manager: manager,
+            defaults: defaults
+        )
+    }
+
+    static func generate(
+        profile: TrainingProfile,
+        athleteId: Int?,
+        manager: DataManager? = nil,
+        defaults: UserDefaults = .standard
+    ) async throws -> WeeklyTrainingPlan {
+        let manager = manager ?? .shared
+        guard let athleteId, athleteId > 0 else {
+            throw TrainingPlanError.missingAthleteId
+        }
+        return try await manager.generateTrainingPlan(
+            profile: profile,
+            scope: .initialCurrentWeek,
+            athleteId: athleteId,
+            defaults: defaults
+        )
+    }
+}
+
+struct OnboardingStepContainerPresentation: Equatable {
+    static let allowsGestureDrivenStepMutation = false
+}
+
+@MainActor
+private final class OnboardingPersistenceQueue {
+    private var tail = Task<Void, Never> {}
+
+    func run(_ operation: @escaping @MainActor () async throws -> Void) async throws {
+        let previous = tail
+        let operationTask = Task { @MainActor () -> Result<Void, Error> in
+            await previous.value
+            do {
+                try await operation()
+                return .success(())
+            } catch {
+                return .failure(error)
+            }
+        }
+        tail = Task { @MainActor in
+            _ = await operationTask.value
+        }
+        try await operationTask.value.get()
+    }
+
+    func waitUntilIdle() async {
+        await tail.value
+    }
+}
+
 // MARK: - Onboarding Container View
 
 struct OnboardingContainerView: View {
     @Environment(UserSession.self) var userSession
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = OnboardingViewModel()
 
     var body: some View {
@@ -23,7 +143,7 @@ struct OnboardingContainerView: View {
                 // Progress indicator
                 if viewModel.currentStep != .welcome && viewModel.currentStep != .completion {
                     OnboardingProgressBar(
-                        currentStep: viewModel.currentStep.rawValue,
+                        currentStep: viewModel.currentStep,
                         totalSteps: OnboardingStep.totalSteps
                     )
                     .padding(.horizontal)
@@ -31,79 +151,107 @@ struct OnboardingContainerView: View {
                 }
 
                 // Step content
-                TabView(selection: $viewModel.currentStep) {
+                Group {
+                    switch viewModel.currentStep {
+                    case .welcome:
                     OnboardingWelcomeView(onContinue: viewModel.nextStep)
-                        .tag(OnboardingStep.welcome)
-
+                    case .profileSetup:
                     OnboardingProfileSetupView(
                         firstName: $viewModel.firstName,
                         lastName: $viewModel.lastName,
                         onContinue: viewModel.nextStep
                     )
-                    .tag(OnboardingStep.profileSetup)
-
+                    case .goalsSetup:
                     OnboardingGoalsSetupView(
+                        primaryGoal: Binding(
+                            get: { viewModel.primaryGoal },
+                            set: viewModel.selectPrimaryGoal
+                        ),
                         weeklyGoal: $viewModel.weeklyGoal,
                         monthlyGoal: $viewModel.monthlyGoal,
+                        isNavigationDisabled: viewModel.isNavigationPending,
                         onContinue: viewModel.nextStep
                     )
-                    .tag(OnboardingStep.goalsSetup)
-
+                    case .activityMix:
+                    OnboardingActivityMixView(
+                        model: viewModel.trainingProfileEditor,
+                        onBack: viewModel.previousStep,
+                        onContinue: viewModel.nextStep,
+                        isNavigationDisabled: viewModel.isNavigationPending
+                    )
+                    case .trainingSchedule:
+                    OnboardingTrainingScheduleView(
+                        model: viewModel.trainingProfileEditor,
+                        onBack: viewModel.previousStep,
+                        onContinue: viewModel.nextStep,
+                        isNavigationDisabled: viewModel.isNavigationPending
+                    )
+                    case .experienceAssessment:
                     OnboardingExperienceView(
                         selectedLevel: $viewModel.experienceLevel,
                         onContinue: viewModel.nextStep,
                         onSkip: viewModel.skipStep
                     )
-                    .tag(OnboardingStep.experienceAssessment)
-
+                    case .movementTest:
                     OnboardingMovementTestView(
                         onContinue: viewModel.nextStep,
                         onSkip: viewModel.skipStep,
                         onResult: viewModel.saveMovementResult
                     )
-                    .tag(OnboardingStep.movementTest)
-
+                    case .runnerMindset:
                     RunnerMindsetStepView(
                         onContinue: { why, values in
                             viewModel.saveMindsetAndAdvance(whyIRun: why, coreValues: values)
                         },
                         onSkip: viewModel.skipStep
                     )
-                    .tag(OnboardingStep.runnerMindset)
-
+                    case .locationPermission:
                     OnboardingLocationView(
                         onContinue: viewModel.nextStep,
                         onSkip: viewModel.skipStep,
                         onPermissionResult: viewModel.saveLocationPermission
                     )
-                    .tag(OnboardingStep.locationPermission)
-
+                    case .coachSelection:
                     OnboardingCoachSelectionView(
                         selectedPersonality: $viewModel.coachPersonality,
                         onContinue: viewModel.nextStep
                     )
-                    .tag(OnboardingStep.coachSelection)
-
+                    case .completion:
                     OnboardingCompletionView(
                         experienceLevel: viewModel.experienceLevel,
                         coachPersonality: viewModel.coachPersonality,
                         onComplete: completeOnboarding
                     )
-                    .tag(OnboardingStep.completion)
+                    }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut, value: viewModel.currentStep)
             }
         }
         .task {
             await viewModel.loadOnboardingState(for: userSession.userId)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if OnboardingLifecyclePresentation.shouldFlushDraft(for: newPhase) {
+                viewModel.flushTrainingDraft()
+            }
+        }
+        .alert(
+            "Training setup was not saved",
+            isPresented: Binding(
+                get: { viewModel.trainingPersistenceError != nil },
+                set: { if !$0 { viewModel.dismissTrainingPersistenceError() } }
+            )
+        ) {
+            Button("Retry") { viewModel.retryTrainingPersistence(athleteId: userSession.userId) }
+            Button("Not Now", role: .cancel) { viewModel.dismissTrainingPersistenceError() }
+        } message: {
+            Text(viewModel.trainingPersistenceError ?? "Your latest training choices are still unsaved.")
+        }
     }
 
     private func completeOnboarding() {
         Task {
-            await viewModel.completeOnboarding()
-            await MainActor.run {
+            if await viewModel.completeOnboarding(athleteId: userSession.userId) {
                 // Use markOnboardingCompleted to prevent re-checking from database
                 userSession.markOnboardingCompleted()
             }
@@ -121,6 +269,13 @@ class OnboardingViewModel: ObservableObject {
     @Published var movementResult: MovementTestResult?
     @Published var locationPermissionGranted = false
     @Published var isLoading = false
+    @Published private(set) var isCompleting = false
+    @Published private(set) var isNavigationPending = false
+    @Published private(set) var trainingPersistenceError: String?
+    @Published private(set) var hasUnsavedTrainingChanges = false
+    @Published private(set) var primaryGoal: OnboardingPrimaryGoal = .running
+
+    let trainingProfileEditor: TrainingProfileEditorViewModel
 
     // Profile setup fields
     @Published var firstName: String = ""
@@ -135,6 +290,45 @@ class OnboardingViewModel: ObservableObject {
     private var onboardingState: OnboardingState?
     private var hasLoadedInitialState = false
     private var athleteId: Int?
+    private let trainingProfileStore: TrainingProfileStore
+    private let persistence: OnboardingPersistenceClient
+    private let persistenceQueue = OnboardingPersistenceQueue()
+    private let loadOnboardingStateOperation: @MainActor (Int) async throws -> OnboardingState
+    private let generateInitialPlan: @MainActor (TrainingProfile, Int) async throws -> WeeklyTrainingPlan
+    private var navigationTask: Task<Void, Never>?
+    private var failedNavigationDestination: OnboardingStep?
+    private var isRestoringTrainingAnswers = false
+
+    init(
+        trainingProfileStore: TrainingProfileStore = .shared,
+        draftDefaults: UserDefaults = .standard,
+        persistence: OnboardingPersistenceClient? = nil,
+        loadOnboardingState: @escaping @MainActor (Int) async throws -> OnboardingState = {
+            try await OnboardingService.getOrCreateOnboardingState(athleteId: $0)
+        },
+        draftDebounceNanoseconds: UInt64 = 250_000_000,
+        generateInitialPlan: @escaping @MainActor (TrainingProfile, Int) async throws -> WeeklyTrainingPlan = { profile, athleteId in
+            try await OnboardingInitialPlanGenerator.generate(
+                profile: profile,
+                athleteId: athleteId
+            )
+        }
+    ) {
+        self.trainingProfileStore = trainingProfileStore
+        self.trainingProfileEditor = TrainingProfileEditorViewModel(store: trainingProfileStore)
+        self.persistence = persistence ?? .production(defaults: draftDefaults)
+        self.loadOnboardingStateOperation = loadOnboardingState
+        _ = draftDebounceNanoseconds
+        self.generateInitialPlan = generateInitialPlan
+        self.trainingProfileEditor.draft = OnboardingAnswers.default(for: .running).draft
+        self.trainingProfileEditor.onDraftChangeAcknowledged = { [weak self] draft in
+            self?.persistTrainingDraft(draft)
+        }
+    }
+
+    var onboardingAnswers: OnboardingAnswers {
+        OnboardingAnswers(primaryGoal: primaryGoal, draft: trainingProfileEditor.draft)
+    }
 
     // MARK: - Load State
 
@@ -148,12 +342,24 @@ class OnboardingViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let state = try await OnboardingService.getOrCreateOnboardingState(athleteId: userId)
+            let state = try await loadOnboardingStateOperation(userId)
             self.onboardingState = state
             self.hasLoadedInitialState = true
 
-            // Restore state
-            if let step = OnboardingStep(rawValue: state.currentStep) {
+            isRestoringTrainingAnswers = true
+            defer { isRestoringTrainingAnswers = false }
+            let savedAnswers = try await persistence.loadDraft(userId)
+            if let savedAnswers {
+                primaryGoal = savedAnswers.primaryGoal
+                trainingProfileEditor.draft = savedAnswers.draft
+            } else {
+                let answers = OnboardingAnswers.default(for: primaryGoal)
+                trainingProfileEditor.draft = answers.draft
+            }
+            if let step = OnboardingStep.resumeStep(
+                persistedRawValue: state.currentStep,
+                trainingDraftFlowVersion: savedAnswers?.flowVersion
+            ) {
                 currentStep = step
             }
             coachPersonality = state.coachPersonality
@@ -179,18 +385,12 @@ class OnboardingViewModel: ObservableObject {
 
     func nextStep() {
         guard let next = currentStep.next else { return }
-        currentStep = next
-        Task {
-            await saveCurrentStep()
-        }
+        navigate(to: next)
     }
 
     func previousStep() {
         guard let previous = currentStep.previous else { return }
-        currentStep = previous
-        Task {
-            await saveCurrentStep()
-        }
+        navigate(to: previous)
     }
 
     func skipStep() {
@@ -199,16 +399,15 @@ class OnboardingViewModel: ObservableObject {
 
     // MARK: - Save Methods
 
-    private func saveCurrentStep() async {
-        guard let stateId = onboardingState?.id else { return }
-
-        do {
-            try await OnboardingService.updateCurrentStep(stateId: stateId, step: currentStep.rawValue)
-        } catch {
-            #if DEBUG
-            print("❌ OnboardingViewModel: Failed to save current step: \(error)")
-            #endif
-        }
+    func selectPrimaryGoal(_ goal: OnboardingPrimaryGoal) {
+        guard primaryGoal != goal else { return }
+        primaryGoal = goal
+        let normalizedDraft = OnboardingService.normalizingPrimaryGoal(
+            goal,
+            in: trainingProfileEditor.draft
+        )
+        trainingProfileEditor.draft = normalizedDraft
+        persistTrainingDraft(normalizedDraft, force: true)
     }
 
     func saveExperienceLevel() {
@@ -273,30 +472,137 @@ class OnboardingViewModel: ObservableObject {
         }
     }
 
-    func completeOnboarding() async {
-        guard let stateId = onboardingState?.id else { return }
+    func completeOnboarding(athleteId authenticatedAthleteId: Int? = nil) async -> Bool {
+        guard let stateId = onboardingState?.id, !isCompleting else { return false }
+        let planAthleteId = authenticatedAthleteId ?? athleteId
+        isCompleting = true
+        defer { isCompleting = false }
+        trainingPersistenceError = nil
 
         do {
-            // Save final preferences
-            saveExperienceLevel()
-            saveCoachPersonality()
-
-            // Save profile info to athlete record
-            await saveProfileData()
-
-            // Save goals to GoalSettingsStore
-            saveGoals()
-
-            // Mark as complete
-            let completedState = try await OnboardingService.completeOnboarding(stateId: stateId)
+            let profile = OnboardingService.makeTrainingProfile(from: onboardingAnswers)
+            let completedState = try await OnboardingCompletionLifecycle.run(
+                saveProfile: {
+                    try self.trainingProfileStore.save(profile)
+                },
+                generatePlan: {
+                    guard let planAthleteId, planAthleteId > 0 else {
+                        throw TrainingPlanError.missingAthleteId
+                    }
+                    _ = try await self.generateInitialPlan(
+                        self.trainingProfileStore.profile,
+                        planAthleteId
+                    )
+                },
+                complete: {
+                    self.saveExperienceLevel()
+                    self.saveCoachPersonality()
+                    await self.saveProfileData()
+                    self.saveGoals()
+                    return try await OnboardingService.completeOnboarding(stateId: stateId)
+                },
+                clearDraft: {
+                    guard let planAthleteId, planAthleteId > 0 else {
+                        throw TrainingPlanError.missingAthleteId
+                    }
+                    try self.persistence.clearDraft(planAthleteId)
+                }
+            )
             self.onboardingState = completedState
             #if DEBUG
             print("✅ OnboardingViewModel: Onboarding completed!")
             #endif
+            return true
         } catch {
+            trainingPersistenceError = error.localizedDescription
             #if DEBUG
             print("❌ OnboardingViewModel: Failed to complete onboarding: \(error)")
             #endif
+            return false
+        }
+    }
+
+    func retryTrainingPersistence(athleteId: Int? = nil) {
+        trainingPersistenceError = nil
+        if currentStep == .completion {
+            Task { _ = await completeOnboarding(athleteId: athleteId) }
+            return
+        }
+        if let destination = failedNavigationDestination {
+            failedNavigationDestination = nil
+            navigate(to: destination)
+        } else {
+            flushTrainingDraft()
+        }
+    }
+
+    func dismissTrainingPersistenceError() {
+        trainingPersistenceError = nil
+    }
+
+    func waitForPendingTrainingPersistence() async {
+        await persistenceQueue.waitUntilIdle()
+    }
+
+    func flushTrainingDraft() {
+        persistTrainingDraft(trainingProfileEditor.draft, force: true)
+    }
+
+    func waitForPendingNavigation() async {
+        await navigationTask?.value
+    }
+
+    private func navigate(to destination: OnboardingStep) {
+        guard !isNavigationPending else { return }
+        guard let athleteId, let stateId = onboardingState?.id else {
+            trainingPersistenceError = "Onboarding progress is not ready to save. Please retry."
+            hasUnsavedTrainingChanges = true
+            return
+        }
+
+        let answers = onboardingAnswers
+        isNavigationPending = true
+        hasUnsavedTrainingChanges = true
+        trainingPersistenceError = nil
+
+        navigationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await persistenceQueue.run {
+                    try self.persistence.saveDraft(answers, athleteId)
+                    try await self.persistence.saveStep(stateId, destination.rawValue)
+                }
+                self.currentStep = destination
+                self.failedNavigationDestination = nil
+                if self.onboardingAnswers == answers {
+                    self.hasUnsavedTrainingChanges = false
+                }
+            } catch {
+                self.failedNavigationDestination = destination
+                self.trainingPersistenceError = "Your training choices and onboarding progress were not saved. \(error.localizedDescription)"
+                self.hasUnsavedTrainingChanges = true
+            }
+            self.isNavigationPending = false
+        }
+    }
+
+    private func persistTrainingDraft(_ draft: TrainingProfile, force: Bool = false) {
+        guard !isRestoringTrainingAnswers,
+              force || currentStep == .activityMix || currentStep == .trainingSchedule,
+              athleteId != nil else { return }
+
+        hasUnsavedTrainingChanges = true
+        let answers = OnboardingAnswers(primaryGoal: primaryGoal, draft: draft)
+        guard let athleteId else { return }
+        do {
+            try persistence.saveDraft(answers, athleteId)
+            if onboardingAnswers == answers {
+                hasUnsavedTrainingChanges = false
+                trainingPersistenceError = nil
+            }
+        } catch {
+            trainingPersistenceError = "Your latest training choices were not saved. \(error.localizedDescription)"
+            hasUnsavedTrainingChanges = true
         }
     }
 
@@ -340,11 +646,11 @@ class OnboardingViewModel: ObservableObject {
 // MARK: - Progress Bar
 
 struct OnboardingProgressBar: View {
-    let currentStep: Int
+    let currentStep: OnboardingStep
     let totalSteps: Int
 
     private var progress: Double {
-        return Double(currentStep) / Double(totalSteps - 1)
+        return Double(currentStep.flowIndex) / Double(totalSteps - 1)
     }
 
     var body: some View {
